@@ -48,9 +48,10 @@ class Polls {
                     })
             }).then((i) => i.json())
 
-            const newMsg = await (await this.client.channels.resolve(poll.channelId))?.messages?.fetch(poll.messageId)
-            newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${this.client.translate.get(this.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map(e => e).join("\n")}` : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { })
-            this.client.polls.delete(message.id);
+          try {
+            const newMsg = await (await this.client.channels.resolve(polls.channelId))?.messages?.fetch(polls.messageId)
+            newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${this.client.translate.get(this.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map(e => e).join("\n")}` : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] })
+          } catch {}
             await PollDB.findOneAndDelete({ messageId: message.id });
         }, this.time);
       

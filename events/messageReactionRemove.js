@@ -48,7 +48,7 @@ module.exports = async (client, message, user) => {
             });
 
             pollCheck.users = pollCheck.users.filter(object => object != userId);
-            const user = (client.users.get(userId)) || await client.users.fetch(userId);
+            const user = (client.users.cache.get(userId)) || await client.users.fetch(userId);
             await pollCheck.poll.removeVote(convert, userId, user.displayAvatarURL(), message.messageId);
             
             const pollImage = await fetch(`${process.env.CDN}/api/upload`, {

@@ -168,8 +168,8 @@ module.exports = async (client, message, user) => {
           if (client.reactions.get(userId)) return client.users.get(userId)?.createDM().then(dm => dm.send(client.translate.get(pollCheck.lang, "Events.messageReactionAdd.tooFast"))).catch(() => { });
           if (pollCheck.users.includes(userId)) return;
           pollCheck.users.push(userId);
-          const user = (client.users.cache.get(userId)) || (await client.users.fetch(userId));
-          await pollCheck.poll.addVote(convert, userId, user.displayAvatarURL({ size: 256, format: 'png' }), message.messageId);
+          const user = (await client.users.fetch(userId));
+          await pollCheck.poll.addVote(convert, userId, user.displayAvatarURL?.({ size: 256, format: 'png' }) ?? user.avatarURL ?? `/assets/default-avatar.png`, message.messageId);
             
           let tooMuch = [];
           if (pollCheck.poll.options.description.length > 80) tooMuch.push(`**${client.translate.get(pollCheck.language, "Events.messageReactionRemove.title")}**: ${pollCheck.poll.options.description}`)

@@ -180,7 +180,8 @@
       "maxOptions": "Por favor, proporcione un número máximo de 10 opciones.\nEjemplo",
       "polls": "Encuestas",
       "title": "Título",
-      "example": "¿Cómo estás? | Bien | Mal"
+      "example": "¿Cómo estás? | Bien | Mal",
+      "loading": "Loading poll"
     },
     "reroll": {
       "description": "Reelegir ganadores de los sorteos. El número ganador está basado en el orden de los ganadores en el punto de integración.",

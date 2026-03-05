@@ -180,7 +180,8 @@
       "maxOptions": "Please provide a maximum of 10 options.\nExample",
       "polls": "Polls",
       "title": "Title",
-      "example": "How are you? | Good | Bad"
+      "example": "How are you? | Good | Bad",
+      "loading": "Loading poll"
     },
     "reroll": {
       "description": "Reroll winners from giveaways. Winner number is based on the order of the winners in the embed.",

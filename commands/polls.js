@@ -55,7 +55,7 @@ module.exports = {
       });
       
       await message.channel.send({
-        embeds: [new EmbedBuilder().setDescription(`${tooMuch.length > 0 ? tooMuch.map(e => e).join("\n") : ""}\n_ _`).setColor(`#A52F05`)],
+        embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.loading")}...`).setColor(`#A52F05`)],
       }).then(async (msg) => {
           for (const reaction of reactions) {
             await msg.react(reaction).catch(() => {});
