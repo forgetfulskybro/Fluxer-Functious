@@ -1,0 +1,21 @@
+{
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@discordjs/collection": "^2.1.1",
+    "@fluxerjs/core": "^1.2.3",
+    "@sentry/node": "^10.42.0",
+    "canvas": "^3.2.1",
+    "dotenv": "^17.3.1",
+    "fs": "^0.0.1-security",
+    "mongoose": "^9.2.1"
+  },
+  "information": {
+    "Developer": "ForGetFulSkyBro",
+    "Discord": "forgetfulskybro",
+    "Fluxer": "ForGetFulSkyBro#9999",
+    "GitHub": "https://github.com/forgetfulskybro/fluxer-functious"
+  }
+}
