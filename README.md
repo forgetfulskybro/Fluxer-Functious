@@ -11,3 +11,5 @@ If you're interested in translating the bot, make sure to join the support serve
 - Polling system
 - Fully customizable reaction roles
 
+# Code Borrowing
+If you plan to take code from this repository, I do ask to at least add some form of signature or shoutout to this GitHub page. Would mean a lot. 
