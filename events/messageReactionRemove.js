@@ -59,7 +59,8 @@ module.exports = async (client, message, user) => {
                     body: JSON.stringify({
                       apikey: process.env.CDN_KEY,
                       image: pollCheck.poll.canvas.toDataURL('image/png'),
-                      timeframe: pollCheck.poll.time
+                      timeframe: pollCheck.poll.time,
+                      messageId: message.messageId
                     })
             }).then((i) => i.json())
           

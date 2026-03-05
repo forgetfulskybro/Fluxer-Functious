@@ -17,7 +17,7 @@ class Polls {
         this.size = { canvas: options.name.length === 2 ? 200 : options.name.length === 3 ? 250 : options.name.length === 4 ? 300 : options.name.length === 5 ? 350 : options.name.length === 6 ? 400 : options.name.length === 7 ? 450 : options.name.length === 8 ? 500 : options.name.length === 9 ? 550 : 600, bar: options.name.length === 2 ? 150 : options.name.length === 3 ? 200 : options.name.length === 4 ? 250 : options.name.length === 5 ? 300 : options.name.length === 6 ? 350 : options.name.length === 7 ? 400 : options.name.length === 8 ? 450 : options.name.length === 9 ? 500 : 550 };
     }
 
-    async start(message, poll) {
+    async start(message, poll, first = false) {
       message = await message;
         this.client.polls.set(message.id, { poll, messageId: message.id, channelId: message.channelId, users: this.users, owner: this.owner, lang: poll.lang })
         setTimeout(async () => {
@@ -42,15 +42,35 @@ class Polls {
                     body: JSON.stringify({
                       apikey: process.env.CDN_KEY,
                       image: polls.poll.canvas.toDataURL('image/png'),
-                      timeframe: polls.poll.time
+                      timeframe: polls.poll.time,
+                      messageId: message.id,
+                      last: true
                     })
             }).then((i) => i.json())
 
-            const newMsg = await (await this.client.channels.resolve(polls.channelId))?.messages?.fetch(polls.messageId)
+            const newMsg = await (await this.client.channels.resolve(poll.channelId))?.messages?.fetch(poll.messageId)
             newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${this.client.translate.get(this.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map(e => e).join("\n")}` : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { })
             this.client.polls.delete(message.id);
             await PollDB.findOneAndDelete({ messageId: message.id });
         }, this.time);
+      
+        if (first) {
+          const pollImage = await fetch(`${process.env.CDN}/api/upload`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              apikey: process.env.CDN_KEY,
+              image: poll.canvas.toDataURL('image/png'),
+              timeframe: poll.time,
+              messageId: message.id,
+            })
+          }).then((i) => i.json())
+          
+          const newMsg = await (await this.client.channels.resolve(message.channelId))?.messages?.fetch(message.id)
+          newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${first.tooMuch.length > 0 ? `\n\n${first.tooMuch.map(e => e).join("\n")}` : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { })
+        }
 
         if (this.time < 0) return;
         await (new PollDB({

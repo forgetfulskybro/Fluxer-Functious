@@ -39,7 +39,7 @@ module.exports = {
     },
     run: async (client, message, args, db) => {
       const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
-        if (!me.permissions.has(PermissionFlags.ManageRoles)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noPerms")}`).setColor(`#FF0000`)] }, false);
+        if (!me.permissions.has(PermissionFlags.ManageRoles)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noPerms")}`).setColor(`#FF0000`)] });
 
         switch (args[0]?.toLowerCase()) {
             default: "help"
@@ -49,11 +49,11 @@ module.exports = {
                     .setDescription(`**${client.translate.get(db.language, "Commands.roles.view")} ${client.translate.get(db.language, "Commands.roles.usage").replace("h", "H")}**\n\n**${client.translate.get(db.language, "Commands.roles.explain")}**\n${client.translate.get(db.language, "Commands.roles.explain2", { "prefix": db.prefix })}\n\n**${client.translate.get(db.language, "Commands.roles.create")}**\n\`${db.prefix}roles ${client.translate.get(db.language, "Commands.roles.createExample")}\`\n\n**${client.translate.get(db.language, "Commands.roles.editing")}**\n\`${db.prefix}roles edit [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.viewing")}**\n\`${db.prefix}roles view\`\n\n**${client.translate.get(db.language, "Commands.roles.deleting")}**\n\`${db.prefix}roles delete [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.reactionFix")}**\n- ${client.translate.get(db.language, "Commands.roles.reactionFixExplain")}\n\`${db.prefix}roles fix [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.dm")}**\n\`${db.prefix}roles dm\``)
 
                 setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
-                message.reply({ embeds: [embed] }, false)
+                message.reply({ embeds: [embed] })
                 break;
 
             case "view":
-                if (db.roles.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles")}: \`${db.prefix}roles\``).setColor(`#FF0000`)] }, false);
+                if (db.roles.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles")}: \`${db.prefix}roles\``).setColor(`#FF0000`)] });
                 const pages = new Paginator({ timeout: 5 * 2e4, user: message.author.id, client: client })
                 let data;
                 data = db.roles.map((msg, i) => `**ID**: ${msg.msgId}\n**${client.translate.get(db.language, "Commands.roles.roles")}**: ${msg.roles.length}\n[${client.translate.get(db.language, "Commands.roles.jump")}](https://fluxer.app/channels/${message.guildId}/${msg.chanId}/${msg.msgId})`);
@@ -66,27 +66,27 @@ module.exports = {
                 break;
 
             case "delete":
-              if (!args[1]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.delete")}: \`${db.prefix}roles delete <messageId>\``).setColor(`#FF0000`)] }, false);
+              if (!args[1]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.delete")}: \`${db.prefix}roles delete <messageId>\``).setColor(`#FF0000`)] });
 
               const msg = db.roles.find(e => e.msgId === args[1]);
-              if (!msg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] }, false);
+              if (!msg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });
 
               const foundMsg = await (await client.channels.resolve(msg.chanId))?.messages?.fetch(msg.msgId);
               foundMsg?.delete().catch(() => { });
               await client.database.updateGuild(message.guildId, { roles: db.roles.filter(e => e.msgId !== args[1]) });
             
               setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
-              message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.deleted")}`).setColor(`#A52F05`)] }, false);
+              message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.deleted")}`).setColor(`#A52F05`)] });
                 break;
                 
             case "fix":
             case "reactionsfix":
             case "reactionfix":
-              if (!args[1]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.fix")}:\n\`${db.prefix}roles fix <messageId>\``).setColor(`#FF0000`)] }, false);
+              if (!args[1]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.fix")}:\n\`${db.prefix}roles fix <messageId>\``).setColor(`#FF0000`)] });
               if (!me.permissions.has(PermissionFlags.ManageMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.roles.noPerms2")).setColor(`#FF0000`)] });
 
               const reactMsg = db.roles.find(e => e.msgId === args[1]);
-              if (!reactMsg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] }, false);
+              if (!reactMsg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });
               
               const foundFixMsg = await (await client.channels.resolve(reactMsg.chanId))?.messages?.fetch(reactMsg.msgId);
               await foundFixMsg.removeAllReactions();
@@ -105,16 +105,16 @@ module.exports = {
               await client.database.updateGuild(message.guildId, { dm: !dms });
             
               setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
-              message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.dms")} **${dms ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(`#A52F05`)] }, false);
+              message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.dms")} **${dms ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(`#A52F05`)] });
                 break;
 
             case "edit":
-              if (client.messageCollector.has(message.author.id) || client.messageEdit.has(message.author.id)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.already")}`).setColor(`#FF0000`)] }, false);
-              if (db.roles.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles")}: \`${db.prefix}roles\``).setColor(`#FF0000`)] }, false);
-              if (!args[1]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.edit")}: \`${db.prefix}roles edit <messageId>\``).setColor(`#FF0000`)] }, false);
+              if (client.messageCollector.has(message.author.id) || client.messageEdit.has(message.author.id)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.already")}`).setColor(`#FF0000`)] });
+              if (db.roles.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles")}: \`${db.prefix}roles\``).setColor(`#FF0000`)] });
+              if (!args[1]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.edit")}: \`${db.prefix}roles edit <messageId>\``).setColor(`#FF0000`)] });
 
               const editmsg = db.roles.find(e => e.msgId === args[1]);
-              if (!editmsg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] }, false);
+              if (!editmsg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });
 
               let type;
               const fetched = await (await client.channels.resolve(editmsg.chanId))?.messages?.fetch(editmsg.msgId);
@@ -173,13 +173,13 @@ module.exports = {
                 channel = message.guild.channels.find(e => e.id === content.match(regex).groups.id);
 
                 if (!channel) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validChannel")}: \`${client.config.prefix}roles (content OR embed) <#${channel.id}>\``).setColor(`#FF0000`)] });
-                if (!me.permissions.has(PermissionFlags.SendMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms")} (content OR embed) <#${channel.id}>`).setColor(`#FF0000`)] });
-                if (!me.permissions.has(PermissionFlags.ViewChannel)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms2")} (content OR embed) <#${channel.id}>`).setColor(`#FF0000`)] });
-                if (!me.permissions.has(PermissionFlags.AddReactions)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms3")} (content OR embed) <#${channel.id}>`).setColor(`#FF0000`)] });
+                if (!me.permissions.has(PermissionFlags.SendMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms")}`).setColor(`#FF0000`)] });
+                if (!me.permissions.has(PermissionFlags.ViewChannel)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms2")}`).setColor(`#FF0000`)] });
+                if (!me.permissions.has(PermissionFlags.AddReactions)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms3")}`).setColor(`#FF0000`)] });
               }
 
               const picked = pick.map(e => content.includes(e));
-              if (picked.filter(e => e).length === 2) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.pick")}\n\n${client.translate.get(db.language, "Commands.language.example")}: ${client.config.prefix}roles content <#${channel.id}>\n${client.translate.get(db.language, "Commands.language.example")}: ${client.config.prefix}roles embed <#${channel.id}>`).setColor(`#FF0000`)] }, false);
+              if (picked.filter(e => e).length === 2) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.pick")}\n\n${client.translate.get(db.language, "Commands.language.example")}: ${client.config.prefix}roles content <#${channel.id}>\n${client.translate.get(db.language, "Commands.language.example")}: ${client.config.prefix}roles embed <#${channel.id}>`).setColor(`#FF0000`)] });
 
               const coll = await client.messageCollector.set(message.author.id, {
                 user: message.author.id,

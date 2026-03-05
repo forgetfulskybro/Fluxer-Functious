@@ -16,8 +16,8 @@ module.exports = {
     const embed = new EmbedBuilder().setDescription(
       `${client.translate.get(db.language, "Commands.prefix.prefix")}: \`${db.prefix}\`\n\n${client.translate.get(db.language, "Commands.prefix.change")} \`${db.prefix}prefix <${client.translate.get(db.language, "Commands.prefix.new")}>\``,
     );
-    if (!args[0]) return message.reply({ embeds: [embed] }, false);
-    if (args[0] === db.prefix) return message.reply({ embeds: [embed] }, false);
+    if (!args[0]) return message.reply({ embeds: [embed] });
+    if (args[0] === db.prefix) return message.reply({ embeds: [embed] });
     if (args[0].length > 8)
       return message.reply(
         client.translate.get(db.language, "Commands.prefix.tooMany"),

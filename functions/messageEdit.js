@@ -5,13 +5,13 @@ async function Collector(client, message, db) {
     const regexAll = /{role:(.*?)}/g;
     const collector = client.messageEdit.get(message.author.id);
     if (!message.content.match(regexAll) || message.content.match(regexAll)?.length === 0) {
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.noRoles")}: \`{role:Red}\``)] }, false).catch(() => { return });
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.noRoles")}: \`{role:Red}\``)] }).catch(() => { return });
         return message.react(client.config.emojis.cross).catch(() => { return });
     }
 
     const roles = message.content.match(regexAll).map((r) => r?.match(regex)[1]);
     if (roles.length > 30) {
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.maxRoles"))] }, false).catch(() => { return });
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.maxRoles"))] }).catch(() => { return });
         return message.react(client.config.emojis.cross).catch(() => { return });
     }
     collector.regex = roles
@@ -30,7 +30,7 @@ async function Collector(client, message, db) {
             }
         });
 
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.unknown")}\n${unknown.map(e => `\`{role:${e}}\``).join(", ")}`)] }, false).catch(() => { return });
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.unknown")}\n${unknown.map(e => `\`{role:${e}}\``).join(", ")}`)] }).catch(() => { return });
         return message.react(client.config.emojis.cross).catch(() => { return });
     }
 
@@ -41,13 +41,17 @@ async function Collector(client, message, db) {
     });
 
     if (duplicate.length > 0) {
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.duplicate")}\n${duplicate.map(e => `\`{role:${e[1].name}}\``)}`)] }, false).catch(() => { return });
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.duplicate")}\n${duplicate.map(e => `\`{role:${e[1].name}}\``)}`)] }).catch(() => { return });
         return message.react(client.config.emojis.cross).catch(() => { return });
     }
 
     let positions = [];
     const botRole = [...me.roles.cache.values()].reduce((high, role) => role.position > high.position ? role : high);
-
+    if (!botRole) {
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.noBotRole"))] }).catch(() => { return });
+        return message.react(client.config.emojis.cross).catch(() => { return });
+    }
+  
     roleIds.map((r, i) => {
         i++
         if (r[1].position >= botRole.position) positions.push(roleIds[i - 1])
@@ -55,15 +59,14 @@ async function Collector(client, message, db) {
 
 
     if (positions.length > 0) {
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.positions")}\n${positions.map(e => `\`{role:${e[1].name}}\``)}`)] }, false).catch(() => { return });
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.positions")}\n${positions.map(e => `\`{role:${e[1].name}}\``)}`)] }).catch(() => { return });
         return message.react(client.config.emojis.cross).catch(() => { return });
     }
 
     message.delete().catch(() => { });
     collector.roles = roleIds;
-    const react = [client.config.emojis.check];
     return message.channel.send(collector.type === "content" ? { content: message.content } : { embeds: [new EmbedBuilder().setDescription(message.content).setColor("#A52F05")] }).then(async (msg) => {
-          await msg.react(client.config.emojis.check)
+          await msg.react(client.config.emojis.check).catch(() => { return });
           collector.messageId = msg.id;
       });
 }

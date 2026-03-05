@@ -20,15 +20,15 @@ module.exports = {
       const msgId = options[0];
 
       const check = await Giveaways.findOne({ messageId: msgId });
-      if (!check) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.reroll.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.usage")}\``).setColor(`#FF0000`)] }, false);
+      if (!check) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.reroll.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.usage")}\``).setColor(`#FF0000`)] });
       winners = options[1] ? options[1] : check.winners === 1 ? winners = 1 : null;
-      if (!winners) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.winners")).setColor(`#FF0000`)] }, false);
-      if (winners !== "all" && isNaN(winners) || winners > 5 || winners < 1) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(check.language, "Commands.reroll.winners")).setColor(`#FF0000`)] }, false);
+      if (!winners) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.winners")).setColor(`#FF0000`)] });
+      if (winners !== "all" && isNaN(winners) || winners > 5 || winners < 1) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(check.language, "Commands.reroll.winners")).setColor(`#FF0000`)] });
 
-      if (!check.ended) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.notEnded")).setColor(`#FF0000`)] }, false);
-      if (check.owner !== message.author.id) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.notHosted")).setColor(`#FF0000`)] }, false);
-      if (check.users.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.noUsers")).setColor(`#FF0000`)] }, false)
-      if (check.picking.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.noPicks")).setColor(`#FF0000`)] }, false)
+      if (!check.ended) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.notEnded")).setColor(`#FF0000`)] });
+      if (check.owner !== message.author.id) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.notHosted")).setColor(`#FF0000`)] });
+      if (check.users.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.noUsers")).setColor(`#FF0000`)] })
+      if (check.picking.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.noPicks")).setColor(`#FF0000`)] })
 
       if (winners === "all") {
           check.pickedWinners = [];
@@ -43,7 +43,7 @@ module.exports = {
           }
           await check.save();
       } else {
-          if (winners > check.pickedWinners.length) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(check.language, "Commands.reroll.onlyWinners")} ${check.pickedWinners.length} ${client.translate.get(check.language, "Commands.reroll.onlyWinners2")}: \`${client.config.prefix}reroll ${msgId} [${client.translate.get(check.language, "Commands.reroll.winnerNum")}, E.g. 1, 2, all] \``).setColor(`#FF0000`)] }, false)
+          if (winners > check.pickedWinners.length) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(check.language, "Commands.reroll.onlyWinners")} ${check.pickedWinners.length} ${client.translate.get(check.language, "Commands.reroll.onlyWinners2")}: \`${client.config.prefix}reroll ${msgId} [${client.translate.get(check.language, "Commands.reroll.winnerNum")}, E.g. 1, 2, all] \``).setColor(`#FF0000`)] })
 
           let winner = check.picking[Math.floor(Math.random() * check.picking.length)];
           const filtered = check.picking.filter(object => object.userID != winner.userID)
@@ -67,7 +67,7 @@ module.exports = {
     } else if (args[0] === "start") {
       const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
       const check = await Giveaways.find({ serverId: message.guildId, ended: false })
-      if (check.length === 15) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, 'Commands.giveaway.tooMany')).setColor(`#FF0000`)] }, false);
+      if (check.length === 15) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, 'Commands.giveaway.tooMany')).setColor(`#FF0000`)] });
           
       const options = args.join(` `).split(`|`).map(x => x.trim()).filter(x => x);
       const prize = options[2] ? options[2].slice(0, 500) : null;
@@ -131,7 +131,7 @@ module.exports = {
       if (!msgId) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\``).setColor(`#FF0000`)]  })
       
       const check = await Giveaways.findOne({ messageId: msgId });
-      if (!check) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\n\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\``).setColor(`#FF0000`)] }, false);
+      if (!check) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\n\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\``).setColor(`#FF0000`)] });
       if (check.owner !== message.author.id) return message.reply({ content: client.translate.get(db.language, "Commands.giveaway.notOwner") });
       
       await Giveaways.findOneAndDelete({ messageId: msgId });
@@ -144,7 +144,7 @@ module.exports = {
           .setTitle(client.translate.get(db.language, "Commands.giveaway.title"))
           .setDescription(`**${client.translate.get(db.language, "Commands.roles.explain")}**\n${client.translate.get(db.language, "Commands.giveaway.explain")}\n\n**Creating**\n\`${db.prefix}giveaway start ${client.translate.get(db.language, "Commands.giveaway.creating")}\`\n\n**Deleting**\n\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\`\n\n**Rerolling**\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.usage")}\``)
           .setColor(`#A52F05`)]
-      }, false);
+      });
     }
   }
 };
