@@ -13,7 +13,7 @@ module.exports = {
     try {
       let codein = args.join(" ");
       if (!args[0]) return message.reply("Send me code.", false);
-      if (codein.includes("client.rest")) {
+      if (codein === "client.rest") {
         return message.reply(`\`\`\`js\nnull`, false);
       }
 

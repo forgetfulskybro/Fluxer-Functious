@@ -18,7 +18,7 @@ module.exports = async (client, message) => {
   let cmd = args.shift().toLowerCase();
 
   if (!me?.permissions.has(PermissionFlags.SendMessages))
-    return member.user
+    return message.author
       .createDM()
       .then((dm) => {
         dm.sendMessage(

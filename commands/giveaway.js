@@ -43,7 +43,7 @@ module.exports = {
           }
           await check.save();
       } else {
-          if (winners > check.pickedWinners.length) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(check.language, "Commands.reroll.onlyWinners")} ${check.pickedWinners.length} ${client.translate.get(check.language, "Commands.reroll.onlyWinners2")}: \`${client.config.prefix}reroll ${msgId} [${client.translate.get(check.language, "Commands.reroll.winnerNum")}, E.g. 1, 2, all] \``).setColor(`#FF0000`)] })
+          if (winners > check.pickedWinners.length) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(check.language, "Commands.reroll.onlyWinners")} ${check.pickedWinners.length} ${client.translate.get(check.language, "Commands.reroll.onlyWinners2")}: \`${db.prefix}reroll ${msgId} [${client.translate.get(check.language, "Commands.reroll.winnerNum")}, E.g. 1, 2, all] \``).setColor(`#FF0000`)] })
 
           let winner = check.picking[Math.floor(Math.random() * check.picking.length)];
           const filtered = check.picking.filter(object => object.userID != winner.userID)
@@ -82,18 +82,18 @@ module.exports = {
         requirement = options[3].slice(0, 500).replace(`${option ? option[0] : ''}`, "").trim();
         if (requirement.length === 0) requirement = null;
         if (options[3] && regex.test(options[3])) channel = option[3] ? message.guild.channels.find(e => e.id === option[3]) : message.guild.channels.find(e => e.id === option[2])
-        if (!channel) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validChannel")}: \`${client.config.prefix}giveaway 20m | 3 | A t-shirt | channel:#giveaways\`\n\n> ${client.translate.get(db.language, "Commands.giveaway.validChannel2")}`).setColor(`#FF0000`)] });
+        if (!channel) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validChannel")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt | channel:#giveaways\`\n\n> ${client.translate.get(db.language, "Commands.giveaway.validChannel2")}`).setColor(`#FF0000`)] });
         if (channel === true || /^\s*$/.test(requirement)) channel = message.channel
       } else { requirement = null; channel = message.channel; }
         
-      if (!time) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validTime")}: \`${client.config.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
-      if (Array.from({ length: 119999 }, (_, i) => i + 1).includes(dhms(time))) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.ormore")}: \`${client.config.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] })
-      if (time > 31556952000) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.orless")}: \`${client.config.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
-      if (!isNaN(time) || dhms(time) <= 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.format")}: \`${client.config.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] })
-      if (!winners) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validWinners")}: \`${client.config.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
-      if (winners <= 0 || isNaN(winners)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.formatWinners")}: \`${client.config.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] })
-      if (winners > 50) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.maxwins")}: \`${client.config.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] })
-      if (!options[2]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validPrize")}: \`${client.config.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
+      if (!time) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validTime")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
+      if (Array.from({ length: 119999 }, (_, i) => i + 1).includes(dhms(time))) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.ormore")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] })
+      if (time > 31556952000) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.orless")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
+      if (!isNaN(time) || dhms(time) <= 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.format")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] })
+      if (!winners) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validWinners")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
+      if (winners <= 0 || isNaN(winners)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.formatWinners")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] })
+      if (winners > 50) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.maxwins")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] })
+      if (!options[2]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validPrize")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
   
       const embed = new EmbedBuilder()
         .setColor("#A52F05")
@@ -101,9 +101,10 @@ module.exports = {
         .setDescription(`${client.translate.get(db.language, "Commands.giveaway.time")}: <t:${Math.floor((dhms(time) + Date.now()) / 1000)}:R>\n${client.translate.get(db.language, "Commands.giveaway.hosted")}: <@${message.author.id}>\n${client.translate.get(db.language, "Commands.giveaway.winners")}: ${winners}${requirement ? `\n\n${client.translate.get(db.language, "Commands.giveaway.reqs")}:\n${requirement.slice(0, 700)}` : ``}`)
         .setFooter({ text: `${client.translate.get(db.language, "Commands.giveaway.react")} ${client.config.emojis.confetti} ${client.translate.get(db.language, "Commands.giveaway.react2")}` })
   
-      if (!me.permissions.has(PermissionFlags.SendMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms")} <#${channel.id}>`).setColor(`#FF0000`)] });
-      if (!me.permissions.has(PermissionFlags.ViewChannel)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms2")} <#${channel.id}>`).setColor(`#FF0000`)] });
-      if (!me.permissions.has(PermissionFlags.AddReactions)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms3")} <#${channel.id}>`).setColor(`#FF0000`)] });
+      const chanPerms = me.permissionsIn(channel);
+      if (!chanPerms.has(PermissionFlags.SendMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms")} <#${channel.id}>`).setColor(`#FF0000`)] });
+      if (!chanPerms.has(PermissionFlags.ViewChannel)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms2")} <#${channel.id}>`).setColor(`#FF0000`)] });
+      if (!chanPerms.has(PermissionFlags.AddReactions)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms3")} <#${channel.id}>`).setColor(`#FF0000`)] });
   
       if (options[3] && regex.test(options[3]) || /^\s*$/.test(requirement)) { message.reply(`${client.translate.get(db.language, "Commands.giveaway.success")} <#${channel.id}>`) }
       else message.delete().catch(() => { });

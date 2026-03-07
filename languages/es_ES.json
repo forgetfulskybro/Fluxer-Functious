@@ -57,6 +57,31 @@
     }
   },
   "Commands": {
+    "bypass": {
+      "description": "Grant roles a bypass to use commands locked behind permissions.",
+      "usage": ""
+    },
+    "autoroles": {
+      "description": "Setup autoroles in your server such as join roles or sticky roles.",
+      "usage": "help",
+      "help": "Viewing Autoroles Help",
+      "explanation": "**Explanation**\nThis is a help menu to show all available sub-commands this command has. Use these to setup autoroles in your server.",
+      "view": "**View**\nThis sub-command lets you view all your autorole settings.",
+      "stickyRoles": "**Sticky Roles**\nThis sub-command toggles sticky roles which save user's roles when they leave or kicked from the server, and add them back on join.",
+      "joinRoles": "**Join Roles**\nThis sub-command setups join roles where it adds roles to users when they join.",
+      "roleNames": "role names",
+      "noOptionsAdd": "Provide role names to be added to autoroles.\nExample",
+      "noOptionsRemove": "Provide role names to be removed from autoroles.\nExample",
+      "sticky": "Successfully changed sticky roles to be turned",
+      "tooMany": "You provided too many roles. Join roles can only have a maximum of 20 roles in total.",
+      "completeAdd": "Successfully added autoroles when users join.\nRoles:",
+      "completeRemove": "Successfully removed autoroles when users join.\nRoles:",
+      "roleErrorsAdd": "All of the roles you provided are duplicates, please provide new roles.\nRoles:",
+      "roleErrorsRemove": "None of the roles you provided are join roles, please provide join roles.\nRoles:",
+      "someDuplicates": "These roles are already join roles:",
+      "someRoleErrorsAdd": "Duplicate join roles you provided:",
+      "someRoleErrorsRemove": "Errored join roles you provided:"
+    },
     "roles": {
       "description": "Configura los roles de reacción para tu servidor",
       "usage": "ayuda",
@@ -85,7 +110,7 @@
       "deleting": "Eliminando",
       "msgId": "Mensaje",
       "explain": "Explicación",
-      "explain2": "When you create a reaction message (`{prefix}roles create`), you will need to provide it with roles (format: `{role:Blue}`) and I will copy your message. React to my message to automatically update the roles and once you are finished, react with ✅ to complete it.",
+      "explain2": "When you create a reaction message (`{prefix}roles create`), you will need to provide it with roles (format: `{role:Blue}`) and I will copy your message. React to my message to automatically update the roles and once you are finished, react with ✅ to complete it. If you would like to remove the reaction cooldown text, add {cooldown:off} to your message anywhere.",
       "dm": "Direct Messages Toggle",
       "reactionFix": "Reactions Fix",
       "reactionFixExplain": "This sub-command fixes the reactions on a reaction role message.",

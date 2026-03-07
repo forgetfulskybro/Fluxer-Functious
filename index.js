@@ -10,9 +10,9 @@ const checkPolls = require("./functions/checkPolls");
 const color = require("./functions/colorCodes");
 
 // For self-hosted versions of Fluxer, use this layout:
-// { withGuilds: true, rest: { baseURL: `https://fluxer.exeli.us/api`, api: `https://fluxer.exeli.us/api` } }
+// { waitForGuilds: true, rest: { baseURL: `https://fluxer.exeli.us/api`, api: `https://fluxer.exeli.us/api` } }
 // Of course change the URLs to your hosted one's URLs
-const client = new Client({ withGuilds: true }); 
+const client = new Client({ waitForGuilds: true }); 
 const TranslationHandler = require("./handlers/translation");
 const DatabaseHandler = require("./handlers/database");
 

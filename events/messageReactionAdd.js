@@ -19,7 +19,7 @@ module.exports = async (client, message, user) => {
                 (await (await client.channels.resolve(collector.channelId))?.messages?.fetch(collector?.oldMessageId))?.delete().catch(()=> {})
                 const reactions = [...collector.rolesDone.map(e => e.emoji)];
                 const newMsg = await (await client.channels.resolve(message.channelId))?.messages?.fetch(message.messageId)
-                newMsg.channel.send(collector.type === "content" ? { content: `${newMsg.content}\n\n> [!NOTE]\n> ${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}` } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(`${newMsg.embeds[0].description}\n\n> Note\n> ${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}`)] }).then(async (m) => {
+                newMsg.channel.send(collector.type === "content" ? { content: `${newMsg.content}${collector?.cooldownToggle && `\n\n> [!NOTE]\n> ${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}`}` } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(`${newMsg.embeds[0].description}${collector?.cooldownToggle && `\n\n> [!NOTE]\n> ${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}`}`)] }).then(async (m) => {
                   for (const reaction of reactions) {
                       await m.react(reaction).catch(() => {});
                   }

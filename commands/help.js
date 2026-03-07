@@ -5,7 +5,7 @@ module.exports = {
         available: true,
         cooldown: 3000,
         permissions: {},
-        aliases: []
+        aliases: ["h"]
     },
   run: async (client, message, args, db) => {
         if (args[0] && client.commands.filter(c => c.config.available !== "Owner").get(args[0].toLowerCase()) || client.commands.filter(c => c.config.available !== "Owner").find(c => c.config.aliases.includes(args[0].toLowerCase()))) {
@@ -63,7 +63,7 @@ module.exports = {
         }
 
         const embed = new EmbedBuilder()
-            .setDescription(`${client.translate.get(db.language, 'Commands.help.embeds.second.start')}\n${client.commands.filter(c => c.config.available && c.config.available !== "Owner").map(c => `\`${c.config.name}\``).join(", ")}${client.commands.filter(c => c.config.available === false).size > 0 ? `\n\n${client.translate.get(db.language, 'Commands.help.embeds.second.middle')}\n${client.commands.filter(c => c.config.available === false).map(c => `\`${c.config.name}\``).join(", ")}` : ""}\n\n${client.translate.get(db.language, 'Commands.help.embeds.second.end')} \`${client.config.prefix}help [${client.translate.get(db.language, 'Commands.help.embeds.second.end2')}]\``)
+            .setDescription(`${client.translate.get(db.language, 'Commands.help.embeds.second.start')}\n${client.commands.filter(c => c.config.available && c.config.available !== "Owner").map(c => `\`${c.config.name}\``).join(", ")}${client.commands.filter(c => c.config.available === false).size > 0 ? `\n\n${client.translate.get(db.language, 'Commands.help.embeds.second.middle')}\n${client.commands.filter(c => c.config.available === false).map(c => `\`${c.config.name}\``).join(", ")}` : ""}\n\n${client.translate.get(db.language, 'Commands.help.embeds.second.end')}\n\`${db.prefix}help [${client.translate.get(db.language, 'Commands.help.embeds.second.end2')}]\``)
             .setColor(`#A52F05`);
 
         message.channel.send({ embeds: [embed] })
