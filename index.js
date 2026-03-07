@@ -2,11 +2,6 @@ require('dotenv').config({ quiet: true });
 const { Client } = require("@fluxerjs/core");
 const { Collection } = require("@discordjs/collection");
 const Sentry = require("@sentry/node");
-
-const checkGiveaways = require("./functions/checkGiveaways");
-const giveawaysEnd = require("./functions/giveawaysEnd");
-const checkRoles = require("./functions/checkRoles");
-const checkPolls = require("./functions/checkPolls");
 const color = require("./functions/colorCodes");
 
 // For self-hosted versions of Fluxer, use this layout:
@@ -29,15 +24,6 @@ client.sentry = Sentry;
 ["reactions", "paginate", "timeout", "polls", "used", "messageCollector", "messageEdit"].forEach(x => client[x] = new Map());
 ["aliases", "commands", "event", "functions"].forEach(x => client[x] = new Collection());
 ["command", "event", "function"].forEach(x => require(`./handlers/${x}`)(client));
-
-client.on("ready", async () => {
-  console.log(color("%", `%2[Bot_Ready]%7 :: ${client.user.username} is ready`));
-  
-  await checkPolls(client);
-  await checkGiveaways(client);
-  await giveawaysEnd(client);
-  await checkRoles(client);
-});
 
 process.on("unhandledRejection", (reason, p) => {
   console.log(color("%", "%4[Error_Handling] :: Unhandled Rejection/Catch%c"));
