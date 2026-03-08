@@ -1,6 +1,6 @@
 const GuildDB = require("../models/guilds");
 module.exports = async (client, member) => {
-  if (member.bot) return;
+  if (member.user.bot) return;
   const db = await client.database.getGuild(member.guild.id);
   if (db.joinRoles?.length > 0) {
     for (let i = 0; db.joinRoles.length > i; i++) {

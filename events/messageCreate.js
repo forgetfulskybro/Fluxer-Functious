@@ -63,12 +63,12 @@ module.exports = async (client, message) => {
     
     if (!me?.permissions.has(PermissionFlags.SendMessages) ?? !chanPerms?.has(PermissionFlags.SendMessages)) {
       await message.react("❌").catch(() => { });
-      return member.createDM().then((dm) => {
-          dm.sendMessage(`${client.translate.get(db.language, "Events.messageCreate.unable")} <#${message.channelId}>. ${client.translate.get(db.language, "Events.messageCreate.contact")}.`);
+      return member.user.createDM().then((dm) => {
+          dm.send(`${client.translate.get(db.language, "Events.messageCreate.unable")} <#${message.channelId}>. ${client.translate.get(db.language, "Events.messageCreate.contact")}.`).catch(() => {});
         }).catch(() => {});
     }
       
-    if (!me?.permissions.has(PermissionFlags.AddReactions))
+    if (!me?.permissions.has(PermissionFlags.AddReactions) ?? !chanPerms?.has(PermissionFlags.AddReactions))
       return message
         .reply(
           `${client.translate.get(db.language, "Events.messageCreate.noPerms")}. ${client.translate.get(db.language, "Events.messageCreate.contact")}.`,

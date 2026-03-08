@@ -19,7 +19,7 @@
       "repeat": "Ya hay un rol de reacción con estos roles, por favor elimínalos e inténtelo de nuevo",
       "duplicate": "Hay roles desconocidos en tu mensaje, por favor elimínelos e inténtelo de nuevo",
       "positions": "Hay roles con rangos más altos (posición) que mi rol más alto en tu mensaje, por favor elimínalos e inténtalo de nuevo",
-      "stop": "To stop this reaction role collector, send `{prefix}roles stop`"
+      "stop": "To stop this reaction role collector, send `{prefix}roles stop`\nThis message will delete itself in 3 seconds."
     },
     "messageReactionAdd": {
       "title": "título",

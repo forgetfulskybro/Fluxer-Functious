@@ -19,7 +19,7 @@
       "repeat": "Já existe uma mensagem de reação de cargos com esses cargos, por favor remova-os e tente novamente",
       "duplicate": "Existem cargos duplicados em sua mensagem, por favor, remova-os e tente novamente",
       "positions": "Há cargos com posições mais altas que meu cargo mais alto na sua mensagem, por favor os remova e tente novamente",
-      "stop": "To stop this reaction role collector, send `{prefix}roles stop`"
+      "stop": "To stop this reaction role collector, send `{prefix}roles stop`\nThis message will delete itself in 3 seconds."
     },
     "messageReactionAdd": {
       "title": "título",

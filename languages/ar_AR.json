@@ -18,7 +18,7 @@
       "unknown": "There are unknown roles in your message, please remove them and try again.",
       "duplicate": "There are duplicate roles in your message, please remove them and try again",
       "positions": "There are roles with higher ranks (position) than my highest role in your message, please remove them and try again",
-      "stop": "To stop this reaction role collector, send `{prefix}roles stop`"
+      "stop": "To stop this reaction role collector, send `{prefix}roles stop`\nThis message will delete itself in 3 seconds."
     },
     "messageReactionAdd": {
       "title": "العنوان",
