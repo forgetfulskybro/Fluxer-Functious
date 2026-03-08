@@ -13,21 +13,10 @@ module.exports = async (client, message) => {
   const me =
     message.guild?.members.me ??
     (message.guild ? await message.guild.members.fetchMe() : null);
+  const chanPerms = me.permissionsIn(message.channel);
   const db = await client.database.getGuild(message.guildId, true);
   let args = message.content.slice(db.prefix.length).trim().split(/ +/g);
   let cmd = args.shift().toLowerCase();
-
-  if (!me?.permissions.has(PermissionFlags.SendMessages))
-    return message.author
-      .createDM()
-      .then((dm) => {
-        dm.sendMessage(
-          `${client.translate.get(db.language, "Events.messageCreate.unable")} <#${message.channelId}>. ${client.translate.get(db.language, "Events.messageCreate.contact")}.`,
-        );
-      })
-      .catch(() => {
-        return;
-      });
 
   if (
     message.content &&
@@ -70,10 +59,15 @@ module.exports = async (client, message) => {
     client.commands.get(cmd) || client.commands.get(client.aliases.get(cmd));
   if (commandfile) {
     if (!message.content.startsWith(db.prefix)) return;
-
-    const member =
-      message.guild.members.get(message.author.id) ??
-      (await message.guild.fetchMember(message.author.id));
+    const member = message.guild.members.get(message.author.id) ?? (await message.guild.fetchMember(message.author.id));
+    
+    if (!me?.permissions.has(PermissionFlags.SendMessages) ?? !chanPerms?.has(PermissionFlags.SendMessages)) {
+      await message.react("❌").catch(() => { });
+      return member.createDM().then((dm) => {
+          dm.sendMessage(`${client.translate.get(db.language, "Events.messageCreate.unable")} <#${message.channelId}>. ${client.translate.get(db.language, "Events.messageCreate.contact")}.`);
+        }).catch(() => {});
+    }
+      
     if (!me?.permissions.has(PermissionFlags.AddReactions))
       return message
         .reply(

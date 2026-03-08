@@ -16,10 +16,12 @@ module.exports = async (client, message, user) => {
         if (emojiId === client.config.emojis.check) {
             if (collector.roles.length === 0) {
                 const db = await client.database.getGuild(message.guildId);
-                (await (await client.channels.resolve(collector.channelId))?.messages?.fetch(collector?.oldMessageId))?.delete().catch(()=> {})
+                const oldChan = await client.channels.resolve(collector.channelId).catch(() => {});
+                const oldMsg = await oldChan?.messages?.fetch(collector?.oldMessageId).catch(() => {});
+                oldMsg?.delete().catch(()=> {})
                 const reactions = [...collector.rolesDone.map(e => e.emoji)];
                 const newMsg = await (await client.channels.resolve(message.channelId))?.messages?.fetch(message.messageId)
-                newMsg.channel.send(collector.type === "content" ? { content: `${newMsg.content}${collector?.cooldownToggle && `\n\n> [!NOTE]\n> ${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}`}` } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(`${newMsg.embeds[0].description}${collector?.cooldownToggle && `\n\n> [!NOTE]\n> ${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}`}`)] }).then(async (m) => {
+                newMsg.channel.send(collector.type === "content" ? { content: newMsg.content } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(newMsg.embeds[0].description)] }).then(async (m) => {
                   for (const reaction of reactions) {
                       await m.react(reaction).catch(() => {});
                   }
@@ -28,15 +30,16 @@ module.exports = async (client, message, user) => {
                   await client.database.updateGuild(message.guildId, { roles: db.roles });
                 });
                 
-                newMsg.delete();
+                newMsg.delete().catch(() => { });
                 clearTimeout(client.messageCollector.get(userId).timeout);
                 return client.messageCollector.delete(userId);
             } else return;
         } else if (emojiId === client.config.emojis.cross) {
             const db = await client.database.getGuild(message.guildId);
             client.messageCollector.delete(userId);
-            const channel = await (await client.channels.resolve(message.channelId))?.messages.fetch(message.messageId);
-            channel.delete({ silent: true })
+            const channel = await client.channels.resolve(message.channelId).catch(() => {});
+            const msg = await channel?.messages.fetch(message.messageId).catch(() => {});
+            msg.delete({ silent: true }).catch(() => {})
             return (await client.channels.resolve(message.channelId))?.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))] })
         } else {
             if (collector.roles.length === 0) return;
@@ -51,15 +54,17 @@ module.exports = async (client, message, user) => {
         if (emojiId === client.config.emojis.check) {
             if (editCollector.roles.length === 0) {
                 const db = await client.database.getGuild(message.guildId);
-                const oldMsg = await (await client.channels.resolve(editCollector.channelId))?.messages?.fetch(editCollector?.oldMessageId);
-                const botMsg = await (await client.channels.resolve(editCollector.channelId))?.messages?.fetch(editCollector?.botMessage);
+                const oldChan = await client.channels.resolve(editCollector.channelId).catch(() => {})
+                const oldMsg = await oldChan?.messages?.fetch(editCollector?.oldMessageId).catch(() => { })
+                const botChan = await client.channels.resolve(editCollector.channelId).catch(() => {})
+                const botMsg = await botChan?.messages?.fetch(editCollector?.botMessage).catch(() => {})
               
                 oldMsg.delete().catch(()=> {});
                 botMsg.delete().catch(()=> {});
               
                 const reactions = [...editCollector.rolesDone.map(e => e.emoji)];
                 const newMsg = await (await client.channels.resolve(message.channelId))?.messages?.fetch(message.messageId)
-                newMsg.channel.send(editCollector.type === "content" ? { content: `${newMsg.content}\n\n> [!NOTE]\n> ${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}` } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(`${newMsg.embeds[0].description}\n\n> Note\n> ${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}`)] }).then(async (msg) => {
+                newMsg.channel.send(editCollector.type === "content" ? { content: newMsg.content } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(newMsg.embeds[0].description)] }).then(async (msg) => {
                   for (const reaction of reactions) {
                       await msg.react(reaction).catch(() => {});
                   }

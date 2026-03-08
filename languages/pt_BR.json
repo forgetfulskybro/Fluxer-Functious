@@ -18,7 +18,8 @@
       "unknown": "Há cargos desconhecidos na sua mensagem, por favor os remova e tente novamente.",
       "repeat": "Já existe uma mensagem de reação de cargos com esses cargos, por favor remova-os e tente novamente",
       "duplicate": "Existem cargos duplicados em sua mensagem, por favor, remova-os e tente novamente",
-      "positions": "Há cargos com posições mais altas que meu cargo mais alto na sua mensagem, por favor os remova e tente novamente"
+      "positions": "Há cargos com posições mais altas que meu cargo mais alto na sua mensagem, por favor os remova e tente novamente",
+      "stop": "To stop this reaction role collector, send `{prefix}roles stop`"
     },
     "messageReactionAdd": {
       "title": "título",
@@ -85,12 +86,11 @@
     "roles": {
       "description": "Configurar cargos de reações para seu servidor",
       "usage": "ajuda",
-      "already": "Você já tem um coletor de mensagens ativo em andamento! Termine-o primeiro antes de iniciar um novo.",
+      "already": "You already have an active message collector going on! Finish that first before starting a new one. If you would like to turn that collector off, run `{prefix}roles stop`",
       "pick": "Forneça o tipo de mensagem que você quer que seja enviado. Opções: `embed`, `content`",
       "ended": "O coletor de mensagens terminou após 25 minutos.",
       "success": "Coletor de mensagens enviado com sucesso para",
-      "react": "Envie uma mensagem que você gostaria de usar como a mensagem para os cargos de reação. Após isso, reaja com emoji na ordem em que você quer que os cargos sejam adicionados à mensagem.",
-      "react2": "Assim que terminar, reaja com ✅ para completar.\nPara cancelar esse coletor de reações, reaja com ❌ para parar!",
+      "react": "Send a message you would like to be as your reaction role message. Make sure to put roles following this format: `{role:Blue}` in your message wherever you would like them to be at. To cancel this reaction role collector, react with ❌ to stop it!\n\n**Example**:\n{example}\nOnce the bot replaces your message, react to that new message with emojis in order of the first roles in your message. So if you reacted with :blue_circle:, it will replace `{role:blue}` with \":blue_circle: Blue\"\n\nAfter you reacted with all of your emojis, react with ✅ to complete the reaction collector.",
       "noPerms": "Eu preciso da permissão `AssignRoles` para adicionar cargos a usuários.",
       "max": "Você tem um limite de 12 cargos de reação em seu servidor.",
       "noRoles": "Atualmente não há nenhum cargo de reação configurado. Para adicionar alguns, digite",
@@ -105,18 +105,19 @@
       "on": "Ativar",
       "off": "Desativar",
       "create": "Criando",
-      "createExample": "create [Menção do Canal] [Tipo: content | embed]",
+      "createExample": "create [Menção do Canal] [Tipo: {type}, optional]",
       "viewing": "Visualizando",
       "deleting": "Excluindo",
       "msgId": "Mensagem",
       "explain": "Explicação",
-      "explain2": "When you create a reaction message (`{prefix}roles create`), you will need to provide it with roles (format: `{role:Blue}`) and I will copy your message. React to my message to automatically update the roles and once you are finished, react with ✅ to complete it. If you would like to remove the reaction cooldown text, add {cooldown:off} to your message anywhere.",
+      "explain2": "When you create a reaction message (`{prefix}roles create`), you will need to provide it with roles (format: `{role:Blue}`) and I will copy your message. React to my message to automatically update the roles and once you are finished, react with ✅ to complete it.",
       "dm": "Direct Messages Toggle",
       "reactionFix": "Reactions Fix",
       "reactionFixExplain": "This sub-command fixes the reactions on a reaction role message.",
       "fix": "Provide an ID for a reaction role message to fix the reactions on it",
       "noPerms2": "I require the `Manage Messages` permission to remove reactions to that message.",
-      "reactionFixSuccess": "Successfully fixed reactions on {message}"
+      "reactionFixSuccess": "Successfully fixed reactions on {message}",
+      "stopped": "Successfully stopped your current reaction role collector!"
     },
     "help": {
       "description": "Comando de ajuda",

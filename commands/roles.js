@@ -2,7 +2,7 @@ const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const regex = /^<#(?<id>[A-Z0-9]+)>/;
 const pick = ["content", "embed"];
 const Paginator = require("../functions/pagination");
-const ROLE_LINE_PATTERN = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*(\w+)/gu;
+const ROLE_LINE_PATTERN = /(?:[\p{Emoji_Presentation}\p{Extended_Pictographic}]|<:[a-zA-Z0-9_]+:\d+>)\s*(\w+)/gu;
 
 function extractRolesAndReplace(text) {
     const replacements = [];
@@ -46,7 +46,7 @@ module.exports = {
             case "help":
                 const embed = new EmbedBuilder()
                     .setColor(`#A52F05`)
-                    .setDescription(`**${client.translate.get(db.language, "Commands.roles.view")} ${client.translate.get(db.language, "Commands.roles.usage").replace("h", "H")}**\n\n**${client.translate.get(db.language, "Commands.roles.explain")}**\n${client.translate.get(db.language, "Commands.roles.explain2", { "prefix": db.prefix })}\n\n**${client.translate.get(db.language, "Commands.roles.create")}**\n\`${db.prefix}roles ${client.translate.get(db.language, "Commands.roles.createExample")}\`\n\n**${client.translate.get(db.language, "Commands.roles.editing")}**\n\`${db.prefix}roles edit [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.viewing")}**\n\`${db.prefix}roles view\`\n\n**${client.translate.get(db.language, "Commands.roles.deleting")}**\n\`${db.prefix}roles delete [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.reactionFix")}**\n${client.translate.get(db.language, "Commands.roles.reactionFixExplain")}\n\`${db.prefix}roles fix [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.dm")}**\n\`${db.prefix}roles dm\``)
+                    .setDescription(`**${client.translate.get(db.language, "Commands.roles.view")} ${client.translate.get(db.language, "Commands.roles.usage").replace("h", "H")}**\n\n**${client.translate.get(db.language, "Commands.roles.explain")}**\n${client.translate.get(db.language, "Commands.roles.explain2", { "prefix": db.prefix })}\n\n**${client.translate.get(db.language, "Commands.roles.create")}**\n\`${db.prefix}roles ${client.translate.get(db.language, "Commands.roles.createExample", { "type": "content | embed" })}\`\n\n**${client.translate.get(db.language, "Commands.roles.editing")}**\n\`${db.prefix}roles edit [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.viewing")}**\n\`${db.prefix}roles view\`\n\n**${client.translate.get(db.language, "Commands.roles.deleting")}**\n\`${db.prefix}roles delete [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.reactionFix")}**\n${client.translate.get(db.language, "Commands.roles.reactionFixExplain")}\n\`${db.prefix}roles fix [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.dm")}**\n\`${db.prefix}roles dm\``)
 
                 setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
                 message.reply({ embeds: [embed] })
@@ -148,13 +148,13 @@ module.exports = {
               const editchan = message.guild.channels.find(e => e.id === editmsg.chanId);
               if (editchan.id !== message.channel.id) {
                 message.reply(`${client.translate.get(db.language, "Commands.roles.success")} <#${editchan.id}>`, false);
-                await editchan.send({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.react")}\n\n${client.translate.get(db.language, "Commands.roles.react2")}\n\n\`\`\`txt\n${startText.replace(`\n\n${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}`, "")}\n\`\`\``).setColor(`#A52F05`)] })
+                await editchan.send({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.react")}\n\n\`\`\`txt\n${startText}\n\`\`\``).setColor(`#A52F05`)] })
                   .then(async (msg) => {
                     await msg.react(client.config.emojis.cross);
                     client.messageEdit.get(message?.author.id).botMessage = msg.id
                   });
               } else {
-                await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.react")}\n\n${client.translate.get(db.language, "Commands.roles.react2")}\n\n\`\`\`txt\n${startText.replace(`\n\n${client.translate.get(db.language, "Events.messageReactionAdd.cooldown")}`, "")}\n\`\`\``).setColor(`#A52F05`)] })
+                await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.react")}\n\n\`\`\`txt\n${startText}\n\`\`\``).setColor(`#A52F05`)] })
                   .then(async (msg) => {
                     await msg.react(client.config.emojis.cross);
                     client.messageEdit.get(message?.author.id).botMessage = msg.id;
@@ -181,43 +181,78 @@ module.exports = {
 
               const picked = pick.map(e => content.includes(e));
               if (picked.filter(e => e).length === 2) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.pick")}\n\n${client.translate.get(db.language, "Commands.language.example")}: ${db.prefix}roles content <#${channel.id}>\n${client.translate.get(db.language, "Commands.language.example")}: ${db.prefix}roles embed <#${channel.id}>`).setColor(`#FF0000`)] });
-
-              const coll = await client.messageCollector.set(message.author.id, {
-                user: message.author.id,
-                timeout: null,
-                oldMessageId: null,
-                messageId: null,
-                channelId: channel.id,
-                type: pick[picked.indexOf(true)] || "content",
-                rolesDone: [],
-                roles: [],
-                regex: [],
-              });
-
-              const timeout = setTimeout(async () => {
-                if (!client.messageCollector.has(coll.user)) return;
-                const ended = new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.ended")}`).setColor(`#FF0000`);
-                await (await client.channels.resolve(client.messageCollector.get(coll.user).channelId))?.messages?.fetch(client.messageCollector.get(coll.user).messageId)?.edit({ embeds: [ended] }).catch(() => { });
-                client.messageCollector.delete(coll.user);
-              }, 1500000);
-            
-              client.messageCollector.get(message.author.id).timeout = timeout;
-              setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
               
               await message.delete().catch(() => {});
+              
+              const rr = new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.roles.react", {
+                "example": `\`\`\`
+**This is an example message**
+
+Color Roles:
+{role:Blue}
+{role:Red}
+{role:Purple}
+\`\`\`
+` })).setColor(`#A52F05`);
+            
               if (channel.id !== message.channel.id) {
                 message.reply(`${client.translate.get(db.language, "Commands.roles.success")} <#${channel.id}>`, false);
-                await channel.send({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.react")}\n\n${client.translate.get(db.language, "Commands.roles.react2")}`).setColor(`#A52F05`)] })
+                await channel.send({ embeds: [rr]
+              })
                   .then(async (msg) => { 
                     await msg.react(client.config.emojis.cross);
-                    client.messageCollector.get(message?.author.id).oldMessageId = msg.id
+                    const coll = await client.messageCollector.set(message.author.id, {
+                      user: message.author.id,
+                      timeout: null,
+                      oldMessageId: msg.id,
+                      messageId: null,
+                      channelId: channel.id,
+                      type: pick[picked.indexOf(true)] || "content",
+                      rolesDone: [],
+                      roles: [],
+                      regex: [],
+                    });
+      
+                    const timeout = setTimeout(async () => {
+                      if (!client.messageCollector.has(coll.user)) return;
+                      const ended = new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.ended")}`).setColor(`#FF0000`);
+                      const newMsg = await (await client.channels.resolve(client.messageCollector.get(coll.user).channelId))?.messages?.fetch(client.messageCollector.get(coll.user).messageId).catch(() => { });
+                      newMsg?.edit({ embeds: [ended] }).catch(() => { });
+                      client.messageCollector.delete(coll.user);
+                    }, 1500000);
+                  
+                    client.messageCollector.get(message.author.id).timeout = timeout;
+                    setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
                   });
               } else {
-                await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.react")}\n\n${client.translate.get(db.language, "Commands.roles.react2")}`).setColor(`#A52F05`)] })
+                await message.channel.send({
+                  embeds: [rr]
+                })
                   .then(async (msg) => {
                     await msg.react(client.config.emojis.cross);
-                    client.messageCollector.get(message?.author.id).oldMessageId = msg.id
+                    const coll = await client.messageCollector.set(message.author.id, {
+                      user: message.author.id,
+                      timeout: null,
+                      oldMessageId: msg.id,
+                      messageId: null,
+                      channelId: channel.id,
+                      type: pick[picked.indexOf(true)] || "content",
+                      rolesDone: [],
+                      roles: [],
+                      regex: [],
                     });
+      
+                    const timeout = setTimeout(async () => {
+                      if (!client.messageCollector.has(coll.user)) return;
+                      const ended = new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.ended")}`).setColor(`#FF0000`);
+                      const newMsg = await (await client.channels.resolve(client.messageCollector.get(coll.user).channelId))?.messages?.fetch(client.messageCollector.get(coll.user).messageId).catch(() => { });
+                      newMsg?.edit({ embeds: [ended] }).catch(() => { });
+                      client.messageCollector.delete(coll.user);
+                    }, 1500000);
+                  
+                    client.messageCollector.get(message.author.id).timeout = timeout;
+                    setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
+                  });
               }
             break;
         }

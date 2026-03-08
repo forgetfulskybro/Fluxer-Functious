@@ -17,7 +17,8 @@
       "maxRoles": "You can only have a maximum of 30 roles in your message.",
       "unknown": "There are unknown roles in your message, please remove them and try again.",
       "duplicate": "There are duplicate roles in your message, please remove them and try again",
-      "positions": "There are roles with higher ranks (position) than my highest role in your message, please remove them and try again"
+      "positions": "There are roles with higher ranks (position) than my highest role in your message, please remove them and try again",
+      "stop": "To stop this reaction role collector, send `{prefix}roles stop`"
     },
     "messageReactionAdd": {
       "title": "العنوان",
@@ -84,12 +85,11 @@
     "roles": {
       "description": "Setup a reaction role message for your server",
       "usage": "help",
-      "already": "You already have an active message collector going on! Finish that first before starting a new one.",
+      "already": "You already have an active message collector going on! Finish that first before starting a new one. If you would like to turn this collector off, run `{prefix}roles stop`",
       "pick": "Provide what you would like the type of message to be sent. Options: `embed`, `content`",
       "ended": "The message collector has ended after 25 minutes.",
       "success": "Successfully sent message collector to",
-      "react": "Send a message you would like to be as your reaction role message. After that is done, react  with emojis in order of the roles you want to be added to the message.",
-      "react2": "Once you're done, react with ✅ to complete it.\nTo cancel this reaction collector, react with ❌ to stop it!",
+      "react": "Send a message you would like to be as your reaction role message. Make sure to put roles following this format: `{role:Blue}` in your message wherever you would like them to be at. To cancel this reaction role collector, react with ❌ to stop it!\n\n**Example**:\n{example}\nOnce the bot replaces your message, react to that new message with emojis in order of the first roles in your message. So if you reacted with :blue_circle:, it will replace `{role:blue}` with \":blue_circle: Blue\"\n\nAfter you reacted with all of your emojis, react with ✅ to complete the reaction collector.",
       "noPerms": "I require the `AssignRoles` permission to add roles to users.",
       "max": "You can only have a maximum of 12 reaction role messages in your server.",
       "noRoles": "There are no reaction role messages setup currently. To add some, type",
@@ -104,19 +104,20 @@
       "on": "On",
       "off": "Off",
       "create": "Creating",
-      "createExample": "create [Channel Mention, optional] [Type: content | embed]",
+      "createExample": "create [Channel Mention, optional] [Type: {type}, optional]",
       "editing": "Editing",
       "viewing": "Viewing",
       "deleting": "Deleting",
       "msgId": "Message",
       "explain": "Explanation",
-      "explain2": "When you create a reaction message (`{prefix}roles create`), you will need to provide it with roles (format: `{role:Blue}`) and I will copy your message. React to my message to automatically update the roles and once you are finished, react with ✅ to complete it. If you would like to remove the reaction cooldown text, add {cooldown:off} to your message anywhere.",
+      "explain2": "When you create a reaction message (`{prefix}roles create`), you will need to provide it with roles (format: `{role:Blue}`) and I will copy your message. React to my message to automatically update the roles and once you are finished, react with ✅ to complete it.",
       "dm": "Direct Messages Toggle",
       "reactionFix": "Reactions Fix",
       "reactionFixExplain": "This sub-command fixes the reactions on a reaction role message.",
       "fix": "Provide an ID for a reaction role message to fix the reactions on it",
       "noPerms2": "I require the `Manage Messages` permission to remove reactions to that message.",
-      "reactionFixSuccess": "Successfully fixed reactions on {message}"
+      "reactionFixSuccess": "Successfully fixed reactions on {message}",
+      "stopped": "Successfully stopped your current reaction role collector!"
     },
     "help": {
       "description": "مساعدة الأوامر",
