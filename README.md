@@ -8,6 +8,7 @@ If you're interested in translating the bot, make sure to join the support serve
 
 # Current Features
 - Giveaways
+- Autoroles
 - Polling system
 - Fully customizable reaction roles
 
