@@ -216,10 +216,12 @@ Color Roles:
                     const timeout = setTimeout(async () => {
                       if (!client.messageCollector.has(coll.user)) return;
                       const ended = new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.ended")}`).setColor(`#FF0000`);
-                      const newMsg = await (await client.channels.resolve(client.messageCollector.get(coll.user).channelId))?.messages?.fetch(client.messageCollector.get(coll.user).messageId).catch(() => { });
-                      newMsg?.edit({ embeds: [ended] }).catch(() => { });
+                      try {
+                        const newMsg = await (await client.channels.resolve(client.messageCollector.get(coll.user).channelId))?.messages?.fetch(client.messageCollector.get(coll.user).messageId).catch(() => { });
+                        newMsg?.edit({ embeds: [ended] }).catch(() => { });
+                      } catch {}
                       client.messageCollector.delete(coll.user);
-                    }, 1500000);
+                    }, 600000);
                   
                     client.messageCollector.get(message.author.id).timeout = timeout;
                     setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)

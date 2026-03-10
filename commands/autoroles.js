@@ -49,7 +49,7 @@ module.exports = {
     case "join":
       if (args[1] === "add") {
         if (!options[0]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.noOptionsAdd")}: \`${db.prefix}autoroles join add Member, Color Roles\``).setColor(`#FF0000`)] });
-        const roleIds = await getRoles(options, message, client, db);  
+        const roleIds = await getRoles(options, message, client, db, format=false);  
         if (!roleIds) return;
         if (roleIds?.length > 20 || roleIds.length + db.joinRoles.length >= 21) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.tooMany")}`).setColor(`#FF0000`)] });
         

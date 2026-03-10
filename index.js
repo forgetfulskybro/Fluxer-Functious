@@ -11,7 +11,7 @@ const client = new Client({ waitForGuilds: true });
 const TranslationHandler = require("./handlers/translation");
 const DatabaseHandler = require("./handlers/database");
 
-if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN });
+if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 1.0, profilesSampleRate: 1.0 });
 
 client.config = require("./config");
 client.translate = new TranslationHandler();

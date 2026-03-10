@@ -1,19 +1,13 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Collector = require("../functions/messageCollector");
 const EditCollector = require("../functions/messageEdit");
+const color = require("../functions/colorCodes")
 module.exports = async (client, message) => {
-  if (
-    !message ||
-    message.channel.type === 1 ||
-    !message.content ||
-    message.author.bot
-  )
-    return;
-
-  const me =
-    message.guild?.members.me ??
-    (message.guild ? await message.guild.members.fetchMe() : null);
-  const chanPerms = me.permissionsIn(message.channel);
+  if (!message || !message.channel || message.channel.type === 1 || !message.content || message.author.bot) return;
+  
+  const me = message.guild?.members.me ??(message.guild ? await message.guild.members.fetchMe() : null);
+  const channel = await client.channels.resolve(message.channel.id).catch(() => {});
+  const chanPerms = me.permissionsIn(channel);
   const db = await client.database.getGuild(message.guildId, true);
   let args = message.content.slice(db.prefix.length).trim().split(/ +/g);
   let cmd = args.shift().toLowerCase();
@@ -61,14 +55,14 @@ module.exports = async (client, message) => {
     if (!message.content.startsWith(db.prefix)) return;
     const member = message.guild.members.get(message.author.id) ?? (await message.guild.fetchMember(message.author.id));
     
-    if (!me?.permissions.has(PermissionFlags.SendMessages) ?? !chanPerms?.has(PermissionFlags.SendMessages)) {
-      await message.react("❌").catch(() => { });
-      return member.user.createDM().then((dm) => {
-          dm.send(`${client.translate.get(db.language, "Events.messageCreate.unable")} <#${message.channelId}>. ${client.translate.get(db.language, "Events.messageCreate.contact")}.`).catch(() => {});
-        }).catch(() => {});
+    if (!chanPerms?.has(PermissionFlags.SendMessages)) {
+      return await message.react("❌").catch(() => { });
+      // return member.user.createDM().then((dm) => {
+      //     dm.send(`${client.translate.get(db.language, "Events.messageCreate.unable")} <#${message.channelId}>. ${client.translate.get(db.language, "Events.messageCreate.contact")}.`).catch(() => {});
+      //   }).catch(() => {});
     }
       
-    if (!me?.permissions.has(PermissionFlags.AddReactions) ?? !chanPerms?.has(PermissionFlags.AddReactions))
+    if (!chanPerms?.has(PermissionFlags.AddReactions))
       return message
         .reply(
           `${client.translate.get(db.language, "Events.messageCreate.noPerms")}. ${client.translate.get(db.language, "Events.messageCreate.contact")}.`,

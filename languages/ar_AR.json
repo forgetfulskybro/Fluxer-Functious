@@ -57,6 +57,7 @@
     }
   },
   "Commands": {
+    "ping": { "description": "Just shows ping for the bot. That's all" },
     "bypass": {
       "description": "Grant roles a bypass to use commands locked behind permissions.",
       "usage": ""

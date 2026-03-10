@@ -10,16 +10,20 @@ async function checkRoles(client) {
       r.roles.map((role) => {
         ii++;
         setTimeout(async () => {
-          let channel = await client.channels.resolve(role.chanId).catch(() => {})
-          if (!channel && role.roles.length === 0) {
+          try {
+            let channel = await client.channels.resolve(role.chanId);
+            channel?.messages?.fetch(role.msgId);
+          } catch {
+            await client.database.updateGuild(r.id, {
+              roles: r.roles.filter((e) => e.msgId !== role.msgId),
+            });
+          }
+          
+          if (role.roles.length === 0) {
             return await client.database.updateGuild(r.id, {
               roles: r.roles.filter((e) => e.msgId !== role.msgId),
             });
           }
-
-          (await client.channels.resolve(role.chanId))?.messages
-            ?.fetch(role.msgId)
-            .catch(() => {});
         }, ii * 700);
       });
     }, i * 600);

@@ -6,7 +6,7 @@ module.exports = {
   config: {
     name: "info",
     usage: false,
-    cooldown: 10000,
+    cooldown: 15000,
     available: true,
     permissions: {},
     aliases: ["stats"],

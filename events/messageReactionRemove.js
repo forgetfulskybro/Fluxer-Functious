@@ -105,9 +105,9 @@ module.exports = async (client, message, user) => {
                 await member.roles.remove(role.role).catch(() => { error = true })
                 const guild = await client.guilds.get(message.guildId);
                 if (error) {
-                    if (db2.dm) member?.user?.createDM().then((dm) => { dm.send(`**[${guild.name}]** ${client.translate.get(db2.language, "Events.messageReactionRemove.noPerms").replace("{role}", `**${role.name}**`)}!`) }).catch(() => { });
+                    if (db2.dm) member?.user?.createDM().then((dm) => { dm.send(`**[${guild.name}]** ${client.translate.get(db2.language, "Events.messageReactionRemove.noPerms", { "role": `**${role.name}**` })}!`) }).catch(() => { });
                 } else {
-                    if (db2.dm) member?.user?.createDM().then((dm) => { dm.send(`**[${guild.name}]** ${client.translate.get(db2.language, "Events.messageReactionRemove.success").replace("{role}", `**${role.name}**`)}!`) }).catch(() => { });
+                    if (db2.dm) member?.user?.createDM().then((dm) => { dm.send(`**[${guild.name}]** ${client.translate.get(db2.language, "Events.messageReactionRemove.success", { "role": `**${role.name}**` })}!`) }).catch(() => { });
                 }
             }
         }

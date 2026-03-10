@@ -63,8 +63,9 @@ module.exports = async (client, message, user) => {
                 botMsg.delete().catch(()=> {});
               
                 const reactions = [...editCollector.rolesDone.map(e => e.emoji)];
-                const newMsg = await (await client.channels.resolve(message.channelId))?.messages?.fetch(message.messageId)
-                newMsg.channel.send(editCollector.type === "content" ? { content: newMsg.content } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(newMsg.embeds[0].description)] }).then(async (msg) => {
+                const newChan = await client.channels.resolve(message.channelId).catch(() => {});
+                const newMsg = newChan?.messages?.fetch(message.messageId).catch(() => {});
+                await newMsg.channel.send(editCollector.type === "content" ? { content: newMsg.content } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(newMsg.embeds[0].description)] }).then(async (msg) => {
                   for (const reaction of reactions) {
                       await msg.react(reaction).catch(() => {});
                   }
@@ -79,9 +80,9 @@ module.exports = async (client, message, user) => {
                   ];
                     
                   await client.database.updateGuild(message.guildId, { roles: db.roles });
-                });
+                }).catch(() => {})
 
-                newMsg.delete();
+                await newMsg.delete();
                 clearTimeout(client.messageEdit.get(userId).timeout);
                 return client.messageEdit.delete(userId);
             } else return;
@@ -279,9 +280,9 @@ module.exports = async (client, message, user) => {
 
                 const guild = await client.guilds.get(message.guildId);
                 if (error && db2.dm) {
-                    member?.user?.createDM().then((dm) => { dm.send(`**[${guild.name}]** ${client.translate.get(db2.language, "Events.messageReactionAdd.noPerms").replace("{role}", `**${role.name}**`)}!`) }).catch(() => { });
+                    member?.user?.createDM().then((dm) => { dm.send(`**[${guild.name}]** ${client.translate.get(db2.language, "Events.messageReactionAdd.noPerms", { "role": `**${role.name}**` })}!`) }).catch(() => { });
                 } else if (db2.dm) {
-                    member?.user?.createDM().then((dm) => { dm.send(`**[${guild.name}]** ${client.translate.get(db2.language, "Events.messageReactionAdd.success").replace("{role}", `**${role.name}**`)}!`) }).catch(() => { });
+                    member?.user?.createDM().then((dm) => { dm.send(`**[${guild.name}]** ${client.translate.get(db2.language, "Events.messageReactionAdd.success", { "role": `**${role.name}**` })}!`) }).catch(() => { });
                 }
             }
         }

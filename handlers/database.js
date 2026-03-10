@@ -34,7 +34,7 @@ module.exports = class DatabaseHandler {
               this.cache.delete(g?.id);
               this.deleteGuild(g?.id);
             }
-          }, i * 600);
+          }, i * 3000);
         }
       },
       180 * 180 * 1000,

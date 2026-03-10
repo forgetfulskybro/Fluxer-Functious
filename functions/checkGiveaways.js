@@ -6,9 +6,13 @@ async function checkGiveaways(client) {
   for (let gw of giveaways) {
     i++;
     setTimeout(async () => {
-      (await client.channels.resolve(gw.channelId))?.messages
-        ?.fetch(gw.messageId)
-        .catch(() => {});
+      let givChannel;
+      try {
+        givChannel = await client.channels.resolve(gw.channelId);
+        await givChannel?.messages?.fetch(gw.messageId).catch(() => {});
+      } catch {
+        await db.findOneAndDelete({ serverId: gw.serverId });
+      }
     }, i * 500);
   }
 }
