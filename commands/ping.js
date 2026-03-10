@@ -12,14 +12,18 @@ module.exports = {
   run: async (client, message, args, db) => {
     async function Database() {
       let beforeCall = Date.now();
-      const polls = await SavedPolls.find();
+      await SavedPolls.find();
       return Date.now() - beforeCall;
     }
 
     async function botPing() {
-      const start = Date.now();
-      await client.rest.get("/gateway/bot");
-      return Date.now() - start;
+      try {
+        const start = Date.now();
+        await client.rest.get("/gateway/bot");
+        return Date.now() - start;
+      } catch {
+        return "502 bad Gateway";
+      }
     }
 
     const start = Date.now();
@@ -31,9 +35,21 @@ module.exports = {
             .setColor("#A52F05")
             .setTitle("Flux Pong")
             .addFields(
-              { name: "**Gateway**", value: `\`${(await botPing())}ms\``, inline: true },
-              { name: "**Database**", value: `\`${(await Database())}ms\``, inline: true },
-              { name: "**Round-trip**", value: `\`${Date.now() - start}ms\``, inline: true },
+              {
+                name: "**Gateway**",
+                value: `\`${!isNaN(await botPing()) ? `${await botPing()}ms` : "502 bad Gateway"}\``,
+                inline: true,
+              },
+              {
+                name: "**Database**",
+                value: `\`${await Database()}ms\``,
+                inline: true,
+              },
+              {
+                name: "**Round-trip**",
+                value: `\`${Date.now() - start}ms\``,
+                inline: true,
+              },
             ),
         ],
       });
