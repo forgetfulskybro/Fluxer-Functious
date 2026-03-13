@@ -8,7 +8,7 @@ module.exports = {
     available: "Owner",
     aliases: ["e"],
   },
-  run: async (client, message, args) => {
+  run: async (client, message, args, db) => {
     if (!client.config.owners.includes(message.author.id)) return;
     try {
       let codein = args.join(" ");

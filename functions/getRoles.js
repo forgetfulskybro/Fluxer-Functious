@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('@fluxerjs/core');
-async function getRoles(roles, message, client, db, format=true) {
+async function getRoles(roles, message, client, db, format = true, position = true) {
+  try { message.guild.fetchRoles(); } catch {}
   const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
 
   const roleIds = []
@@ -32,21 +33,23 @@ async function getRoles(roles, message, client, db, format=true) {
       return message.react(client.config.emojis.cross).catch(() => { return });
   }
 
-  let positions = [];
-  const botRole = [...me.roles.cache.values()].reduce((high, role) => role.position > high.position ? role : high);
-  if (!botRole) {
-      message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.noBotRole"))] }).catch(() => { return });
-      return message.react(client.config.emojis.cross).catch(() => { return });
-  }
+  if (position) {
+    let positions = [];
+    const botRole = [...me.roles.cache.values()].reduce((high, role) => role.position > high.position ? role : high);
+    if (!botRole) {
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.noBotRole"))] }).catch(() => { return });
+        return message.react(client.config.emojis.cross).catch(() => { return });
+    }
+    
+    roleIds.map((r, i) => {
+        i++
+        if (r[1].position >= botRole.position) positions.push(roleIds[i - 1])
+    });
   
-  roleIds.map((r, i) => {
-      i++
-      if (r[1].position >= botRole.position) positions.push(roleIds[i - 1])
-  });
-
-  if (positions.length > 0) {
-      message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.positions")}\n${positions.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}`)] }).catch(() => { return });
-      return message.react(client.config.emojis.cross).catch(() => { return });
+    if (positions.length > 0) {
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.positions")}\n${positions.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}`)] }).catch(() => { return });
+        return message.react(client.config.emojis.cross).catch(() => { return });
+    } 
   }
   
   return roleIds;

@@ -49,7 +49,7 @@ module.exports = {
     case "join":
       if (args[1] === "add") {
         if (!options[0]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.noOptionsAdd")}: \`${db.prefix}autoroles join add Member, Color Roles\``).setColor(`#FF0000`)] });
-        const roleIds = await getRoles(options, message, client, db, format=false);  
+        const roleIds = await getRoles(options, message, client, db, false, false);  
         if (!roleIds) return;
         if (roleIds?.length > 20 || roleIds.length + db.joinRoles.length >= 21) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.tooMany")}`).setColor(`#FF0000`)] });
         
@@ -72,7 +72,7 @@ module.exports = {
         return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeAdd")} ${roleIds.map((r) => r[0]).filter((r) => !errored.includes(r)).map((r) => `<@&${r}>`)}${newRoles.length !== db.joinRoles.length && errored.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsAdd")} ${errored.map((r) => `<@&${r}>`)}` : ''}`).setColor(`#A52F05`)] });
       } else if (args[1] === "remove") {
         if (!options[0]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.noOptionsRemove")}: \`${db.prefix}autoroles join remove Member, Color Roles\``).setColor(`#FF0000`)] });
-        const roleIds = await getRoles(options, message, client, db, format=false);
+        const roleIds = await getRoles(options, message, client, db, false, false);
         if (!roleIds) return;
       
         const errored = [];

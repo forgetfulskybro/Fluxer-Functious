@@ -10,6 +10,7 @@ const guilds = new Schema({
   joinRoles: { type: Array, default: [] },
   stickyRolesEnabled: { type: Boolean, default: false },
   stickyRoles: { type: Array, default: [] },
+  bypassRoles: { type: Array, default: [] }
 });
 
 module.exports = model("guilds", guilds);
