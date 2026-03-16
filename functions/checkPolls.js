@@ -13,7 +13,7 @@ async function checkPolls(client) {
             try {
               const msg = (await client.channels.resolve(poll.channelId))?.messages?.fetch(poll.messageId);
               if (msg) newPoll.start(msg, newPoll);
-              poll.deleteOne({ messageId: poll.messageId });
+              polls.deleteOne({ messageId: poll.messageId });
             } catch (e) { 
               await db.findOneAndDelete({ messageId: poll.messageId })
             }

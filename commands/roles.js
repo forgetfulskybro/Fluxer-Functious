@@ -145,6 +145,7 @@ module.exports = {
               client.messageEdit.get(message.author.id).timeout = edittimeout;
               setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
 
+              await message.guild.fetchChannels();
               const editchan = message.guild.channels.find(e => e.id === editmsg.chanId);
               if (editchan.id !== message.channel.id) {
                 message.reply(`${client.translate.get(db.language, "Commands.roles.success")} <#${editchan.id}>`, false);

@@ -57,6 +57,27 @@
     }
   },
   "Commands": {
+  "timezone": {
+    "usage": "help",
+    "description": "Lets you setup timezone converting in your server where if someone has their timezone set, it reacts to their message, and if the author reacts to that, it converts their time into a timestamp.",
+    "formatText": "Let's do this again at {time}",
+    "viewingHelp": "Viewing Timezone Converter Help",
+    "explanation": "**Explanation**\nThis command toggles timezone conversion on or off. When enabled, the bot scans messages for times. Once it detects one, it adds a reaction. If the message author reacts to that reaction, the bot deletes the original message and re-sends it via a webhook, using the author's name and avatar, but with any detected times converted into timestamps.",
+    "exampleMsg": "Example Message",
+    "timestampMsg": "Timestamp Message",
+    "toggle": "**Toggle**\nThis sub-command is locked to users with [Manage Guild] permission",
+    "userTimezone": "**User Timezone Setting**\nThis sub-command lets any user sets their own timezone so that timezones convert correctly. Use this",
+    "timeZonePicker": "Time Zone Picker",
+    "timezone": "Timezone",
+    "userTimezoneRemove": "**User Timezone Removing**\nThis sub-command removes your user timezone so the bot won't react with an emoji if you post a time",
+    "success": "Successfully toggled timezone converting",
+    "validTime": "Provide a valid timezone such as {timezone}, you can pick a valid timezone from this",
+    "validTime2": "Head to the website, click on the area your country resides, and it will show you your timezone. Paste that timezone in the command.\nExample",
+    "sameTime": "Provided timezone is the same timezone set for your current user. If you'd like to change it, head to this",
+    "successSet": "Successfully setup your personal timezone to be {timezone}",
+    "noTime": "You don't have a timezone set.\nYou can set a timezone by going to this {timezonepicker}, copying a timezone, and using this example",
+    "successRemove": "Successfully removed your personal timzone."
+  },
     "ping": { "description": "Just shows ping for the bot. That's all" },
     "bypass": {
       "description": "Grant roles a bypass to use commands locked behind permissions.",

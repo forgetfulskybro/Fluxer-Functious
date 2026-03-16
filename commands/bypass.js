@@ -17,6 +17,7 @@ module.exports = {
     const permCmds = client.commands
       .filter((c) => c.config.permissions?.bitField)
       .map((c) => c.config.name);
+    permCmds.push("timezone");
     permCmds.push("all");
 
     const arg = args.join(" ").replace(/add|remove|edit/gi, '').split("|").map(x => x.trim()).filter(x => x);

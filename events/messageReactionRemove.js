@@ -33,11 +33,21 @@ module.exports = async (client, message, user) => {
             return newMsg.edit(editCollector.type === "content" ? { content: newMsg.content.replace(`${emote} ${emoji.name}`, `{role:${emoji.name}}`) } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(newMsg.embeds[0].description.replace(`${emote} ${emoji.name}`, `{role:${emoji.name}}`))] }).catch(() => { });
         }
     } else if (pollCheck) {
-        if (client.reactions.get(userId)) return client.users.get(userId)?.createDM().then(dm => dm.send(client.translate.get(pollCheck.language, "Events.messageReactionRemove.tooFast"))).catch(() => { });
+        if (client.reactions.get(userId)) {
+          if (client.timeout.get(userId)) return;
+          client.timeout.set(userId, 5000);
+          setTimeout(() => client.timeout.delete(userId), 5000);
+          
+          return client.users.get(userId)?.createDM().then(dm => dm.send(client.translate.get(pollCheck.language, "Events.messageReactionRemove.tooFast"))).catch(() => { });
+        }
         let convert = emojis.findIndex(e => e.name === emojiId);
         if (convert === 0 && convert !== 10 || convert !== -1 && convert !== 10) {
-            if (!pollCheck.users.includes(userId)) return;
+            if (!pollCheck.users.find((u) => u.user === userId)) return;
+            if (pollCheck.users.find((u) => u.user === userId) && pollCheck.users.find((u) => u.user === userId).option !== convert) return;
 
+            client.reactions.set(userId, 5000)
+            setTimeout(() => client.reactions.delete(userId), 5000)
+                        
             let tooMuch = [];
             if (pollCheck.poll.options.description.length > 80) tooMuch.push(`**${client.translate.get(pollCheck.language, "Events.messageReactionRemove.title")}**: ${pollCheck.poll.options.description}`)
             pollCheck.poll.voteOptions.name.filter(e => e).forEach((e, i) => {
@@ -47,10 +57,10 @@ module.exports = async (client, message, user) => {
                 }
             });
 
-            pollCheck.users = pollCheck.users.filter(object => object != userId);
+            pollCheck.users = pollCheck.users.filter(object => object.user != userId);
             const user = (client.users.cache.get(userId)) || await client.users.fetch(userId);
             await pollCheck.poll.removeVote(convert, userId, user.displayAvatarURL(), message.messageId);
-            
+
             const pollImage = await fetch(`${process.env.CDN}/api/upload`, {
                     method: 'POST',
                     headers: {
@@ -63,11 +73,9 @@ module.exports = async (client, message, user) => {
                       messageId: message.messageId
                     })
             }).then((i) => i.json())
-          
+
             const newMsg = await (await client.channels.resolve(pollCheck.channelId))?.messages?.fetch(pollCheck.messageId)
-            newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${tooMuch.length > 0 ? tooMuch.map(e => e).join("\n") : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { });
-            client.reactions.set(userId, Date.now() + 3000)
-            return setTimeout(() => client.reactions.delete(userId), 3000)
+            return newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${tooMuch.length > 0 ? tooMuch.map(e => e).join("\n") : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { });
         } else return;
     } else {
         if (client.reactions.get(userId)) return;

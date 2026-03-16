@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Collector = require("../functions/messageCollector");
 const EditCollector = require("../functions/messageEdit");
+const parseTime = require("../functions/parseTime");
 const color = require("../functions/colorCodes");
 
 module.exports = async (client, message) => {
@@ -25,28 +26,25 @@ module.exports = async (client, message) => {
     const mention = new EmbedBuilder()
       .setColor("#A52F05")
       .setTitle(client.user.username)
-      .setDescription(
-        `${client.translate.get(db.language, "Events.messageCreate.prefix")} \`${db.prefix}\`\n` +
-          `${client.translate.get(db.language, "Events.messageCreate.prefix2")} \`${db.prefix}help\``,
-      );
+      .setDescription(`${client.translate.get(db.language, "Events.messageCreate.prefix")} \`${db.prefix}\`\n${client.translate.get(db.language, "Events.messageCreate.prefix2")} \`${db.prefix}help\``);
 
     return message.reply({ embeds: [mention] }, false).catch(() => {});
   }
 
-  if (
-    client.messageCollector.has(message.author.id) &&
-    client.messageCollector.get(message.author.id).channelId ===
-      message.channelId &&
-    !client.messageCollector.get(message.author.id).messageId
-  )
+  if (client.messageCollector.has(message.author.id) && client.messageCollector.get(message.author.id).channelId === message.channelId && !client.messageCollector.get(message.author.id).messageId)
     return await Collector(client, message, db);
 
-  if (
-    client.messageEdit.has(message.author.id) &&
-    client.messageEdit.get(message.author.id).channelId === message.channelId &&
-    !client.messageEdit.get(message.author.id).messageId
-  )
+  if (client.messageEdit.has(message.author.id) && client.messageEdit.get(message.author.id).channelId === message.channelId && !client.messageEdit.get(message.author.id).messageId)
     return await EditCollector(client, message, db);
+
+  if (parseTime(message.content) && db.timezoneConvert && db.userTimezones.find((u) => u.userId === message.author.id)) {
+    try {
+     return await message.react("⌚");
+    } catch {
+     return client.database.updateGuild(message.guildId, { timezoneConvert: false });
+    }
+  }
+
 
   if (!message.content.startsWith(db.prefix)) return;
   const args = message.content.slice(db.prefix.length).trim().split(/ +/g);
@@ -68,7 +66,7 @@ module.exports = async (client, message) => {
   //   if (chanPerms && !chanPerms.has(PermissionFlags.SendMessages)) {
   //     return await message.react("❌").catch(() => {});
   //   }
-  
+
   //   if (chanPerms && !chanPerms.has(PermissionFlags.AddReactions)) {
   //     return message
   //       .reply(
@@ -109,10 +107,11 @@ module.exports = async (client, message) => {
     for (let i = 0; db.bypassRoles.length > i; i++) {
       if (member.roles.has(db.bypassRoles[i].role)) bypasses.push(...db.bypassRoles[i].commands);
     }
-    
-    if (bypasses.includes(commandfile.config.name)) bypass = true;
+
+    if (bypasses.includes("all")) bypass = true;
+    else if (bypasses.includes(commandfile.config.name)) bypass = true;
   }
-  
+
   if (commandfile.config.permissions?.name && !member?.permissions.has(commandfile.config.permissions.bitField) && !client.config.owners.includes(message.author.id) && !bypass) {
     return message
       .reply(

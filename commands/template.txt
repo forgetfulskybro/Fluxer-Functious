@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('@fluxerjs/core');
+const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 
 module.exports = {
     config: {

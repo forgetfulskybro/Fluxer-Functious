@@ -50,7 +50,8 @@ class Polls {
 
           try {
             const newMsg = await (await this.client.channels.resolve(polls.channelId))?.messages?.fetch(polls.messageId)
-            newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${this.client.translate.get(this.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map(e => e).join("\n")}` : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] })
+            newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${this.client.translate.get(this.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map(e => e).join("\n")}` : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] });
+            this.client.polls.delete(polls.messageId);
           } catch {}
             await PollDB.findOneAndDelete({ messageId: message.id });
         }, this.time);
@@ -170,7 +171,7 @@ class Polls {
         if (this.avatars.length === 6) this.avatars.shift();
         this.avatars.push(avatar);
         this.votes[option]++;
-        await PollDB.findOneAndUpdate({ messageId: id }, { $push: { users: user, avatars: avatar }, $inc: { [`votes.${option}`]: 1 } });
+        await PollDB.findOneAndUpdate({ messageId: id }, { $push: { users: { user: user, option: option }, avatars: avatar }, $inc: { [`votes.${option}`]: 1 } });
         await this.update();
         return this.canvas;
     }
@@ -178,7 +179,7 @@ class Polls {
     async removeVote(option, user, avatar, id) {
         this.avatars.splice(this.avatars.indexOf(avatar), 1);
         this.votes[option]--;
-        await PollDB.findOneAndUpdate({ messageId: id }, { $pull: { users: user, avatars: avatar }, $inc: { [`votes.${option}`]: -1 } });
+        await PollDB.findOneAndUpdate({ messageId: id }, { $pull: { users: { user: user, option: option }, avatars: avatar }, $inc: { [`votes.${option}`]: -1 } });
         await this.update();
         return this.canvas;
     }
@@ -200,7 +201,7 @@ class Polls {
 
             ctx.fillStyle = "#2C2F33";
             let y = (height + 10) * i;
-            roundRect(ctx, 20, y, width, height, 5, true, false); // full bar
+            roundRect(ctx, 20, y, width, height, 5, true, false);
 
             if (vote == i || percentage) { ctx.fillStyle = "#A52F05"; }
             else { ctx.fillStyle = "#24282B"; } // percentage display
@@ -210,34 +211,42 @@ class Polls {
             let h = textHeight(i + 1, ctx);
             ctx.fillText(i + 1, 0, y + height / 2 + h / 2);
 
-            ctx.fillStyle = "#FFFFFF"; // Option names
+            ctx.fillStyle = "#FFFFFF";
             h = textHeight(names[i], ctx);
-            ctx.fillText(names[i].length > 65 ? names[i].slice(0, 62) + "..." : names[i], 30 + paddingLeft, y + 13 + h);
+            const nameText = names[i].length > 65 ? names[i].slice(0, 62) + "..." : names[i];
+            ctx.fillText(nameText, 30 + paddingLeft, y + height / 2 + h / 2);
 
             if (vote != undefined) {
-                ctx.strokeStyle = "#FFFFFF"; // selection circle
+                ctx.strokeStyle = "#FFFFFF"; 
                 ctx.fillStyle = "#717cf4";
                 ctx.beginPath();
-                ctx.arc(35, y + 10 + h * 0.75, 6, 0, 2 * Math.PI);
+                ctx.arc(35, y + height / 2, 6, 0, 2 * Math.PI);
                 ctx.closePath();
                 ctx.stroke();
                 if (vote == i) {
                     ctx.beginPath();
-                    ctx.arc(35, y + 10 + h * 0.75, 3, 0, 2 * Math.PI);
+                    ctx.arc(35, y + height / 2, 3, 0, 2 * Math.PI);
                     ctx.closePath();
                     ctx.fill();
                 }
             }
 
-            ctx.fillStyle = "#2C2F33"; // percentage and vote count background
-            let metrics = ctx.measureText(percentage + "% (" + votes[i] + ")");
-            let w = metrics.width;
-            h = textHeight(percentage + "% (" + votes[i] + ")", ctx, metrics);
-            y = y + (height - h - barPadding * 2) + barPadding * 2.6;
-            if (vote == i || vote == undefined) roundRect(ctx, width - barPadding - w - 3, y - h - 4, w + 5, h + 12, 5, true, false);
+            ctx.fillStyle = "#2C2F33";
+            const percText = percentage + "% (" + votes[i] + ")";
+            let metrics = ctx.measureText(percText);
+            let percW = metrics.width;
+            let percH = textHeight(percText, ctx, metrics);
 
-            ctx.fillStyle = "#A52F05"; // percentage and vote count
-            ctx.fillText(percentage + "% (" + votes[i] + ")", width - barPadding - w, y);
+            const barCenterY = y + height / 2;
+            const textY = barCenterY + percH / 2;
+            const bgY = textY - percH - 4;
+            const bgHeight = percH + 12;
+
+            if (vote == i || vote == undefined) 
+                roundRect(ctx, width - barPadding - percW - 3, bgY, percW + 5, bgHeight, 5, true, false);
+
+            ctx.fillStyle = "#A52F05";
+            ctx.fillText(percText, width - barPadding - percW, textY);
         });
         ctx.restore();
     }
