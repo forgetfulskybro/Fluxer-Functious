@@ -67,7 +67,7 @@ module.exports = {
         break;
       
       case "view":
-        message.reply({ embeds: [new EmbedBuilder().setTitle(client.translate.get(db.language, "Commands.tempchannels.tempConfig")).setDescription(`**${client.translate.get(db.language, "Commands.tempchannels.channelName")}**: ${db.config?.channelName ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.userLimit")}**: ${db.config?.limit ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.countingToggle")}**: ${db.config?.counting ? client.translate.get(db.language, "Commands.tempchannels.on") : client.translate.get(db.language, "Commands.tempchannels.off")}`)] });
+        message.reply({ embeds: [new EmbedBuilder().setTitle(client.translate.get(db.language, "Commands.tempchannels.tempConfig")).setDescription(`**${client.translate.get(db.language, "Commands.tempchannels.category")}**: <#${db.parentChannel}>\n**${client.translate.get(db.language, "Commands.tempchannels.mainChannel")}**: <#${db.childChannel}>\n\n**${client.translate.get(db.language, "Commands.tempchannels.channelName")}**: ${db.config?.channelName ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.userLimit")}**: ${db.config?.limit ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.countingToggle")}**: ${db.config?.counting ? client.translate.get(db.language, "Commands.tempchannels.on") : client.translate.get(db.language, "Commands.tempchannels.off")}`)] });
         break;
 
       case "set":

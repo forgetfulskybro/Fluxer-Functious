@@ -61,6 +61,8 @@
   "tempchannels": {
     "usage": "help",
     "description": "Setup temporary channels for your server.",
+    "category": "Category",
+    "mainChannel": "Main Voice Channel",
     "tempChannels": "Temp Channels",
     "joinCreate": "Join To Create",
     "helpUsage": "Temporary Channels Usage",
