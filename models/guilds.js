@@ -12,7 +12,16 @@ const guilds = new Schema({
   stickyRoles: { type: Array, default: [] },
   bypassRoles: { type: Array, default: [] },
   timezoneConvert: { type: Boolean, default: false },
-  userTimezones: { type: Array, default: [] }
+  userTimezones: { type: Array, default: [] },
+  parentChannel: { type: String, default: null },
+  childChannel: { type: String, default: null },
+  tempChannels: { type: Array, default: [] },
+  config: {
+    channelName: { type: String, default: null },
+    channelLimit: { type: Number, default: null },
+    counting: { type: Boolean, default: false },
+    manage: { type: Boolean, default: false },
+  },
 });
 
 module.exports = model("guilds", guilds);

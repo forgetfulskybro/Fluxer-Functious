@@ -39,9 +39,9 @@ module.exports = async (client, message) => {
 
   if (parseTime(message.content) && db.timezoneConvert && db.userTimezones.find((u) => u.userId === message.author.id)) {
     try {
-     return await message.react("⌚");
+    await message.react("⌚");
     } catch {
-     return client.database.updateGuild(message.guildId, { timezoneConvert: false });
+    client.database.updateGuild(message.guildId, { timezoneConvert: false });
     }
   }
 

@@ -27,9 +27,29 @@ module.exports = {
     }
 
     const start = Date.now();
-    message.reply("Loading...").then(async (msg) => {
+    message.reply({ embeds: [
+      new EmbedBuilder()
+        .setColor("#A52F05")
+        .setTitle("Flux Pong")
+        .addFields(
+          {
+            name: "**Gateway**",
+            value: `\`${!isNaN(await botPing()) ? `${await botPing()}ms` : "502 bad Gateway"}\``,
+            inline: true,
+          },
+          {
+            name: "**Database**",
+            value: `\`${await Database()}ms\``,
+            inline: true,
+          },
+          {
+            name: "**Round-trip**",
+            value: `\`...\``,
+            inline: true,
+          },
+        ),
+    ], }).then(async (msg) => {
       await msg.edit({
-        content: null,
         embeds: [
           new EmbedBuilder()
             .setColor("#A52F05")

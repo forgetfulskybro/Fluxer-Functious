@@ -1,7 +1,7 @@
 const { EmbedBuilder, PermissionFlags } = require('@fluxerjs/core')
 const Giveaways = require(`../models/giveaways`)
 const dhms = require(`../functions/dhms`);
-const regex = new RegExp(`channel:( |)(<#!?(.*)>|.*)`)
+const regex = new RegExp(/^channel:\s*(?:<#!?\d+>|[\d.]+)$/);
 
 module.exports = {
     config: {
@@ -17,7 +17,7 @@ module.exports = {
       let winners;
       let picked = [];
       const options = args.join(` `).split(`|`).map(x => x.trim()).filter(x => x);
-      const msgId = options[0];
+      const msgId = args[1];
 
       const check = await Giveaways.findOne({ messageId: msgId });
       if (!check) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.reroll.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.usage")}\``).setColor(`#FF0000`)] });
@@ -78,6 +78,7 @@ module.exports = {
       let requirement;
       let channel = true;
       if (options[3]) {
+        try { message.guild.fetchChannels(); } catch { };
         let option = options[3] ? options[3].match(regex) : null;
         requirement = options[3].slice(0, 500).replace(`${option ? option[0] : ''}`, "").trim();
         if (requirement.length === 0) requirement = null;

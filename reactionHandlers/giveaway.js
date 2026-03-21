@@ -1,6 +1,24 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
 
-module.exports = async (client, message, userId, db, emojiId) => {
+module.exports = async (client, message, userId, db, emojiId, event = "add") => {
+    if (event === "remove") {
+        if (client.reactions.get(userId)) return;
+        if (emojiId === client.config.emojis.confetti && !db.ended) {
+            if (!db.users.find(u => u.userID === userId)) return;
+            const filtered = db.users.filter(object => object.userID != userId)
+            db.users = filtered;
+            const filtered2 = db.picking.filter(object => object.userID != userId)
+            db.picking = filtered2;
+            db.save();
+
+            client.reactions.set(userId, Date.now() + 3000)
+            setTimeout(() => client.reactions.delete(userId), 3000)
+
+            client.users.get(userId)?.createDM().then(dm => dm.send(`${client.translate.get(db.language, "Events.messageReactionRemove.left")} [${db.prize}](https://fluxer.app/channels/${db.serverId}/${db.channelId}/${db.messageId})!\n${client.translate.get(db.language, "Events.messageReactionRemove.left2")} **${db.users.length}** ${client.translate.get(db.language, "Events.messageReactionRemove.left3")}!`)).catch(() => { });
+        }
+        return;
+    }
+
     if (emojiId === client.config.emojis.confetti && !db.ended) {
         if (client.reactions.get(userId)) return;
         if (db.users.find(u => u.userID === userId)) return;

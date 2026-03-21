@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
 
-module.exports = async (client, message, userId, editCollector, reactionChan, reactionMsg, emojiId) => {
+module.exports = async (client, message, userId, editCollector, reactionChan, reactionMsg, emojiId, event = "add") => {
     if (emojiId === client.config.emojis.check) {
         if (editCollector.roles.length === 0) {
             const db = await client.database.getGuild(message.guildId);
@@ -39,6 +39,20 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
         client.messageEdit.delete(userId);
         reactionMsg?.delete({ silent: true }).catch(() => {});
         return reactionChan?.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))] });
+    }
+
+    if (event === "remove") {
+        const emote = message.emoji?.id ? `<:${emojiId}:${message.emoji.id}>` : emojiId;
+        const emoji = editCollector.rolesDone.find(e => e.emoji === emote);
+        if (emoji) {
+            editCollector.rolesDone = editCollector.rolesDone.filter(object => object.emoji != emote);
+            editCollector.roles.unshift([emoji.role, { name: emoji.name }]);
+            editCollector.regex.unshift(emoji.name);
+
+            const newMsg = await (await client.channels.resolve(message.channelId))?.messages?.fetch(message.messageId)
+            return newMsg.edit(editCollector.type === "content" ? { content: newMsg.content.replace(`${emote} ${emoji.name}`, `{role:${emoji.name}}`) } : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(newMsg.embeds[0].description.replace(`${emote} ${emoji.name}`, `{role:${emoji.name}}`))] }).catch(() => { });
+        }
+        return;
     }
 
     if (editCollector.roles.length === 0) return;

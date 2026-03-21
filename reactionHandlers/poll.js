@@ -8,7 +8,54 @@ const emojis = [
     { name: "🔟", id: 9 }, { name: "🛑", id: "stop" }
 ];
 
-module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId) => {
+module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId, event = "add") => {
+    if (event === "remove") {
+        if (client.reactions.get(userId)) {
+          if (client.timeout.get(userId)) return;
+          client.timeout.set(userId, 5000);
+          setTimeout(() => client.timeout.delete(userId), 5000);
+          
+          return client.users.get(userId)?.createDM().then(dm => dm.send(client.translate.get(pollCheck.language, "Events.messageReactionRemove.tooFast"))).catch(() => { });
+        }
+        let convert = emojis.findIndex(e => e.name === emojiId);
+        if (convert === 0 && convert !== 10 || convert !== -1 && convert !== 10) {
+            if (!pollCheck.users.find((u) => u.user === userId)) return;
+            if (pollCheck.users.find((u) => u.user === userId) && pollCheck.users.find((u) => u.user === userId).option !== convert) return;
+
+            client.reactions.set(userId, 5000)
+            setTimeout(() => client.reactions.delete(userId), 5000)
+                        
+            let tooMuch = [];
+            if (pollCheck.poll.options.description.length > 80) tooMuch.push(`**${client.translate.get(pollCheck.language, "Events.messageReactionRemove.title")}**: ${pollCheck.poll.options.description}`)
+            pollCheck.poll.voteOptions.name.filter(e => e).forEach((e, i) => {
+                i++
+                if (e.length > 70) {
+                    tooMuch.push(`**${i}.** ${e}`)
+                }
+            });
+
+            pollCheck.users = pollCheck.users.filter(object => object.user != userId);
+            const user = (client.users.cache.get(userId)) || await client.users.fetch(userId);
+            await pollCheck.poll.removeVote(convert, userId, user.displayAvatarURL(), message.messageId);
+
+            const pollImage = await fetch(`${process.env.CDN}/api/upload`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      apikey: process.env.CDN_KEY,
+                      image: pollCheck.poll.canvas.toDataURL('image/png'),
+                      timeframe: pollCheck.poll.time,
+                      messageId: message.messageId
+                    })
+            }).then((i) => i.json())
+
+            const newMsg = await (await client.channels.resolve(pollCheck.channelId))?.messages?.fetch(pollCheck.messageId)
+            return newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${tooMuch.length > 0 ? tooMuch.map(e => e).join("\n") : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { });
+        } else return;
+    }
+
     const convert = emojis.findIndex(e => e.name === emojiId);
 
     if (convert === 10 && pollCheck.owner === userId) {

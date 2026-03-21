@@ -4,7 +4,7 @@ module.exports = async (client, message, userId) => {
   const userTimezone = db.userTimezones.find((u) => u.userId === userId);
   message.guild.fetchChannels();
   
-  const channel = message.guild.channels.get(message.channelId);
+  const channel = await client.channels.resolve(message.channelId);
   const msg = await channel.messages.fetch(message.messageId);
   const convert = client.functions.get("parseTime")(msg.content, userTimezone.timezone);
   const user = await client.users.fetch(userId);
