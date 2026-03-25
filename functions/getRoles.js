@@ -47,7 +47,7 @@ async function getRoles(roles, message, client, db, format = true, position = tr
     });
   
     if (positions.length > 0) {
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.positions")}\n${positions.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}`)] }).catch(() => { return });
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.positions")}\n${positions.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}\n\n${client.translate.get(db.language, "Events.messageCreate.fix")}`)] }).catch(() => { return });
         return message.react(client.config.emojis.cross).catch(() => { return });
     } 
   }

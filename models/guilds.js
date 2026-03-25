@@ -21,6 +21,7 @@ const guilds = new Schema({
     channelLimit: { type: Number, default: null },
     counting: { type: Boolean, default: false },
     manage: { type: Boolean, default: false },
+    customParent: { type: String, default: null },
   },
 });
 

@@ -140,12 +140,11 @@ module.exports = async (client, message) => {
       client,
       db.language,
     );
+    
     const embed = new EmbedBuilder()
       .setColor("#A52F05")
       .setDescription(
-        `<@${message.author.id}>, ${client.translate.get(db.language, "Events.messageCreate.wait")} \`${uremaining}\` ` +
-          `${client.translate.get(db.language, "Events.messageCreate.wait2")} \`${cmd}\` ` +
-          `${client.translate.get(db.language, "Events.messageCreate.wait3")}.`,
+        `<@${message.author.id}>, ${client.translate.get(db.language, "Events.messageCreate.wait", { "time": `\`${uremaining}\``, "cmd": `\`${cmd}\`` })}`,
       );
 
     return message

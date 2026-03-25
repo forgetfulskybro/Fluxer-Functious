@@ -18,7 +18,8 @@ module.exports = async (client, oldState, newState) => {
   const db = await client.database.getGuild(guildId);
   if (!db) return;
 
-  const { parentChannel, childChannel, tempChannels } = db;
+  const { parentChannel, childChannel, tempChannels, config } = db;
+  const parentChannelId = config?.customParent || parentChannel;
 
   if (newChannelId && tempChannels.some((c) => c.channelId === newChannelId)) {
     target.set(userId, { channelId: newChannelId, guildId });
@@ -46,10 +47,10 @@ module.exports = async (client, oldState, newState) => {
   }
 
   if (
-      parentChannel &&
+      parentChannelId &&
       childChannel &&
       newChannelId === childChannel &&
-      channel?.parentId === parentChannel) {
+      channel?.parentId === parentChannelId) {
       const member = await guild.fetchMember(userId);
       if (!member) return;
       
@@ -60,7 +61,7 @@ module.exports = async (client, oldState, newState) => {
         const voiceChannel = await guild.createChannel({
           type: 2,
           name: `${channelName}`,
-          parent_id: parentChannel,
+          parent_id: parentChannelId,
           user_limit: db.config?.channelLimit ? db.config.channelLimit : 0,
           bitrate: 64000,
         });

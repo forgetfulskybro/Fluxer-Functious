@@ -1,9 +1,7 @@
 {
   "Events": {
     "messageCreate": {
-      "wait": "انتظار",
-      "wait2": "قبل الاستخدام",
-      "wait3": "مرة أخرى",
+      "wait": "wait {time} before using {cmd} again",
       "unable": "غير قادر على إرسال الرسالة",
       "contact": "Please contact a server administrator to get this settled",
       "noPerms": "Need `Add Reactions` permission as the bot heavily relies on them",
@@ -18,6 +16,7 @@
       "unknown": "There are unknown roles in your message, please remove them and try again.",
       "duplicate": "There are duplicate roles in your message, please remove them and try again",
       "positions": "There are roles with higher ranks (position) than my highest role in your message, please remove them and try again",
+      "fix": "If you know the bot has a role higher than your provided roles, you can easily fix this by giving/removing a random permission from the bot's role.",
       "stop": "To stop this reaction role collector, send `{prefix}roles stop`\nThis message will delete itself in 3 seconds."
     },
     "messageReactionAdd": {
@@ -60,6 +59,7 @@
   "tempchannels": {
     "usage": "help",
     "description": "Setup temporary channels for your server.",
+    "customCat": "Please provide a valid category name or ID.",
     "category": "Category",
     "mainChannel": "Main Voice Channel",
     "tempChannels": "Temp Channels",
@@ -68,14 +68,23 @@
     "setup": "**Setup**\nCreates a default category and “Join To Create” voice channel.",
     "resetSetup": "**Reset Setup**\nDeletes the temporary channels setup (category, “Join To Create”, all temporary channels, and config options). Use `{default}` to delete and create new default temporary channels. Use `{config}` to outright delete everything.",
     "option": "Option",
-    "configuration": "**Configuration**\nConfigure channel name, user limit, and counting",
+    "configuration": "**Configuration**\nConfigure channel name, user limit, counting, and optional category",
+    "editConfig": "**Edit Configuration**\nModify existing temporary channel settings without resetting them",
+    "deleteConfig": "**Delete Configuration**\nRemove specific settings from your temporary channel configuration",
+    "counting": "Counting",
+    "successEdit": "Successfully updated configuration",
+    "delete": "Please specify which settings to delete",
+    "invalid": "Invalid fields",
+    "valid": "Valid fields",
+    "successDelete": "Successfully deleted",
     "myChannel": "My Channel",
     "viewConfig": "**View Configuration**\nShows the current temporary channels settings.",
     "optional": "Option Explanation",
     "nameDefine": "Base name for new temporary channels.",
     "limitDefine": "Max users per temporary voice channel (0 = no limit).",
-    "countingDefine": "Appends a number to the channel name [e.g., My Channel (1)]",
-    "resetDefine": "Required if tmpoary channels are already set u[; deletes everything.",
+    "countingDefine": "Enables numbering on the channel name [e.g., My Channel (1)]",
+    "resetDefine": "Required if temporary channels are already set up; deletes everything.",
+    "categoryDefine": "Sets a custom category for the Join To Create channel. Format: `{category:<category name or id>}`",
     "examples": "Examples",
     "example": "Example",
     "tempConfig": "Temporary Channels Configuration",
