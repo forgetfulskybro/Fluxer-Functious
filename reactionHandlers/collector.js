@@ -1,35 +1,42 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
 
 module.exports = async (client, message, userId, collector, reactionChan, reactionMsg, emojiId, event = "add") => {
-    if (emojiId === client.config.emojis.check) {
+    if (emojiId === client.config.emojis.check && collector.oldMessageId === reactionMsg.id) {
         if (collector.roles.length === 0) {
-            const db = await client.database.getGuild(message.guildId);
-            const oldChan = await client.channels.resolve(collector.channelId).catch(() => {});
-            const oldMsg = await oldChan?.messages?.fetch(collector?.oldMessageId).catch(() => {});
-            oldMsg?.delete().catch(() => {});
-
-            const reactions = [...collector.rolesDone.map(e => e.emoji)];
+          const reactions = [...collector.rolesDone.map(e => e.emoji)];
+            let db, oldMsg, msg;
+            db = await client.database.getGuild(message.guildId);
+            msg = await reactionChan?.messages?.fetch(collector?.messageId).catch(() => {});
+            try {
+              oldMsg = await reactionChan?.messages?.fetch(collector?.oldMessageId).catch(() => {});
+            } catch {};
+                      
+            try {
+              await oldMsg?.delete().catch(() => {});
+              await reactionMsg?.delete();
+            } catch {}
 
             reactionMsg?.channel.send(
                 collector.type === "content"
-                    ? { content: reactionMsg.content }
-                    : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(reactionMsg.embeds[0].description)] }
+                    ? { content: msg.content }
+                    : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(msg.embeds[0].description)] }
             ).then(async m => {
+                try { await msg.delete(); } catch { }
                 for (const reaction of reactions) await m.react(reaction).catch(() => {});
                 db.roles.push({ msgId: m.id, chanId: message.channelId, roles: [...collector.rolesDone] });
                 await client.database.updateGuild(message.guildId, { roles: db.roles });
             });
 
-            reactionMsg?.delete().catch(() => {});
             clearTimeout(client.messageCollector.get(userId)?.timeout);
             return client.messageCollector.delete(userId);
         }
         return;
     }
 
-    if (emojiId === client.config.emojis.cross) {
+    if (emojiId === client.config.emojis.cross && collector.oldMessageId === reactionMsg.id) {
         const db = await client.database.getGuild(message.guildId);
         client.messageCollector.delete(userId);
+        
         reactionMsg?.delete({ silent: true }).catch(() => {});
         return reactionChan?.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))] });
     }

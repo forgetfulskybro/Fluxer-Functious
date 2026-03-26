@@ -31,7 +31,7 @@ client.database.guildSweeper(client);
 client.sentry = Sentry;
 
 ["observedVoiceUsers", "observedVoiceBots", "reactions", "paginate", "timeout", "polls", "used", "messageCollector", "messageEdit"].forEach(x => client[x] = new Map());
-["aliases", "commands", "event", "functions"].forEach(x => client[x] = new Collection());
+["aliases", "commands", "event", "functions", "reactionHandlers"].forEach(x => client[x] = new Collection());
 ["command", "event", "function"].forEach(x => require(`./handlers/${x}`)(client));
 
 process.on("unhandledRejection", (reason, p) => {

@@ -71,8 +71,10 @@ module.exports = {
               const msg = db.roles.find(e => e.msgId === args[1]);
               if (!msg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });
 
+              try {
               const foundMsg = await (await client.channels.resolve(msg.chanId))?.messages?.fetch(msg.msgId);
-              foundMsg?.delete().catch(() => { });
+              foundMsg?.delete();
+              } catch { };
               await client.database.updateGuild(message.guildId, { roles: db.roles.filter(e => e.msgId !== args[1]) });
             
               setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
@@ -88,11 +90,15 @@ module.exports = {
               const reactMsg = db.roles.find(e => e.msgId === args[1]);
               if (!reactMsg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });
               
+              try {
               const foundFixMsg = await (await client.channels.resolve(reactMsg.chanId))?.messages?.fetch(reactMsg.msgId);
               await foundFixMsg.removeAllReactions();
               
               for (const reaction of reactMsg.roles) {
                   await foundFixMsg.react(reaction.emoji).catch(() => {});
+              }
+              } catch {
+                return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.reactionFixError")}`).setColor(`#FF0000`)] });
               }
             
               setTimeout(() => client.used.delete(`${message.author.id}-roles`), 6000)
@@ -155,8 +161,18 @@ module.exports = {
                     client.messageEdit.get(message?.author.id).botMessage = msg.id
                   });
               } else {
-                await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.react")}\n\n\`\`\`txt\n${startText}\n\`\`\``).setColor(`#A52F05`)] })
+                await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.react", {
+                  "example": `\`\`\`
+  **This is an example message**
+  
+  Color Roles:
+  {role:Blue}
+  {role:Red}
+  {role:Purple}
+  \`\`\`
+  ` })}\n\n\`\`\`txt\n${startText}\n\`\`\``).setColor(`#A52F05`)] })
                   .then(async (msg) => {
+                    await msg.react(client.config.emojis.check);
                     await msg.react(client.config.emojis.cross);
                     client.messageEdit.get(message?.author.id).botMessage = msg.id;
                   });
@@ -201,6 +217,7 @@ Color Roles:
                 await channel.send({ embeds: [rr]
               })
                   .then(async (msg) => { 
+                    await msg.react(client.config.emojis.check);
                     await msg.react(client.config.emojis.cross);
                     const coll = await client.messageCollector.set(message.author.id, {
                       user: message.author.id,
@@ -232,6 +249,7 @@ Color Roles:
                   embeds: [rr]
                 })
                   .then(async (msg) => {
+                    await msg.react(client.config.emojis.check);
                     await msg.react(client.config.emojis.cross);
                     const coll = await client.messageCollector.set(message.author.id, {
                       user: message.author.id,

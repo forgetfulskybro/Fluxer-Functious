@@ -1,12 +1,17 @@
 const { EmbedBuilder } = require('@fluxerjs/core');
+const emoji = require('node-emoji');
+
 async function getRoles(roles, message, client, db, format = true, position = true) {
   try { message.guild.fetchRoles(); } catch {}
   const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
-
+  const processedRoles = roles.map(r => emoji.emojify(r));
   const roleIds = []
-  let newRoles = roles.map((r) => {
-      return [...message.guild.roles].map((r) => r).find((role) => r.toLowerCase() === role[1]?.name?.toLowerCase());
-  })
+  let newRoles = processedRoles.map((processed) => {
+    return [...message.guild.roles]
+    .map((r) => r)
+    .find((role) => processed.toLowerCase() === role[1]?.name?.toLowerCase());
+  });
+  
   newRoles.map((r) => roleIds.push(r));
 
   if (roleIds.map((r) => !r).includes(true)) {

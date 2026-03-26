@@ -188,6 +188,7 @@
     "roles": {
       "description": "Configurar cargos de reações para seu servidor",
       "usage": "ajuda",
+      "reactionFixError": "Failed to remove reactions from the old message. Please check that the bot has the necessary permissions.",
       "already": "You already have an active message collector going on! Finish that first before starting a new one. If you would like to turn that collector off, run `{prefix}roles stop`",
       "pick": "Forneça o tipo de mensagem que você quer que seja enviado. Opções: `embed`, `content`",
       "ended": "O coletor de mensagens terminou após 25 minutos.",

@@ -188,6 +188,7 @@
     "roles": {
       "description": "Configura los roles de reacción para tu servidor",
       "usage": "ayuda",
+      "reactionFixError": "Failed to remove reactions from the old message. Please check that the bot has the necessary permissions.",
       "already": "You already have an active message collector going on! Finish that first before starting a new one. If you would like to turn that collector off, run `{prefix}roles stop`",
       "pick": "Proporciona que tipo de mensaje quieres que se envíe. Opciones: 'incrustado ', 'contenido'",
       "ended": "El recolector de mensajes ha terminado después de 25 minutos.",

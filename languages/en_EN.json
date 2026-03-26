@@ -188,6 +188,7 @@
     "roles": {
       "description": "Setup a reaction role message for your server",
       "usage": "help",
+      "reactionFixError": "Failed to remove reactions from the old message. Please check that the bot has the necessary permissions.",
       "already": "You already have an active message collector going on! Finish that first before starting a new one. If you would like to turn that collector off, run `{prefix}roles stop`",
       "pick": "Provide what you would like the type of message to be sent. Options: `embed`, `content`",
       "ended": "The message collector has ended after 25 minutes.",

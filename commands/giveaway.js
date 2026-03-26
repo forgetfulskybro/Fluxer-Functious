@@ -60,9 +60,10 @@ module.exports = {
           .setTitle(check.prize)
           .setDescription(`${client.translate.get(check.language, "Commands.reroll.giveaway")}\n\n${client.translate.get(check.language, "Commands.reroll.ended")}: <t:${Math.floor((check.endDate) / 1000)}:R>\n${client.translate.get(check.language, "Commands.giveaway.hosted")}: <@${check.owner}>\n${client.translate.get(check.language, "Commands.reroll.partici")}: ${check.users.length}\n${client.translate.get(check.language, "Commands.reroll.winner")}: ${check.pickedWinners.map(w => `<@${w.id}>`).join(", ")}${check.requirement ? `\n${client.translate.get(check.language, "Commands.reroll.reqs")}: ${check.requirement}` : ``}`)
 
-    
+    try {
     const newMsg = await (await client.channels.resolve(check.channelId))?.messages?.fetch(check.messageId);
-    newMsg.edit({ embeds: [embed] });
+      newMsg.edit({ embeds: [embed] });
+    } catch {}
     (await client.channels.resolve(check.channelId))?.send({ content: `${client.translate.get(check.language, "Commands.reroll.reroll")} ${picked.map(w => `<@${w.id}>`).join(", ")} ${client.translate.get(check.language, "Commands.reroll.reroll2")} [${check.prize}](https://fluxer.app/channels/${check.serverId}/${check.channelId}/${check.messageId})` });
     } else if (args[0] === "start") {
       const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
@@ -137,8 +138,11 @@ module.exports = {
       if (check.owner !== message.author.id) return message.reply({ content: client.translate.get(db.language, "Commands.giveaway.notOwner") });
       
       await Giveaways.findOneAndDelete({ messageId: msgId });
+      try {
       const newMsg = await (await client.channels.resolve(check.channelId))?.messages?.fetch(check.messageId);
-      newMsg.delete().catch(() => { });
+        newMsg.delete().catch(() => { });
+      } catch { };
+      
       return message.reply({ content: `${client.translate.get(db.language, "Commands.giveaway.successDelete", { "giveawayName": `**${check.prize}**` })}` });
     } else {
       return message.reply({

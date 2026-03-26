@@ -35,6 +35,21 @@ function Reload(client, category, name) {
       return `Reloaded function: **${name}**.js`
     }
 
+    if (category === "reactionHandlers") {
+      if (!name) return 'Provide a reaction handler file name to reload!'
+      try { 
+        const handlerName = name;
+        delete require.cache[require.resolve(`../reactionHandlers/${name}.js`)];
+        const pull = require(`../reactionHandlers/${name}`);
+
+        client.reactionHandlers.delete(handlerName)
+        client.reactionHandlers.set(handlerName, pull)
+      } catch (e) {
+        return `Couldn't reload: **reactionHandlers/${name}**\n**Error**: ${e.message}`
+      }
+      return `Reloaded reaction handler: **${name}**.js`
+    }
+
     if (category === "languages") {
       try {
         const languagesPath = path.join(__dirname, '../languages');

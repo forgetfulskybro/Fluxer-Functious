@@ -6,8 +6,8 @@ async function Collector(client, message, db) {
     return message.reply({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.stopped"))] })
   }
   
-  const regex = /{role:(.*?)}/;
-  const regexAll = /{role:(.*?)}/g;
+  const regex = /{role:(?: |)(.*?)}/;
+  const regexAll = /{role:(?: |)(.*?)}/g;
   const collector = client.messageCollector.get(message.author.id);
   if (!message.content.match(regexAll) || message.content.match(regexAll)?.length === 0) {
     message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.noRoles")}: \`{role:Red}\`\n\n${client.translate.get(db.language, "Events.messageCreate.stop", { "prefix": db.prefix })}`)] }).then(async (m) => {
@@ -26,10 +26,10 @@ async function Collector(client, message, db) {
   const roleIds = await getRoles(roles, message, client, db);
   if (!roleIds) return;
 
+  const cleanedContent = message.content.replace(/\{role:\s*(.*?)\}/g, '{role:$1}');
   message.delete().catch(() => { });
   collector.roles = roleIds;
-  return message.channel.send(collector.type === "content" ? { content: message.content } : { embeds: [new EmbedBuilder().setDescription(message.content).setColor("#A52F05")] }).then(async (msg) => {
-    await msg.react(client.config.emojis.check).catch(() => {})
+  return message.channel.send(collector.type === "content" ? { content: cleanedContent } : { embeds: [new EmbedBuilder().setDescription(cleanedContent).setColor("#A52F05")] }).then(async (msg) => {
     collector.messageId = msg.id;
   });
 }
