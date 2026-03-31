@@ -1,21 +1,21 @@
-import { Schema, model } from "mongoose";
+import { Schema, model } from 'mongoose';
 
 const giveaways = new Schema({
-    owner: { type: String, required: true },
-    serverId: { type: String, required: true },
-    channelId: { type: String, required: true },
-    messageId: { type: String, required: true },
-    users: [{ type: Object }],
-    time: { type: String, required: true },
-    now: { type: String, required: true },
-    prize: { type: String, required: true },
-    winners: { type: Number, required: true },
-    pickedWinners: [{ type: Object }],
-    picking: [{ type: Object }],
-    ended: { type: Boolean, default: false },
-    lang: { type: String, required: true, default: "en_EN" },
-    requirement: { type: String },
-    endDate: { type: String }
+	owner: { type: String, required: true },
+	serverId: { type: String, required: true },
+	channelId: { type: String, required: true },
+	messageId: { type: String, required: true },
+	users: [{ type: Object }],
+	time: { type: String, required: true },
+	now: { type: String, required: true },
+	prize: { type: String, required: true },
+	winners: { type: Number, required: true },
+	pickedWinners: [{ type: Object }],
+	picking: [{ type: Object }],
+	ended: { type: Boolean, default: false },
+	lang: { type: String, required: true, default: 'en_EN' },
+	requirement: { type: String },
+	endDate: { type: String },
 });
 
-export default model("giveaways", giveaways);
+export default model('giveaways', giveaways);
