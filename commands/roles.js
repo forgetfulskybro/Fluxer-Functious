@@ -154,7 +154,7 @@ module.exports = {
               await message.guild.fetchChannels();
               const editchan = message.guild.channels.find(e => e.id === editmsg.chanId);
               if (editchan.id !== message.channel.id) {
-                message.reply(`${client.translate.get(db.language, "Commands.roles.success")} <#${editchan.id}>`, false);
+                message.reply(`${client.translate.get(db.language, "Commands.roles.success")} <#${editchan.id}>`, { ping: false });
                 await editchan.send({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.react")}\n\n\`\`\`txt\n${startText}\n\`\`\``).setColor(`#A52F05`)] })
                   .then(async (msg) => {
                     await msg.react(client.config.emojis.cross);
@@ -213,7 +213,7 @@ Color Roles:
 ` })).setColor(`#A52F05`);
             
               if (channel.id !== message.channel.id) {
-                message.reply(`${client.translate.get(db.language, "Commands.roles.success")} <#${channel.id}>`, false);
+                message.reply(`${client.translate.get(db.language, "Commands.roles.success")} <#${channel.id}>`, { ping: false });
                 await channel.send({ embeds: [rr]
               })
                   .then(async (msg) => { 

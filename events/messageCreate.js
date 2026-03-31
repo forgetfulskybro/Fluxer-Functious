@@ -28,7 +28,7 @@ module.exports = async (client, message) => {
       .setTitle(client.user.username)
       .setDescription(`${client.translate.get(db.language, "Events.messageCreate.prefix")} \`${db.prefix}\`\n${client.translate.get(db.language, "Events.messageCreate.prefix2")} \`${db.prefix}help\``);
 
-    return message.reply({ embeds: [mention] }, false).catch(() => {});
+    return message.reply({ embeds: [mention] }, { ping: false }).catch(() => {});
   }
 
   if (client.messageCollector.has(message.author.id) && client.messageCollector.get(message.author.id).channelId === message.channelId && !client.messageCollector.get(message.author.id).messageId)
