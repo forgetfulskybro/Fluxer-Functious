@@ -45,7 +45,7 @@ module.exports = {
     let type;
     const invalidCmds = [];
     let roleIds = true;
-    if (args[0] && args[0]?.toLowerCase() !== "view") roleIds = await getRoles([role], message, client, db, false, false);
+    if (args[0] && args[0]?.toLowerCase() !== "view") roleIds = await getRoles([role], message, client, db, false, false, false);
     if (!roleIds) return;
     
     switch (args[0]?.toLowerCase()) {

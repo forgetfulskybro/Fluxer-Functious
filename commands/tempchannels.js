@@ -1,4 +1,5 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
+const emoji = require('node-emoji');
 
 const EMBED_COLORS = {
   ERROR: '#FF0000',
@@ -36,7 +37,7 @@ module.exports = {
     }
 
     function validateChannelName(name, command, client, db) {
-      const n = String(name).trim();
+      const n = emoji.emojify(String(name).trim());
       if (n.length === 0) {
         return {
           valid: false,
@@ -74,6 +75,7 @@ module.exports = {
 
     async function resolveCategory(guild, categoryInput, client, db, command) {
       if (!categoryInput) return null;
+      categoryInput = emoji.emojify(categoryInput);
       
       if (categoryInput === "") {
         return {

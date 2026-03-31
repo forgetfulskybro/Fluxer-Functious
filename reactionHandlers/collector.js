@@ -6,10 +6,18 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
           const reactions = [...collector.rolesDone.map(e => e.emoji)];
             let db, oldMsg, msg;
             db = await client.database.getGuild(message.guildId);
-            msg = await reactionChan?.messages?.fetch(collector?.messageId).catch(() => {});
             try {
-              oldMsg = await reactionChan?.messages?.fetch(collector?.oldMessageId).catch(() => {});
-            } catch {};
+              oldMsg = await reactionChan?.messages?.fetch(collector?.oldMessageId).catch(() => { });
+              msg = await reactionChan?.messages?.fetch(collector?.messageId).catch(() => {});
+            } catch {
+              try {
+                msg = await reactionChan?.messages?.fetch(collector?.messageId).catch(() => { });
+              } catch {
+                msg = null;
+              }
+            };
+            
+            if (!msg) return reactionMsg.channel.send({ content: "Unable to find your reacted message. If this error persists, " });
                       
             try {
               await oldMsg?.delete().catch(() => {});

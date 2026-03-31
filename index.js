@@ -17,6 +17,13 @@ const client = new Client({
   waitForGuilds: true
 });
 
+function connectedToFluxer() {
+  if (!client.isReady()) {
+    console.log(color("%", "%4[Error_Handling] :: Fluxer didn't connect after 15 seconds, restarting...%c"));
+    process.exit(1);
+  }
+}
+
 const TranslationHandler = require("./handlers/translation");
 const DatabaseHandler = require("./handlers/database");
 
@@ -46,6 +53,8 @@ process.on("uncaughtExceptionMonitor", (err, origin) => {
   console.log(color("%", "%4[Error_Handling] :: Uncaught Exception/Catch (MONITOR)%c"));
   console.log(err);
 });
- 
-getVoiceStates(client);
+
 client.login(process.env.TOKEN);
+
+setInterval(() => connectedToFluxer(), 15000); 
+getVoiceStates(client);

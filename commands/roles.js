@@ -52,6 +52,11 @@ module.exports = {
                 message.reply({ embeds: [embed] })
                 break;
 
+            case "stop":
+                if (!client.messageCollector.get(message.author.id)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notStarted")}`).setColor(`#FF0000`)] });
+                client.messageCollector.delete(message.author.id);
+                message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.stopped")}`).setColor(`#A52F05`)] });
+                break;
             case "view":
                 if (db.roles.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles")}: \`${db.prefix}roles\``).setColor(`#FF0000`)] });
                 const pages = new Paginator({ timeout: 5 * 2e4, user: message.author.id, client: client })

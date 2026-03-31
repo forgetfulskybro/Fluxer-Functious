@@ -15,7 +15,7 @@ async function checkPolls(client) {
               if (msg) newPoll.start(msg, newPoll);
               polls.deleteOne({ messageId: poll.messageId });
             } catch (e) { 
-              await db.findOneAndDelete({ messageId: poll.messageId })
+              //await db.findOneAndDelete({ messageId: poll.messageId })
             }
         }, i * 700);
     }

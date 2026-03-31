@@ -129,7 +129,20 @@
     "sameTime": "Provided timezone is the same timezone set for your current user. If you'd like to change it, head to this",
     "successSet": "Successfully setup your personal timezone to be {timezone}",
     "noTime": "You don't have a timezone set.\nYou can set a timezone by going to this {timezonepicker}, copying a timezone, and using this example",
-    "successRemove": "Successfully removed your personal timzone."
+    "successRemove": "Successfully removed your personal timzone.",
+    "viewCmd": "**View**\nView your or another user's timezone info",
+    "optionalUser": "User's name, id, mention or timezone, e.g. America/New_York",
+    "memberNotFound": "Provide a user's username, mention, id, or a timezone to view information.",
+    "noTimeSelf": "You don't have a timezone set.\nYou can set a timezone by going to this {timezonepicker}, copying a timezone, and using this example",
+    "noTimeOther": "{user} doesn't have a timezone set.",
+    "timezoneInfo": "{user}'s Timezone Info",
+    "timezoneField": "Timezone",
+    "gmtField": "GMT Offset",
+    "currentTimeField": "Current Time",
+    "usersInTimezone": "Users in Timezone",
+    "none": "None",
+    "infoTimezone": "Timezone Info",
+    "noUsers": "No users in this server have this timezone set."
   },
     "ping": { "description": "Just shows ping for the bot. That's all" },
     "bypass": {
@@ -220,7 +233,8 @@
       "fix": "Provide an ID for a reaction role message to fix the reactions on it",
       "noPerms2": "I require the `Manage Messages` permission to remove reactions to that message.",
       "reactionFixSuccess": "Successfully fixed reactions on {message}",
-      "stopped": "Successfully stopped your current reaction role collector!"
+      "stopped": "Successfully stopped your current reaction role collector!",
+      "notStarted": "You have not started a reaction role collector yet!"
     },
     "help": {
       "description": "Help command",

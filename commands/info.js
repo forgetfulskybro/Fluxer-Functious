@@ -9,14 +9,14 @@ module.exports = {
     cooldown: 15000,
     available: true,
     permissions: {},
-    aliases: ["stats"],
+    aliases: ["stats", "botinfo", "bi"],
   },
   run: async (client, message, args, db) => {
     function memory() {
       const used = process.memoryUsage().heapUsed;
       return Number((used / 1048576).toFixed(2));
     }
-
+    
     const unixstamp = client.functions.get("fetchTime")(
       Math.floor(process.uptime() * 1000),
       client,

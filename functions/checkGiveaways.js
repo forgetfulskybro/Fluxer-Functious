@@ -9,9 +9,9 @@ async function checkGiveaways(client) {
       let givChannel;
       try {
         givChannel = await client.channels.resolve(gw.channelId);
-        await givChannel?.messages?.fetch(gw.messageId).catch(() => {});
+        await givChannel?.messages?.fetch(gw.messageId);
       } catch {
-        await db.findOneAndDelete({ serverId: gw.serverId });
+        //await db.findOneAndDelete({ serverId: gw.serverId });
       }
     }, i * 500);
   }

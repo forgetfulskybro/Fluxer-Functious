@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('@fluxerjs/core');
 const emoji = require('node-emoji');
 
-async function getRoles(roles, message, client, db, format = true, position = true) {
+async function getRoles(roles, message, client, db, format = true, position = true, toDelete = true) {
   try { message.guild.fetchRoles(); } catch {}
   const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
   const processedRoles = roles.map(r => emoji.emojify(r));
@@ -23,7 +23,14 @@ async function getRoles(roles, message, client, db, format = true, position = tr
           }
       });
 
-      message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.unknown")}\n${unknown.map(e => `\`${format ? `{role:${e}}` : e}\``).join(", ")}`)] }).catch(() => { return });
+      message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.unknown")}\n${unknown.map(e => `\`${format ? `{role:${e}}` : e}\``).join(", ")}`)] }).then(async (m) => {
+        setTimeout(() => {
+          if (toDelete) {
+            message.delete().catch(() => { });
+            m.delete().catch(() => { });
+          }
+        }, 9000);
+      });
       return message.react(client.config.emojis.cross).catch(() => { return });
   }
 
@@ -34,7 +41,14 @@ async function getRoles(roles, message, client, db, format = true, position = tr
   });
 
   if (duplicate.length > 0) {
-      message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.duplicate")}\n${duplicate.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}`)] }).catch(() => { return });
+      message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.duplicate")}\n${duplicate.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}`)] }).then(async (m) => {
+        setTimeout(() => {
+          if (toDelete) {
+            message.delete().catch(() => { });
+            m.delete().catch(() => { });
+          }
+        }, 9000);
+      });
       return message.react(client.config.emojis.cross).catch(() => { return });
   }
 
@@ -42,7 +56,14 @@ async function getRoles(roles, message, client, db, format = true, position = tr
     let positions = [];
     const botRole = [...me.roles.cache.values()].reduce((high, role) => role.position > high.position ? role : high);
     if (!botRole) {
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.noBotRole"))] }).catch(() => { return });
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.noBotRole"))] }).then(async (m) => {
+          setTimeout(() => {
+            if (toDelete) {
+              message.delete().catch(() => { });
+              m.delete().catch(() => { });
+            }
+          }, 9000);
+        });
         return message.react(client.config.emojis.cross).catch(() => { return });
     }
     
@@ -52,7 +73,14 @@ async function getRoles(roles, message, client, db, format = true, position = tr
     });
   
     if (positions.length > 0) {
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.positions")}\n${positions.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}\n\n${client.translate.get(db.language, "Events.messageCreate.fix")}`)] }).catch(() => { return });
+        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.positions")}\n${positions.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}\n\n${client.translate.get(db.language, "Events.messageCreate.fix")}`)] }).then(async (m) => {
+          setTimeout(() => {
+            if (toDelete) {
+              message.delete().catch(() => { });
+              m.delete().catch(() => { });
+            }
+          }, 9000);
+        });
         return message.react(client.config.emojis.cross).catch(() => { return });
     } 
   }

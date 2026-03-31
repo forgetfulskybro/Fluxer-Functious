@@ -25,10 +25,15 @@ async function giveawaysEnd(client) {
               (await client.channels.resolve(db.channelId))?.send({
                 content: `${client.translate.get(db.lang, "Functions.giveawaysEnd.noOne")} **${db.prize}**\nhttps://fluxer.app/channels/${db.serverId}/${db.channelId}/${db.messageId}`,
               });
+              
+              try {
               const foundMsg = await (
                 await client.channels.resolve(db.channelId)
               )?.messages?.fetch(db.messageId);
-              return foundMsg?.edit({ embeds: [noUsers] }).catch(() => {});
+                foundMsg?.edit({ embeds: [noUsers] }).catch(() => { });
+                foundMsg.removeAllReactions();
+                return;
+              } catch { };
             }
 
             for (let i = 0; i < db.winners; i++) {
