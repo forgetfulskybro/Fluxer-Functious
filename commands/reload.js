@@ -9,12 +9,12 @@ module.exports = {
     },
     run: async (client, message, args) => {     
         if (!client.config.owners.includes(message.author.id)) return;
-        if (!args[0]) return message.reply("Provide either a category, command, event, function, 'languages', or 'reactionHandlers' to reload.", false)
+        if (!args[0]) return message.reply("Provide either a category, command, event, function, 'languages', or 'reactionHandlers' to reload.", { ping: false })
         if (args[0] === "category") {
             let error = [];
             let success = [];
 
-            if (!args[1]) return message.reply("Provide a category's name to reload it.", false)
+            if (!args[1]) return message.reply("Provide a category's name to reload it.", { ping: false })
 
             client.commands.filter(c => c.config.category === args[1]).map(cc => {
                 Reload(client, cc.config.category, cc.config.name, args[2])
@@ -24,15 +24,15 @@ module.exports = {
                 else if (check.includes("Reloaded command:")) return success.push("1")
             })
  
-            return message.reply(`\`\`\`css\nSuccessful Commands: ${success.length}\nErrored Commands: ${error.length} ${error.length > 0 ? "\n" + error.map(c => c).join("\n") : " "}`, false)
+            return message.reply(`\`\`\`css\nSuccessful Commands: ${success.length}\nErrored Commands: ${error.length} ${error.length > 0 ? "\n" + error.map(c => c).join("\n") : " "}`, { ping: false })
         }
         if (args[0] === "languages") {
-            return message.reply(Reload(client, "languages"), false)
+            return message.reply(Reload(client, "languages"), { ping: false })
         }
         if (args[0] === "reactionHandlers") {
-            if (!args[1]) return message.reply("Provide a reaction handler file name to reload.", false)
-            return message.reply(Reload(client, "reactionHandlers", args[1]), false)
+            if (!args[1]) return message.reply("Provide a reaction handler file name to reload.", { ping: false })
+            return message.reply(Reload(client, "reactionHandlers", args[1]), { ping: false })
         }
-        message.reply(Reload(client, args[0], args[1], args[2]), false)
+        message.reply(Reload(client, args[0], args[1], args[2]), { ping: false })
     }
 }

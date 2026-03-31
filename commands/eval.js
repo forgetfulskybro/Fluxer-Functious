@@ -14,7 +14,7 @@ module.exports = {
 
     try {
       let codein = args.join(" ");
-      if (!args[0]) return message.reply("Send me code.", false);
+      if (!args[0]) return message.reply("Send me code.", { ping: false });
 
       let result = await eval(codein);
 
@@ -73,7 +73,7 @@ module.exports = {
 
       const full = prefix + output + suffix;
       if (full.length <= 2000) {
-        await message.reply(full, false);
+        await message.reply(full, { ping: false });
         return;
       }
 
@@ -95,7 +95,7 @@ module.exports = {
         }
 
         if (isFirst) {
-          await message.reply(toSend, false);
+          await message.reply(toSend, { ping: false });
           isFirst = false;
         } else {
           await message.channel.send(toSend);
@@ -105,7 +105,7 @@ module.exports = {
       }
     } catch (e) {
       const errMsg = (e?.stack || e?.message || "Unknown Error").slice(0, 1985);
-      await message.reply("```js\n" + errMsg + "```", false);
+      await message.reply("```js\n" + errMsg + "```", { ping: false });
     }
   },
 };
