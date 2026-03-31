@@ -1,6 +1,6 @@
-const { EmbedBuilder } = require('@fluxerjs/core');
-const PollDB = require("../models/polls");
-const Canvas = require('canvas');
+import { EmbedBuilder } from '@fluxerjs/core';
+import PollDB from "../models/polls";
+import { createCanvas, loadImage } from 'canvas';
 const format = `${(new Date().getMonth() + 1) < 10 ? `0${new Date().getMonth() + 1}` : new Date().getMonth() + 1}/${new Date().getDate()}/${new Date().getFullYear()} ${new Date().getHours()}:${(new Date().getMinutes() < 10 ? '0' : '') + new Date().getMinutes()}`;
 class Polls {
     constructor({ time, client, name, options, users, avatars, votes, owner, lang }) {
@@ -136,7 +136,7 @@ class Polls {
         let textHeight = this.textHeight;
 
         var width = 600, height = this.size.canvas, padding = 10;
-        const canvas = Canvas.createCanvas(width, height);
+        const canvas = createCanvas(width, height);
         this.canvas = canvas;
         const ctx = this.canvas.getContext('2d');
         this.ctx = ctx;
@@ -278,7 +278,7 @@ class Polls {
             ctx.beginPath();
             let user = users[i];
 
-            const a = Canvas.createCanvas(rad * 2, rad * 2);
+            const a = createCanvas(rad * 2, rad * 2);
             const context = a.getContext("2d");
 
             context.beginPath();
@@ -286,7 +286,7 @@ class Polls {
             context.closePath();
             context.clip();
 
-            const avatar = await Canvas.loadImage(user);
+            const avatar = await loadImage(user);
             context.drawImage(avatar, 0, 0, rad * 2, rad * 2);
             ctx.drawImage(a, pos, yPos);
 
@@ -303,4 +303,4 @@ class Polls {
     }
 }
 
-module.exports = Polls;
+export default Polls;

@@ -8,4 +8,4 @@ function dhms(str, sec = false) {
     return [tail, ...parts].reduce((a, b) => a + b, 0);
 };
 
-module.exports = dhms;
+export default dhms;

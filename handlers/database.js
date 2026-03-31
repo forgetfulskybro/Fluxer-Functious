@@ -1,10 +1,10 @@
 const { connect } = require("mongoose").set("strictQuery", true);
-const color = require("../functions/colorCodes");
+import color from "../functions/colorCodes";
 
-module.exports = class DatabaseHandler {
+export default class DatabaseHandler {
   constructor(connectionString) {
     this.cache = new Map();
-    this.guildModel = require("../models/guilds");
+    this.guildModel = require("../models/guilds").default;
     this.connectionString = connectionString;
   }
 

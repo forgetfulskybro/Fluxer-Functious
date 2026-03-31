@@ -1,5 +1,6 @@
-const db = require("../models/polls");
-const Polls = require("./poll");
+import db from "../models/polls";
+import Polls from "./poll";
+
 async function checkPolls(client) {
     let polls = await db.find();
     if (!polls || polls.length === 0) return;
@@ -21,4 +22,4 @@ async function checkPolls(client) {
     }
 }
 
-module.exports = checkPolls;
+export default checkPolls;

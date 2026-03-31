@@ -1,4 +1,5 @@
-const db = require("../models/giveaways");
+import db from "../models/giveaways";
+
 async function checkGiveaways(client) {
   let giveaways = await db.find({ ended: false });
   if (!giveaways) return;
@@ -17,4 +18,4 @@ async function checkGiveaways(client) {
   }
 }
 
-module.exports = checkGiveaways;
+export default checkGiveaways;

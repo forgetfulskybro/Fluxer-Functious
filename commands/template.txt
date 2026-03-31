@@ -1,19 +1,24 @@
-const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
+import { EmbedBuilder, PermissionFlags } from "@fluxerjs/core";
 
-module.exports = {
-    config: {
-        name: "",
-        usage: true,
-        cooldown: 5000,
-        available: true,
-        permissions: {},
-        aliases: []
-    },
-    run: async (client, message, args, db) => {
-
-        new Paginator([], { timeout: 5 * 2e4, user: message.author.id, client: client })
-            .add([embed, embed2])
-            .start(message.channel);
-    },
-};
+export const config = {
+    name: "",
+    usage: true,
+    cooldown: 5000,
+    available: true,
+    permissions: {},
+    aliases: []
+}
+/**
+ * 
+ * @param {import('@fluxerjs/core').Client} client 
+ * @param {import('@fluxerjs/core').Message} message 
+ * @param {string[]} args 
+ * @param {*} db 
+ * @returns 
+ */
+export async function run(client, message, args, db) {
+    new Paginator([], { timeout: 5 * 2e4, user: message.author.id, client: client })
+        .add([embed, embed2])
+        .start(message.channel);
+}
  

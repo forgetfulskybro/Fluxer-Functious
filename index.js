@@ -1,13 +1,14 @@
-require('dotenv').config({ quiet: true });
-const getVoiceStates = require('./functions/getVoiceStates');
-const { Collection } = require("@discordjs/collection");
-const color = require("./functions/colorCodes");
-const { Client } = require("@fluxerjs/core");
-const Sentry = require("@sentry/node");
+import getVoiceStates from './functions/getVoiceStates.js';
+import { Collection } from "@discordjs/collection";
+import color from "./functions/colorCodes";
+import { Client } from "@fluxerjs/core";
+import Sentry, { init } from "@sentry/node";
+import 'dotenv/config'
 
 const client = new Client({ 
   intents: 0,
   presence: {
+    status: 'online',
     custom_status: {
       emoji_id: "",
       emoji_name: "",
@@ -17,10 +18,10 @@ const client = new Client({
   waitForGuilds: true
 });
 
-const TranslationHandler = require("./handlers/translation");
-const DatabaseHandler = require("./handlers/database");
+import TranslationHandler from "./handlers/translation";
+import DatabaseHandler from "./handlers/database";
 
-if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 1.0, profilesSampleRate: 1.0 });
+if (process.env.SENTRY_DSN) init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 1.0, profilesSampleRate: 1.0 });
 
 client.config = require("./config");
 client.translate = new TranslationHandler();

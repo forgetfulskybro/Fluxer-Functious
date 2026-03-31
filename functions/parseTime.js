@@ -93,4 +93,4 @@ function parseTime(input, tz = "America/New_York") {
   };
 }
 
-module.exports = parseTime;
+export default parseTime;

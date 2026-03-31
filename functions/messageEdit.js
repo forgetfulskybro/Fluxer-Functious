@@ -1,5 +1,6 @@
-const { EmbedBuilder } = require('@fluxerjs/core');
-const getRoles = require('./getRoles');
+import { EmbedBuilder } from '@fluxerjs/core';
+import getRoles from './getRoles';
+
 async function Collector(client, message, db) {
   if (message.content === `${db.prefix}roles stop`) {
     client.messageEdit.delete(message.author.id);
@@ -32,4 +33,4 @@ async function Collector(client, message, db) {
   });
 }
 
-module.exports = Collector;
+export default Collector;

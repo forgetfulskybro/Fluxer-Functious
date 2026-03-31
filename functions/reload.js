@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs'
+import path from 'path';
 
 function Reload(client, category, name) {
     if (category === "events") {
@@ -86,4 +86,4 @@ function Reload(client, category, name) {
     }
 }
 
-module.exports = Reload;
+export default Reload;

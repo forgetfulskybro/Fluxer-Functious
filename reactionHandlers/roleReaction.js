@@ -1,4 +1,4 @@
-module.exports = async (client, message, userId, emojiId, event = "add") => {
+export default async (client, message, userId, emojiId, event = "add") => {
   const emote = message.emoji?.id
     ? `<:${emojiId}:${message.emoji.id}>`
     : emojiId;

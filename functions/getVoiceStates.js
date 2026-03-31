@@ -1,6 +1,6 @@
-const { getVoiceManager } = require("@fluxerjs/voice");
-const { Events, GatewayDispatchEvents } = require("@fluxerjs/core");
-const color = require("../functions/colorCodes");
+import { getVoiceManager } from "@fluxerjs/voice";
+import { Events, GatewayDispatchEvents } from "@fluxerjs/core";
+import color from "../functions/colorCodes";
 
 async function getVoiceStates(client) {
   let totalSeeded = 0;
@@ -124,4 +124,4 @@ async function getVoiceStates(client) {
   client.once(Events.Ready, fallbackScan);
 }
 
-module.exports = getVoiceStates;
+export default getVoiceStates;

@@ -14,4 +14,4 @@ function fetchTime(ms, client, lang, short=false) {
   return `${years ? `${years} ${client.translate.get(lang, "Functions.fetchTime.years")},` : ""} ${days ? `${days} ${client.translate.get(lang, "Functions.fetchTime.days")},` : ""} ${hours ? `${hours} ${client.translate.get(lang, "Functions.fetchTime.hours")},` : ""} ${minutes ? `${minutes} ${client.translate.get(lang, "Functions.fetchTime.minutes")},` : ""} ${seconds} ${client.translate.get(lang, "Functions.fetchTime.seconds")}`;
 }
 
-module.exports = fetchTime;
+export default fetchTime;

@@ -1,4 +1,4 @@
-module.exports = async (client, channel) => {
+export default async (client, channel) => {
   const guildId = channel.guildId;
   const db = await client.database.getGuild(guildId);
   if (!db) return;

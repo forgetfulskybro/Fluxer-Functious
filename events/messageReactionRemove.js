@@ -1,11 +1,11 @@
-const editCollectorHandler = require("../reactionHandlers/editCollector");
-const roleReactionHandler = require("../reactionHandlers/roleReaction");
-const collectorHandler = require("../reactionHandlers/collector");
-const giveawayHandler = require("../reactionHandlers/giveaway");
-const pollHandler = require("../reactionHandlers/poll");
-const Giveaways = require("../models/giveaways");
+import editCollectorHandler from "../reactionHandlers/editCollector";
+import roleReactionHandler from "../reactionHandlers/roleReaction";
+import collectorHandler from "../reactionHandlers/collector";
+import giveawayHandler from "../reactionHandlers/giveaway";
+import pollHandler from "../reactionHandlers/poll";
+import Giveaways from "../models/giveaways";
 
-module.exports = async (client, message, user) => {
+export default async (client, message, user) => {
     if (user.bot) return;
 
     const userId = user.id;

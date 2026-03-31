@@ -1,7 +1,8 @@
-const PollDB = require("../models/polls");
-const Giveaways = require("../models/giveaways");
-const GuildDB = require("../models/guilds");
-module.exports = async (client, msg) => {
+import PollDB from "../models/polls";
+import Giveaways from "../models/giveaways";
+import GuildDB from "../models/guilds";
+
+export default async (client, msg) => {
   const paginateCheck = client.paginate?.get(msg.author?.id);
   const pollCheck = client.polls.get(msg.id);
   if (paginateCheck) {

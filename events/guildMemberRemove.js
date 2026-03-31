@@ -1,5 +1,6 @@
-const GuildDB = require("../models/guilds");
-module.exports = async (client, member) => {
+import GuildDB from "../models/guilds";
+
+export default async (client, member) => {
   if (member.user.bot) return;
   const db = await client.database.getGuild(member.guild.id);
   if (db.stickyRolesEnabled) {

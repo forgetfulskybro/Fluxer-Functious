@@ -1,4 +1,5 @@
-const db = require("../models/guilds");
+import db from "../models/guilds";
+
 async function checkRoles(client) {
   let rr = await db.find({ $expr: { $gt: [{ $size: "$roles" }, 0] } });
   if (!rr || rr.length === 0) return;
@@ -30,4 +31,4 @@ async function checkRoles(client) {
   }
 }
 
-module.exports = checkRoles;
+export default checkRoles;

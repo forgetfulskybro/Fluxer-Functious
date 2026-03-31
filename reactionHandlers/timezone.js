@@ -1,5 +1,5 @@
-const { Webhook, EmbedBuilder } = require("@fluxerjs/core");
-module.exports = async (client, message, userId) => {
+import { Webhook, EmbedBuilder } from "@fluxerjs/core";
+export default async (client, message, userId) => {
   const db = await client.database.getGuild(message.guildId);
   const userTimezone = db.userTimezones.find((u) => u.userId === userId);
   message.guild.fetchChannels();

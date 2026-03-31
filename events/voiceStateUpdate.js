@@ -1,5 +1,6 @@
-const { PermissionFlags, resolvePermissionsToBitfield } = require('@fluxerjs/core');
-module.exports = async (client, oldState, newState) => {
+import { PermissionFlags, resolvePermissionsToBitfield } from '@fluxerjs/core';
+
+export default async (client, oldState, newState) => {
   const state = newState ?? oldState;
   const userId = state?.userId ?? state?.user_id ?? state?.member?.user?.id;
   if (!userId) return;

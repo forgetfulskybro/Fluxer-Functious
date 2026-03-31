@@ -1,14 +1,13 @@
-const editCollectorHandler = require("../reactionHandlers/editCollector");
-const roleReactionHandler = require("../reactionHandlers/roleReaction");
-const paginationHandler = require("../reactionHandlers/pagination");
-const collectorHandler = require("../reactionHandlers/collector");
-const giveawayHandler = require("../reactionHandlers/giveaway");
-const timezoneHandler = require("../reactionHandlers/timezone");
-const pollHandler = require("../reactionHandlers/poll");
-const parseTime = require("../functions/parseTime");
-const Giveaways = require("../models/giveaways");
+import editCollectorHandler from "../reactionHandlers/editCollector";
+import roleReactionHandler from "../reactionHandlers/roleReaction";
+import paginationHandler from "../reactionHandlers/pagination";
+import collectorHandler from "../reactionHandlers/collector";
+import giveawayHandler from "../reactionHandlers/giveaway";
+import timezoneHandler from "../reactionHandlers/timezone";
+import pollHandler from "../reactionHandlers/poll";
+import Giveaways from "../models/giveaways";
 
-module.exports = async (client, message, user) => {
+export default async (client, message, user) => {
     if (user.bot) return;
 
     const userId = user.id;

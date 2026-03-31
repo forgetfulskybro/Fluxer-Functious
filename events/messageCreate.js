@@ -1,10 +1,10 @@
-const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
-const Collector = require("../functions/messageCollector");
-const EditCollector = require("../functions/messageEdit");
-const parseTime = require("../functions/parseTime");
-const color = require("../functions/colorCodes");
+import { EmbedBuilder, PermissionFlags } from "@fluxerjs/core";
+import Collector from "../functions/messageCollector";
+import EditCollector from "../functions/messageEdit";
+import parseTime from "../functions/parseTime";
+import color from "../functions/colorCodes";
 
-module.exports = async (client, message) => {
+export default async (client, message) => {
   if (
     !message?.channel ||
     message.channel.type === 1 ||

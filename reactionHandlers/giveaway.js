@@ -1,6 +1,6 @@
-const { EmbedBuilder } = require("@fluxerjs/core");
+import { EmbedBuilder } from "@fluxerjs/core";
 
-module.exports = async (client, message, userId, db, emojiId, event = "add") => {
+export default async (client, message, userId, db, emojiId, event = "add") => {
     if (event === "remove") {
         if (client.reactions.get(userId)) return;
         if (emojiId === client.config.emojis.confetti && !db.ended) {

@@ -1,11 +1,11 @@
-const checkVoiceStates = require("../functions/checkVoiceStates");
-const checkGiveaways = require("../functions/checkGiveaways");
-const giveawaysEnd = require("../functions/giveawaysEnd");
-const checkRoles = require("../functions/checkRoles");
-const checkPolls = require("../functions/checkPolls");
-const color = require("../functions/colorCodes");
+import checkVoiceStates from "../functions/checkVoiceStates";
+import checkGiveaways from "../functions/checkGiveaways";
+import giveawaysEnd from "../functions/giveawaysEnd";
+import checkRoles from "../functions/checkRoles";
+import checkPolls from "../functions/checkPolls";
+import color from "../functions/colorCodes";
 
-module.exports = async (client) => {
+export default async (client) => {
   console.log(color("%", `%2[Bot_Ready]%7 :: ${client.user.username} is ready`));
 
   setTimeout(async () => { await checkVoiceStates(client) }, 4500);

@@ -1,4 +1,4 @@
-const db = require("../models/guilds");
+import db from "../models/guilds";
 
 async function checkVoiceStates(client) {
   const guilds = await db.find({
@@ -39,4 +39,4 @@ async function checkVoiceStates(client) {
   }
 }
 
-module.exports = checkVoiceStates;
+export default checkVoiceStates;

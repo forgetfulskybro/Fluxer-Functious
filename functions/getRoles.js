@@ -1,10 +1,10 @@
-const { EmbedBuilder } = require('@fluxerjs/core');
-const emoji = require('node-emoji');
+import { EmbedBuilder } from '@fluxerjs/core';
+import { emojify } from 'node-emoji';
 
 async function getRoles(roles, message, client, db, format = true, position = true) {
   try { message.guild.fetchRoles(); } catch {}
   const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
-  const processedRoles = roles.map(r => emoji.emojify(r));
+  const processedRoles = roles.map(r => emojify(r));
   const roleIds = []
   let newRoles = processedRoles.map((processed) => {
     return [...message.guild.roles]
@@ -60,4 +60,4 @@ async function getRoles(roles, message, client, db, format = true, position = tr
   return roleIds;
 }
 
-module.exports = getRoles;
+export default getRoles;

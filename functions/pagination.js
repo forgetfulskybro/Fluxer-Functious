@@ -1,4 +1,4 @@
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class Paginator {
   constructor({ user, client, timeout }) {

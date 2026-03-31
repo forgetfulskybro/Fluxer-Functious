@@ -1,4 +1,5 @@
-const color = require("../functions/colorCodes")
+import color from "../functions/colorCodes";
+
 class TranslationHandler {
     constructor(languages) {
 
@@ -95,4 +96,4 @@ class TranslationHandler {
     }
 };
 
-module.exports = TranslationHandler;
+export default TranslationHandler;

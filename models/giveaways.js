@@ -1,4 +1,4 @@
-const { Schema, model } = require("mongoose");
+import { Schema, model } from "mongoose";
 
 const giveaways = new Schema({
     owner: { type: String, required: true },
@@ -18,4 +18,4 @@ const giveaways = new Schema({
     endDate: { type: String }
 });
 
-module.exports = model("giveaways", giveaways);
+export default model("giveaways", giveaways);

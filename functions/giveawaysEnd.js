@@ -1,5 +1,6 @@
-const Giveaways = require("../models/giveaways");
-const { EmbedBuilder } = require("@fluxerjs/core");
+import Giveaways from "../models/giveaways";
+import { EmbedBuilder } from "@fluxerjs/core";
+
 async function giveawaysEnd(client) {
   setInterval(async () => {
     let giveaways = await Giveaways.find({ ended: false });
@@ -74,4 +75,4 @@ async function giveawaysEnd(client) {
   }, 60000);
 }
 
-module.exports = giveawaysEnd;
+export default giveawaysEnd;

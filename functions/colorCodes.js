@@ -23,4 +23,4 @@ function colors(altColorChar, textToTranslate) {
     return textToTranslate.replace(regex, (match, code) => colorMap[`${altColorChar}${code}`] || '');
 };
 
-module.exports = colors;
+export default colors;

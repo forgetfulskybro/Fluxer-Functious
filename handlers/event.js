@@ -1,6 +1,7 @@
-const { readdirSync } = require("fs")
-const color = require("../functions/colorCodes")
-module.exports = (client) => {
+import { readdirSync } from "fs";
+import color from "../functions/colorCodes";
+
+export default (client) => {
     const events = readdirSync(`./events/`).filter(d => d.endsWith('.js'));
     for (let file of events) {
         let evt = require(`../events/${file}`);

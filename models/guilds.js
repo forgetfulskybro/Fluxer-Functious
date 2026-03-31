@@ -1,4 +1,4 @@
-const { Schema, model } = require("mongoose");
+import { Schema, model } from "mongoose";
 
 const guilds = new Schema({
   id: { type: String },
@@ -25,4 +25,4 @@ const guilds = new Schema({
   },
 });
 
-module.exports = model("guilds", guilds);
+export default model("guilds", guilds);

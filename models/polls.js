@@ -1,4 +1,4 @@
-const { Schema, model } = require("mongoose");
+import { Schema, model } from "mongoose";
 
 const polls = new Schema({
     owner: { type: String },
@@ -14,4 +14,4 @@ const polls = new Schema({
     options: { type: Object },
 });
 
-module.exports = model("polls", polls); 
+export default model("polls", polls); 

@@ -1,6 +1,6 @@
-const color = require("../functions/colorCodes");
+import color from "../functions/colorCodes";
 
-module.exports = async (client, error) => {
+export default async (client, error) => {
   console.log(color("%", "%4[Error_Handling] :: Websocket Connection%c"));
   console.log(error);
   process.exit(1);

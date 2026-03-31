@@ -1,6 +1,6 @@
-const { EmbedBuilder } = require("@fluxerjs/core");
+import { EmbedBuilder } from "@fluxerjs/core";
 
-module.exports = async (client, message, userId, collector, reactionChan, reactionMsg, emojiId, event = "add") => {
+export default async (client, message, userId, collector, reactionChan, reactionMsg, emojiId, event = "add") => {
     if (emojiId === client.config.emojis.check && collector.oldMessageId === reactionMsg.id) {
         if (collector.roles.length === 0) {
           const reactions = [...collector.rolesDone.map(e => e.emoji)];

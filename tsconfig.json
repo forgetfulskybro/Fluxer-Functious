@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "target": "ES2024",
+        "allowJs": true,
+        "checkJs": true,
+        "jsx": "react-jsx",
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        "strict": true
+    },
+    "exclude": [
+        "node_modules",
+        "**/node_modules/*"
+    ],
+    "include": ["commands/**/*", "events/**/*", "handlers/**/*", "languages/**/*", "models/**/*", "functions/**/*", "reactionHandlers/**/*", "config.js", "index.js", "types.d.ts"]
+}

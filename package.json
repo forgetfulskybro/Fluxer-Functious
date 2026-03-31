@@ -3,6 +3,7 @@
   "scripts": {
     "start": "node index.js"
   },
+  "type": "module",
   "dependencies": {
     "@discordjs/collection": "^2.1.1",
     "@fluxerjs/core": "^1.2.4",
@@ -19,5 +20,8 @@
     "Discord": "forgetfulskybro",
     "Fluxer": "ForGetFulSkyBro#9999",
     "GitHub": "https://github.com/forgetfulskybro/fluxer-functious"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.10"
   }
 }

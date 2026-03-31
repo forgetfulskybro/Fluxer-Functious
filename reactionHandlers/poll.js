@@ -1,5 +1,5 @@
-const { EmbedBuilder } = require("@fluxerjs/core");
-const PollDB = require("../models/polls");
+import { EmbedBuilder } from "@fluxerjs/core";
+import PollDB from "../models/polls.js";
 
 const emojis = [
     { name: "1️⃣", id: 0 }, { name: "2️⃣", id: 1 }, { name: "3️⃣", id: 2 },
@@ -8,7 +8,7 @@ const emojis = [
     { name: "🔟", id: 9 }, { name: "🛑", id: "stop" }
 ];
 
-module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId, event = "add") => {
+export default async (client, message, userId, pollCheck, reactionMsg, emojiId, event = "add") => {
     if (event === "remove") {
         if (client.reactions.get(userId)) {
           if (client.timeout.get(userId)) return;

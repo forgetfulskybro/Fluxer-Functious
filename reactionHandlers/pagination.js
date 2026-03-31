@@ -1,4 +1,4 @@
-module.exports = async (client, message, paginateCheck, reactionMsg, emojiId) => {
+export default async (client, message, paginateCheck, reactionMsg, emojiId) => {
     const pages = paginateCheck.pages;
     let page = paginateCheck.page;
 
