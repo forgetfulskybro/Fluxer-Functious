@@ -10,9 +10,9 @@ module.exports = async (client) => {
   console.log(color("%", `%2[Bot_Ready]%7 :: ${client.user.username} is ready`));
 
   setTimeout(async () => { await checkVoiceStates(client) }, 4500);
-  await startGiveawaysCron(client);
-  await startReminderCron(client);
-  await startPollsCron(client);
+  startGiveawaysCron(client);
+  startReminderCron(client);
+  startPollsCron(client);
   //await checkInvites(client);
   await checkRoles(client);
 }

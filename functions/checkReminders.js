@@ -78,7 +78,7 @@ function startReminderCron(client) {
         cronJob.stop();
     }
 
-    cronJob = cron.schedule("* * * * *", async () => {
+    cronJob = cron.schedule("*/5 * * * * *", async () => {
         await processDueReminders(client);
     });
 }

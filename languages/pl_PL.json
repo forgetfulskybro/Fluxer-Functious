@@ -396,7 +396,7 @@
       "change": "To change the prefix, use",
       "new": "new prefix",
       "description": "Changes default prefix to your own",
-      "usage": "<text>"
+      "usage": "change <text>"
     },
     "credits": {
       "thankyou": "As developer of Functious, I wanted to thank everyone who contributed toward the bot.",

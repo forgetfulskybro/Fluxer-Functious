@@ -19,7 +19,7 @@ class Polls {
 
     async start(message, poll, first = false) {
       message = await message;
-        this.client.polls.set(message.id, { poll, messageId: message.id, channelId: message.channelId, users: this.users, owner: this.owner, lang: this.lang })
+        this.client.polls.set(message.id, { poll, messageId: message.id, channelId: message.channelId, owner: this.owner })
 
         if (first) {
           const pollImage = await fetch(`${process.env.CDN}/api/upload`, {
@@ -134,18 +134,15 @@ class Polls {
     }
 
     async addVote(option, user, avatar, id) {
-        if (this.avatars.length === 6) this.avatars.shift();
-        this.avatars.push(avatar);
         this.votes[option]++;
-        await PollDB.findOneAndUpdate({ messageId: id }, { $push: { users: { user: user, option: option }, avatars: avatar }, $inc: { [`votes.${option}`]: 1 } });
+        await PollDB.findOneAndUpdate({ messageId: id }, { $push: { users: { user: user, option: option, avatar: avatar } }, $inc: { [`votes.${option}`]: 1 } });
         await this.update();
         return this.canvas;
     }
 
-    async removeVote(option, user, avatar, id) {
-        this.avatars.splice(this.avatars.indexOf(avatar), 1);
+    async removeVote(option, user, id) {
         this.votes[option]--;
-        await PollDB.findOneAndUpdate({ messageId: id }, { $pull: { users: { user: user, option: option }, avatars: avatar }, $inc: { [`votes.${option}`]: -1 } });
+        await PollDB.findOneAndUpdate({ messageId: id }, { $pull: { users: { user: user, option: option } }, $inc: { [`votes.${option}`]: -1 } });
         await this.update();
         return this.canvas;
     }
@@ -236,12 +233,13 @@ class Polls {
         ctx.fillText(votes, 5, rad + h);
 
         // Avatars
-        var pos = rad * users.length + 10 + metrics.width;
+        const avatars = this.users.map(u => u.avatar).filter(a => a).slice(0, 15);
+        var pos = rad * avatars.length + 10 + metrics.width;
         var yPos = 6;
-        users.reverse();
-        for (let i = 0; i < users.length; i++) {
+        avatars.reverse();
+        for (let i = 0; i < avatars.length; i++) {
             ctx.beginPath();
-            let user = users[i];
+            const avatarURL = avatars[i];
 
             const a = Canvas.createCanvas(rad * 2, rad * 2);
             const context = a.getContext("2d");
@@ -251,8 +249,8 @@ class Polls {
             context.closePath();
             context.clip();
 
-            const avatar = await Canvas.loadImage(user);
-            context.drawImage(avatar, 0, 0, rad * 2, rad * 2);
+            const loadedAvatar = await Canvas.loadImage(avatarURL);
+            context.drawImage(loadedAvatar, 0, 0, rad * 2, rad * 2);
             ctx.drawImage(a, pos, yPos);
 
             ctx.closePath();

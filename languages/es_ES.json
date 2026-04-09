@@ -398,7 +398,7 @@
       "change": "Para cambiar el prefijo, use",
       "new": "nuevo prefijo",
       "description": "Cambia el prefijo predeterminado al tuyo",
-      "usage": "<texto>"
+      "usage": "change <texto>"
     },
     "credits": {
       "thankyou": "Como desarrollador de Functious, quiero darle las gracias a todos los que han contribuido al bot.",

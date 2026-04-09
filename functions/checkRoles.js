@@ -13,11 +13,7 @@ async function checkRoles(client) {
           try {
             let channel = await client.channels.resolve(role.chanId);
             channel?.messages?.fetch(role.msgId);
-          } catch {
-            // await client.database.updateGuild(r.id, {
-            //   roles: r.roles.filter((e) => e.msgId !== role.msgId),
-            // });
-          }
+          } catch { }
           
           if (role.roles.length === 0) {
             return await client.database.updateGuild(r.id, {

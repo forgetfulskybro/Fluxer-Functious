@@ -12,6 +12,7 @@ const polls = new Schema({
   now: { type: Number },
   desc: { type: String },
   options: { type: Object },
+  lang: { type: String },
   ended: { type: Boolean, default: false },
 });
 

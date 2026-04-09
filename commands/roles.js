@@ -4,18 +4,29 @@ const pick = ["content", "embed"];
 const Paginator = require("../functions/pagination");
 const ROLE_LINE_PATTERN = /(?:[\p{Emoji_Presentation}\p{Extended_Pictographic}]|<:[a-zA-Z0-9_]+:\d+>)\s*(\w+)/gu;
 
-function extractRolesAndReplace(text) {
+function extractRolesAndReplace(text, roles) {
     const replacements = [];
-    let match;
+    const processed = new Set();
 
-    while ((match = ROLE_LINE_PATTERN.exec(text)) !== null) {
-        const fullMatch = match[0];
-        const role = match[1];
+    for (const roleData of roles || []) {
+        const emoji = roleData.emoji;
+        const roleName = roleData.name || roleData.roleName;
 
-        replacements.push({
-            search: fullMatch,
-            replace: `{role:${role}}`
-        });
+        if (!emoji || !roleName || processed.has(emoji)) continue;
+        processed.add(emoji);
+
+        const emojiRegex = new RegExp(
+            emoji.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\w*',
+            'gi'
+        );
+
+        let match;
+        while ((match = emojiRegex.exec(text)) !== null) {
+            replacements.push({
+                search: match[0],
+                replace: `{role:${roleName}}`
+            });
+        }
     }
 
     let result = text;
@@ -132,7 +143,7 @@ module.exports = {
               if (fetched.content.length > 0) type = "content"
               else type = "embed"
 
-              let startText = extractRolesAndReplace(fetched.content);
+              let startText = extractRolesAndReplace(fetched.content, editmsg.roles);
               const editcoll = await client.messageEdit.set(message.author.id, {
                 user: message.author.id,
                 timeout: null,

@@ -16,6 +16,7 @@ const CONFIG = {
   MIN_TIME_SECONDS: 59,
   MAX_TIME_SECONDS: 63115209,
   WORDS_TO_REMOVE: ["me", "to", "for"],
+  MENTIONS: ["@here", "@everyone"]
 };
 
 const timeRegex =
@@ -27,10 +28,16 @@ function truncate(str, maxLen) {
 }
 
 function cleanReminderMessage(text) {
-  const words = text.split(/\s+/);
+  let cleaned = text;
+  CONFIG.MENTIONS.forEach(mention => {
+    cleaned = cleaned.replace(new RegExp(mention, 'gi'), '');
+  });
+
+  const words = cleaned.split(/\s+/);
   const removedWords = new Set();
-  
+
   return words
+    .filter((word) => !CONFIG.MENTIONS.includes(word.toLowerCase()))
     .filter((word) => {
       const lowerWord = word.toLowerCase();
       if (CONFIG.WORDS_TO_REMOVE.includes(lowerWord) && !removedWords.has(lowerWord)) {

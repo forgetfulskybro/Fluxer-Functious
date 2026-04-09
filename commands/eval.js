@@ -104,7 +104,7 @@ module.exports = {
       const paginator = new Paginator({
         user: message.author.id,
         client,
-        timeout: 60000,
+        timeout: 600000,
       });
 
       paginator.add(pages).start(message.channel);

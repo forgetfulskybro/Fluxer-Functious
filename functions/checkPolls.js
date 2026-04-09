@@ -17,11 +17,10 @@ async function endPoll(client, poll) {
     const newPoll = new Polls({
       time: 0,
       client,
-      name: { name: poll.name, description: poll.desc },
+      name: { name: "", description: poll.desc },
       options: poll.options,
       votes: poll.votes,
       users: poll.users,
-      avatars: poll.avatars,
       owner: poll.owner,
       lang: poll.lang,
     });
@@ -67,7 +66,8 @@ async function endPoll(client, poll) {
       ],
     });
 
-    await msg.removeAllReactions().catch(() => {});
+    await msg.removeAllReactions().catch(() => { });
+    client.polls.delete(poll.messageId);
   } catch {}
 }
 
@@ -85,12 +85,40 @@ async function processDuePolls(client) {
   }
 }
 
-function startPollsCron(client) {
+async function initializePolls(client) {
+  const polls = await db.find({ ended: false });
+  if (!polls?.length) return;
+
+  for (const poll of polls) {
+    const pollInstance = new Polls({
+      time: poll.time,
+      client,
+      name: { name: "", description: poll.desc },
+      options: poll.options,
+      votes: poll.votes,
+      users: poll.users,
+      owner: poll.owner,
+      lang: poll.lang,
+    });
+    //await pollInstance.update();
+
+    client.polls.set(poll.messageId, {
+      poll: pollInstance,
+      messageId: poll.messageId,
+      channelId: poll.channelId,
+      owner: poll.owner,
+    });
+  }
+}
+
+async function startPollsCron(client) {
   if (cronJob) {
     cronJob.stop();
   }
 
-  cronJob = cron.schedule("* * * * *", async () => {
+  await initializePolls(client);
+
+  cronJob = cron.schedule("*/5 * * * * *", async () => {
     await processDuePolls(client);
   });
 }

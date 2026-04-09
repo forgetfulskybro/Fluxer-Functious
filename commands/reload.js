@@ -1,22 +1,43 @@
-const Reload = require("../functions/reload")
+const Reload = require("../functions/reload");
+const { RELOAD_TYPES } = require("../functions/reload");
+const { EmbedBuilder } = require("@erinjs/core");
+
 module.exports = {
-    config: {
-        name: "reload",
-        cooldown: 0,
-        available: "Owner",
-        permissions: {},
-        aliases: ["r"]
-    },
-    run: async (client, message, args) => {     
-        if (!client.config.owners.includes(message.author.id)) return;
-        if (!args[0]) return message.reply("Provide either a category, command, event, function, 'languages', or 'reactionHandlers' to reload.", false)
-        if (args[0] === "languages") {
-            return message.reply(Reload(client, "languages"), false)
-        }
-        if (args[0] === "reactionHandlers") {
-            if (!args[1]) return message.reply("Provide a reaction handler file name to reload.", false)
-            return message.reply(Reload(client, "reactionHandlers", args[1]), false)
-        }
-        message.reply(Reload(client, args[0], args[1], args[2]), false)
+  config: {
+    name: "reload",
+    cooldown: 0,
+    available: "Owner",
+    permissions: {},
+    aliases: ["r"]
+  },
+  run: async (client, message, args, db) => {
+    if (!client.config.owners.includes(message.author.id)) return;
+
+    const validTypes = ['command', 'event', 'function', 'reactionhandler', 'languages'];
+    const firstArg = args[0]?.toLowerCase();
+
+    let type, name;
+
+    if (!firstArg) {
+      const usageEmbed = new EmbedBuilder()
+        .setColor("#A52F05")
+        .setTitle("Reload Usage")
+        .setDescription(
+          `**Auto-detect:** \`${db.prefix}reload <filename>\`\n**Specify type:** \`${db.prefix}reload <type> <filename>\`\n\n**Types:** \`command\`, \`event\`, \`function\`, \`reactionHandler\`, \`languages\``
+        );
+      return message.reply({ embeds: [usageEmbed] });
     }
-}
+
+    if (validTypes.includes(firstArg)) {
+      type = firstArg === 'reactionhandler' ? 'reactionHandler' : firstArg;
+      name = args[1];
+    } else {
+      type = null;
+      name = firstArg;
+    }
+
+    const result = await Reload(client, message, type, name);
+    if (!result) return;
+    return message.reply({ embeds: [result] });
+  }
+};

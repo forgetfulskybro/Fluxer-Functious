@@ -19,8 +19,8 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
         }
         let convert = emojis.findIndex(e => e.name === emojiId);
         if (convert === 0 && convert !== 10 || convert !== -1 && convert !== 10) {
-            if (!pollCheck.users.find((u) => u.user === userId)) return;
-            if (pollCheck.users.find((u) => u.user === userId) && pollCheck.users.find((u) => u.user === userId).option !== convert) return;
+            if (!pollCheck.poll.users.find((u) => u.user === userId)) return;
+            if (pollCheck.poll.users.find((u) => u.user === userId) && pollCheck.poll.users.find((u) => u.user === userId).option !== convert) return;
 
             client.reactions.set(userId, 5000)
             setTimeout(() => client.reactions.delete(userId), 5000)
@@ -34,9 +34,8 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
                 }
             });
 
-            pollCheck.users = pollCheck.users.filter(object => object.user != userId);
-            const user = (client.users.cache.get(userId)) || await client.users.fetch(userId);
-            await pollCheck.poll.removeVote(convert, userId, user.displayAvatarURL(), message.messageId);
+            pollCheck.poll.users = pollCheck.poll.users.filter(object => object.user != userId);
+            await pollCheck.poll.removeVote(convert, userId, message.messageId);
 
             const pollImage = await fetch(`${process.env.CDN}/api/upload`, {
                     method: 'POST',
@@ -95,20 +94,16 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
         return client.users.get(userId)?.createDM().then(dm => dm.send(client.translate.get(pollCheck.lang, "Events.messageReactionAdd.tooFast"))).catch(() => {});
       }
 
-      if (pollCheck.users.find((u) => u.user === userId)) return;
-      if (pollCheck.users.find((u) => u.user === userId) && pollCheck.users.find((u) => u.user === userId).option !== convert) return;
+      if (pollCheck.poll.users.find((u) => u.user === userId)) return;
+      if (pollCheck.poll.users.find((u) => u.user === userId) && pollCheck.users.find((u) => u.user === userId).option !== convert) return;
 
       client.reactions.set(userId, Date.now() + 5000);
       setTimeout(() => client.reactions.delete(userId), 5000);
         
-      pollCheck.users.push({ user: userId, option: convert });
       const fetchedUser = await client.users.fetch(userId);
-      await pollCheck.poll.addVote(
-        convert,
-        userId,
-        fetchedUser.displayAvatarURL?.({ size: 256, format: 'png' }) ?? fetchedUser.avatarURL ?? "/assets/default-avatar.png",
-        message.messageId
-      );
+      const avatarURL = fetchedUser.displayAvatarURL?.({ size: 256, format: 'png' }) ?? fetchedUser.avatarURL ?? "/assets/default-avatar.png";
+      pollCheck.poll.users.push({ user: userId, option: convert, avatar: avatarURL });
+      await pollCheck.poll.addVote(convert, userId, avatarURL, message.messageId);
 
         let tooMuch = [];
         if (pollCheck.poll.options.description.length > 80)
@@ -132,7 +127,7 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
 
         await reactionMsg?.edit({
             embeds: [new EmbedBuilder()
-                .setDescription(`${client.translate.get(pollCheck.language, "Commands.giveaway.time")}: <t:${Math.floor((pollCheck.poll.time + Date.now()) / 1000)}:R>${tooMuch.length ? `\n\n${tooMuch.join("\n")}` : ""}\n_ _`)
+                .setDescription(`${client.translate.get(pollCheck.lang, "Commands.giveaway.time")}: <t:${Math.floor((pollCheck.poll.time + Date.now()) / 1000)}:R>${tooMuch.length ? `\n\n${tooMuch.join("\n")}` : ""}\n_ _`)
                 .setImage(`${process.env.CDN}${pollImage.url}`)
                 .setColor("#A52F05")]
         }).catch(() => {});
