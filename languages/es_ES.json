@@ -237,7 +237,13 @@
       "roleErrorsRemove": "Ninguno de los roles que proporcionaste son roles de unión, por favor proporciona roles de unión.\nRoles:",
       "someDuplicates": "Estos roles ya se unen a los roles:",
       "someRoleErrorsAdd": "Duplicar roles de unión que proporcionó:",
-      "someRoleErrorsRemove": "Roles de unión erróneos proporcionados:"
+      "someRoleErrorsRemove": "Roles de unión erróneos proporcionados:",
+      "noTimeOption": "No time was provided. Please provide a time, e.g. `{time:10m}`",
+      "timedRoles": "**Timed Roles**\nThis sub-command setups timed roles where it adds roles to users after a specific amount of time.",
+      "stickyTitle": "Sticky Roles",
+      "joinTitle": "Join Roles",
+      "timedTitle": "Timed Roles",
+      "viewTitle": "Viewing Autoroles"
     },
     "roles": {
       "description": "Configura los roles de reacción para tu servidor",

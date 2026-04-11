@@ -237,7 +237,13 @@
       "roleErrorsRemove": "None of the roles you provided are join roles, please provide join roles.\nRoles:",
       "someDuplicates": "Estes papéis já estão juntados:",
       "someRoleErrorsAdd": "Funções de entrada duplicadas que você forneceu:",
-      "someRoleErrorsRemove": "Papéis de entrada removidos que você forneceu:"
+      "someRoleErrorsRemove": "Papéis de entrada removidos que você forneceu:",
+      "noTimeOption": "No time was provided. Please provide a time, e.g. `{time:10m}`",
+      "timedRoles": "**Timed Roles**\nThis sub-command setups timed roles where it adds roles to users after a specific amount of time.",
+      "stickyTitle": "Sticky Roles",
+      "joinTitle": "Join Roles",
+      "timedTitle": "Timed Roles",
+      "viewTitle": "Viewing Autoroles"
     },
     "roles": {
       "description": "Configurar cargos de reações para seu servidor",

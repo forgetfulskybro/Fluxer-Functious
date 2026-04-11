@@ -357,7 +357,6 @@ module.exports = {
                 }
               } else {
                 const vc = await enableTemps();
-                console.log(vc)
                 if (!vc) return message.reply({ embeds: [createEmbed(EMBED_COLORS.ERROR, null, client.translate.get(db.language, "Commands.tempchannels.failedSetup"))] });
                 ({ category, voiceChannel } = vc);
               }

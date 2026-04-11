@@ -5,8 +5,12 @@ module.exports = class DatabaseHandler {
   constructor(connectionString) {
     this.cache = new Map();
     this.userCache = new Map();
+    this.pollCache = new Map();
+    this.giveawayCache = new Map();
     this.guildModel = require("../models/guilds");
     this.userModel = require("../models/users");
+    this.pollModel = require("../models/polls");
+    this.giveawayModel = require("../models/giveaways");
     this.connectionString = connectionString;
   }
 
@@ -172,5 +176,101 @@ module.exports = class DatabaseHandler {
 
   async getAll() {
     return this.guildModel.find();
+  }
+
+  async fetchPoll(messageId, createIfNotFound = false) {
+    const fetched = await this.pollModel.findOne({ messageId });
+
+    if (fetched) return fetched;
+    if (!fetched && createIfNotFound) {
+      return this.pollModel.create({ messageId });
+    }
+    return null;
+  }
+
+  async getPoll(messageId, createIfNotFound = true, force = false) {
+    if (force) return this.fetchPoll(messageId, createIfNotFound);
+
+    if (this.pollCache.has(messageId)) {
+      return this.pollCache.get(messageId);
+    }
+
+    const fetched = await this.fetchPoll(messageId, createIfNotFound);
+    if (fetched) {
+      this.pollCache.set(messageId, fetched?.toObject() ?? fetched);
+      return this.pollCache.get(messageId);
+    }
+    return null;
+  }
+
+  async updatePoll(messageId, data = {}, createIfNotFound = false) {
+    let oldData = await this.getPoll(messageId, createIfNotFound);
+
+    if (oldData) {
+      if (oldData?._doc) oldData = oldData?._doc;
+
+      data = { ...oldData, ...data };
+      this.pollCache.set(messageId, data);
+
+      return this.pollModel.updateOne({ messageId }, data);
+    }
+    return null;
+  }
+
+  async deletePoll(messageId, onlyCache = false) {
+    if (this.pollCache.has(messageId)) this.pollCache.delete(messageId);
+    return !onlyCache ? this.pollModel.deleteMany({ messageId }) : true;
+  }
+
+  async getAllPolls() {
+    return this.pollModel.find();
+  }
+
+  async fetchGiveaway(messageId, createIfNotFound = false) {
+    const fetched = await this.giveawayModel.findOne({ messageId });
+
+    if (fetched) return fetched;
+    if (!fetched && createIfNotFound) {
+      return this.giveawayModel.create({ messageId });
+    }
+    return null;
+  }
+
+  async getGiveaway(messageId, createIfNotFound = true, force = false) {
+    if (force) return this.fetchGiveaway(messageId, createIfNotFound);
+
+    if (this.giveawayCache.has(messageId)) {
+      return this.giveawayCache.get(messageId);
+    }
+
+    const fetched = await this.fetchGiveaway(messageId, createIfNotFound);
+    if (fetched) {
+      this.giveawayCache.set(messageId, fetched?.toObject() ?? fetched);
+      return this.giveawayCache.get(messageId);
+    }
+    return null;
+  }
+
+  async updateGiveaway(messageId, data = {}, createIfNotFound = false) {
+    let oldData = await this.getGiveaway(messageId, createIfNotFound);
+
+    if (oldData) {
+      if (oldData?._doc) oldData = oldData?._doc;
+
+      data = { ...oldData, ...data };
+      this.giveawayCache.set(messageId, data);
+
+      return this.giveawayModel.updateOne({ messageId }, data);
+    }
+    return null;
+  }
+
+  async deleteGiveaway(messageId, onlyCache = false) {
+    if (this.giveawayCache.has(messageId)) this.giveawayCache.delete(messageId);
+    return !onlyCache ? this.giveawayModel.deleteMany({ messageId }) : true;
+  }
+
+  async getAllGiveaways() {
+    return this.giveawayModel.find();
   }
 };

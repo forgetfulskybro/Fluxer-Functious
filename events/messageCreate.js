@@ -26,9 +26,21 @@ module.exports = async (client, message) => {
   if (client.messageEdit.has(message.author.id) && client.messageEdit.get(message.author.id).channelId === message.channelId && !client.messageEdit.get(message.author.id).messageId)
     return await EditCollector(client, message, db);
   
-  if (!isMention && !message.content.match(/^\S/)) return;
-  
-  if (isMention) {
+  let prefixLength = db.prefix.length;
+  if (db.timezoneConvert) {
+    const userData = await client.database.getUser(message.author.id, false);
+    if (userData?.timezone && parseTime(message.content)) {
+      message.react("⌚").catch(() => {});
+    }
+  }
+
+  if (!isMention && !message.content.startsWith(db.prefix)) return;
+  const mentionMatch = isMention && message.content.match(new RegExp(`^(<@!?${client.user.id}>)`));
+  const rawPrefixLength = isMention ? mentionMatch[0].length : db.prefix.length;
+  const afterPrefix = message.content.slice(rawPrefixLength);
+  prefixLength = afterPrefix.startsWith(' ') ? rawPrefixLength + 1 : rawPrefixLength;
+
+  if (isMention && !afterPrefix.trim()) {
     const mention = new EmbedBuilder()
       .setColor("#A52F05")
       .setTitle(client.user.username)
@@ -37,15 +49,7 @@ module.exports = async (client, message) => {
     return message.reply({ embeds: [mention] }, false).catch(() => {});
   }
 
-  if (db.timezoneConvert) {
-    const userData = await client.database.getUser(message.author.id, false);
-    if (userData?.timezone && parseTime(message.content)) {
-      message.react("⌚").catch(() => {});
-    }
-  }
-
-  if (!message.content.startsWith(db.prefix)) return;
-  const args = message.content.slice(db.prefix.length).trim().split(/ +/g);
+  const args = message.content.slice(prefixLength).trim().split(/ +/g);
   const cmd = args.shift()?.toLowerCase();
   if (!cmd) return;
 
@@ -153,7 +157,7 @@ module.exports = async (client, message) => {
     client,
     message,
     message.content
-      .slice(db.prefix.length)
+      .slice(prefixLength)
       .slice(cmd.length)
       .trim()
       .split(/ +/g),

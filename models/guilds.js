@@ -11,6 +11,8 @@ const guilds = new Schema({
   stickyRolesEnabled: { type: Boolean, default: false },
   stickyRoles: { type: Array, default: [] },
   bypassRoles: { type: Array, default: [] },
+  timedRoles: { type: Array, default: [] },
+  usersJoined: { type: Array, default: [] },
   timezoneConvert: { type: Boolean, default: false },
   userTimezones: { type: Array, default: [] },
   parentChannel: { type: String, default: null },

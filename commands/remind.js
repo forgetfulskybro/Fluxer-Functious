@@ -209,7 +209,7 @@ async function deleteReminder(userId, index, client) {
     { reminders: userData.reminders.filter(r => r.id !== reminderToDelete.id) },
     true
   );
-  return { success: true };
+  return { success: true, deletedReminder: reminderToDelete, remainingCount: reminders.length - 1 };
 }
 
 async function handleHelp(message, prefix, client, language) {
@@ -261,8 +261,25 @@ async function handleDelete(message, args, prefix, client, language) {
     });
   }
 
+  const { reminders: remainingReminders } = await getSortedReminders(message.author.id, client);
+  let description = `${client.translate.get(language, "Commands.remind.deleteReminder")} #${args[1]}.`;
+
+  if (remainingReminders.length > 0) {
+    const reminderList = remainingReminders
+      .map((r, i) => {
+        const timeStr = `<t:${r.timestamp}:R>`;
+        const icon = r.type === "DM" ? "📩" : "📢";
+        const msg = truncate(r.message, CONFIG.DISPLAY_LENGTH);
+        const channelInfo = r.type === "Guild" && r.channelId ? ` <#${r.channelId}>` : "";
+        return `\`${i + 1}\`. ${icon}${channelInfo} ${timeStr} - \`${msg}\``;
+      })
+      .join("\n") + `\n\n📢 = ${client.translate.get(language, "Commands.remind.gReminder")} | 📩 = ${client.translate.get(language, "Commands.remind.dReminder")}`;
+
+    description += `\n\n**${client.translate.get(language, "Commands.remind.reminders")}:**\n${reminderList}`;
+  }
+
   return message.channel.send({
-    embeds: [successEmbed(`${client.translate.get(language, "Commands.remind.deleteReminder")} #${args[1]}.`)],
+    embeds: [successEmbed(description)],
   });
 }
 
