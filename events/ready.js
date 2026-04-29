@@ -3,6 +3,7 @@ const { startReminderCron } = require("../functions/checkReminders");
 const { startGiveawaysCron } = require("../functions/giveawaysEnd");
 const checkVoiceStates = require("../functions/checkVoiceStates");
 const { startPollsCron } = require("../functions/checkPolls");
+const checkManage = require("../functions/checkManage");
 const checkRoles = require("../functions/checkRoles");
 const color = require("../functions/colorCodes");
 
@@ -13,6 +14,7 @@ module.exports = async (client) => {
   startTimedRolesCron(client);
   startGiveawaysCron(client);
   startReminderCron(client);
+  await checkManage(client);
   await checkRoles(client);
   startPollsCron(client);
 }

@@ -38,7 +38,7 @@ module.exports = async (client, message, userId, emojiId, event = "add") => {
 
   if (db2.dm) {
     const key = error
-      ? `Events.messageReaction${event === "add" ? "Add" : "Remove"}.noPerms`
+      ? guild.ownerId === userId ? `Events.messageReactionAdd.ownerError` : `Events.messageReaction${event === "add" ? "Add" : "Remove"}.noPerms`
       : `Events.messageReaction${event === "add" ? "Add" : "Remove"}.success`;
 
     const dmContent = `**[${guild.name}]** ${client.translate.get(db2.language, key, { role: `**${role.name}**` })}!`;

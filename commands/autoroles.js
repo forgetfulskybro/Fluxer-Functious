@@ -6,7 +6,7 @@ const fetchTime = require('../functions/fetchTime');
 module.exports = {
   config: {
     name: "autoroles",
-    usage: true,
+    usage: "help",
     cooldown: 2000,
     available: true,
     permissions: {

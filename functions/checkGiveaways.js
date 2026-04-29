@@ -1,17 +1,21 @@
 const db = require("../models/giveaways");
+
 async function checkGiveaways(client) {
-  let giveaways = await db.find({ ended: false });
-  if (!giveaways) return;
-  let i = 0;
-  for (let gw of giveaways) {
-    i++;
-    setTimeout(async () => {
-      let givChannel;
-      try {
-        givChannel = await client.channels.resolve(gw.channelId);
-        await givChannel?.messages?.fetch(gw.messageId);
-      } catch { }
-    }, i * 500);
+  let giveaways;
+  try {
+    giveaways = await db.find({ ended: false });
+  } catch {
+    return;
+  }
+  if (!giveaways || giveaways.length === 0) return;
+
+  for (const gw of giveaways) {
+    try {
+      const givChannel = await client.channels.resolve(gw.channelId);
+      if (!givChannel) continue;
+
+      await givChannel.messages?.fetch(gw.messageId).catch(() => {});
+    } catch {}
   }
 }
 

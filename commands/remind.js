@@ -134,20 +134,29 @@ function parseRelativeTime(txt) {
   return { time, text };
 }
 
-function parseTimeWithTimezone(inputText, timezone) {
-  if (!timezone) {
-    return chrono.parse(inputText);
+function parseTimeWithTimezone(inputText, userTimezone) {
+  if (!userTimezone) {
+    return chrono.parse(inputText, new Date(), { forwardDate: true });
   }
-  
+
   try {
-    const referenceDate = new Date();
-    const tzDate = new Date(referenceDate.toLocaleString("en-US", { timeZone: timezone }));
-    const offset = tzDate.getTime() - referenceDate.getTime();
-    const adjustedRef = new Date(referenceDate.getTime() + offset);
-    
-    return chrono.parse(inputText, adjustedRef);
-  } catch {
-    return chrono.parse(inputText);
+    const now = new Date();
+    const offsetMinutes = -Math.round(
+      (now.getTime() - 
+       new Date(now.toLocaleString("en-US", { timeZone: userTimezone })).getTime()
+      ) / 60000
+    );
+
+    const reference = {
+      instant: now,
+      timezone: offsetMinutes
+    };
+
+    return chrono.parse(inputText, reference, {
+      forwardDate: true
+    });
+  } catch (e) {
+    return chrono.parse(inputText, new Date(), { forwardDate: true });
   }
 }
 
@@ -413,8 +422,8 @@ async function handleCreate(message, args, prefix, isDM, client, language) {
 module.exports = {
   config: {
     name: "remind",
-    usage: true,
-    cooldown: 5000,
+    usage: 'help',
+    cooldown: 2500,
     available: true,
     permissions: {},
     aliases: ["reminder", "re", "reminders"],

@@ -10,6 +10,8 @@ module.exports = async (client, member) => {
     ...db.stickyRoles.filter((s) => s.user !== member.user.id),
     { user: member.user.id, roles: roleIds },
   ];
+  
+  const usersJoined = db.usersJoined.filter((u) => u !== member.user.id);
 
-  await client.database.updateGuild(member.guild.id, { stickyRoles });
+  await client.database.updateGuild(member.guild.id, { stickyRoles, usersJoined });
 };

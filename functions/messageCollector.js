@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('@erinjs/core');
 const getRoles = require('./getRoles');
 async function Collector(client, message, db) {
-  if (message.content === `${db.prefix}roles stop`) {
+  if (message.content.toLowerCase() === `${db.prefix}roles stop`) {
     client.messageCollector.delete(message.author.id);
     return message.reply({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.stopped"))] })
   }

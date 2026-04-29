@@ -140,7 +140,7 @@ function findAllMatches(name) {
   return matches;
 }
 
-async function promptForSelection(client, message, matches, name) {
+async function promptForSelection(client, message, matches, name, selectionQueue, results, allNames) {
   const numberEmojis = [
     client.config.emojis.one,
     client.config.emojis.two,
@@ -171,97 +171,231 @@ async function promptForSelection(client, message, matches, name) {
     await msg.react(emoji).catch(() => {});
   }
 
-  client.reloadSelection.set(message.author.id, {
+  const selectionData = {
     messageId: msg.id,
     channelId: msg.channelId,
     matches: matches,
     name: name,
     message: msg,
-    emojis: collectorEmojis
-  });
+    emojis: collectorEmojis,
+    queue: selectionQueue,
+    results: results,
+    allNames: allNames,
+    currentIndex: 0
+  };
+
+  client.reloadSelection.set(message.author.id, selectionData);
 
   setTimeout(() => {
     if (client.reloadSelection?.has(message.author.id)) {
-      client.reloadSelection.delete(message.author.id);
-      msg.edit({
-        embeds: [createEmbed('❌ Selection timed out.', COLORS.ERROR, 'Timeout')]
-      }).catch(() => { });
-      msg.removeAllReactions().catch(() => { });
+      const data = client.reloadSelection.get(message.author.id);
+      if (data && data.messageId === msg.id) {
+        const remainingCount = data.queue.length - data.currentIndex;
+        if (remainingCount > 0) {
+          for (let i = data.currentIndex; i < data.queue.length; i++) {
+            data.results.push({
+              name: data.queue[i].name,
+              type: null,
+              status: 'timeout',
+              error: 'Selection timed out'
+            });
+          }
+        }
+        showFinalResults(data.message, data.results, data.allNames);
+        client.reloadSelection.delete(message.author.id);
+      }
     }
-  }, 30000);
+  }, 180000);
 
   return null;
 }
 
-async function Reload(client, message, type, name) {
-  if (!type && name) {
-    const matches = findAllMatches(name);
+function showFinalResults(message, results, allNames) {
+  const successResults = results.filter(r => r.status === 'success');
+  const errorResults = results.filter(r => r.status === 'error' || r.status === 'timeout');
+  const notFoundResults = results.filter(r => r.status === 'notfound');
 
-    if (matches.length === 0) {
-      return createEmbed(
-        `❌ Couldn't find **${name}** in any folder (commands, events, functions, reactionHandlers)`,
-        COLORS.ERROR,
-        'Not Found'
-      );
-    }
+  let description = '';
 
-    if (matches.length === 1) {
-      type = matches[0].type;
-    } else {
-      await promptForSelection(client, message, matches, name);
-      return null;
-    }
+  if (successResults.length > 0) {
+    description += `✅ **Reloaded (${successResults.length}):**\n`;
+    successResults.forEach(r => {
+      description += `• **${r.name}**.js (${r.type}${r.autoDetected ? ', auto-detected' : ''})\n`;
+    });
+    description += '\n';
   }
+
+  if (errorResults.length > 0) {
+    description += `❌ **Errors (${errorResults.length}):**\n`;
+    errorResults.forEach(r => {
+      description += `• **${r.name}**.js${r.type ? ` (${r.type})` : ''} - ${r.error}\n`;
+    });
+    description += '\n';
+  }
+
+  if (notFoundResults.length > 0) {
+    description += `⚠️ **Not Found (${notFoundResults.length}):**\n`;
+    notFoundResults.forEach(r => {
+      description += `• **${r.name}**.js\n`;
+    });
+  }
+
+  const embed = createEmbed(
+    description || 'No files processed.',
+    COLORS.SUCCESS,
+    `Reload Results (${results.length}/${allNames.length} files)`
+  );
+
+  message.edit({ embeds: [embed] }).catch(() => {});
+  message.removeAllReactions().catch(() => {});
+}
+
+async function processSingleReload(client, type, name, autoDetected = false) {
+  const result = { name, type, status: 'pending', autoDetected };
 
   if (type === RELOAD_TYPES.LANGUAGES) {
     try {
-      return HANDLERS[type].handler(client);
+      HANDLERS[type].handler(client);
+      result.status = 'success';
+      return result;
     } catch (e) {
-      return createEmbed(
-        `❌ Couldn't reload **languages**\n\n**Error:** ${e.message}`,
-        COLORS.ERROR,
-        'Error'
-      );
+      result.status = 'error';
+      result.error = e.message;
+      return result;
     }
   }
 
   const handlerConfig = HANDLERS[type];
   if (!handlerConfig) {
-    if (!type) {
-      return createEmbed(
-        '❌ Provide a file name to auto-detect, or specify a type.\n\n**Usage:** `reload <file>` or `reload <type> <file>`\n**Types:** `command`, `event`, `function`, `reactionHandler`, `languages`',
-        COLORS.ERROR,
-        'Usage'
-      );
-    }
-    return createEmbed(
-      `❌ Unknown reload type: **${type}**\n\n**Available:** command, event, function, reactionHandler, languages`,
-      COLORS.ERROR,
-      'Error'
-    );
+    result.status = 'error';
+    result.error = `Unknown reload type: ${type}`;
+    return result;
   }
 
   if (handlerConfig.needsName && !name) {
-    return createEmbed(
-      `❌ Provide a **${type}** name to reload!`,
-      COLORS.ERROR,
-      'Missing Name'
-    );
+    result.status = 'error';
+    result.error = 'Missing file name';
+    return result;
   }
 
   try {
-    const result = handlerConfig.handler(client, name);
-    if (!arguments[2]) {
-      result.data.description = `🔍 Auto-detected as **${type}**\n${result.data.description}`;
-    }
+    handlerConfig.handler(client, name);
+    result.status = 'success';
     return result;
   } catch (e) {
+    result.status = 'error';
+    result.error = e.message;
+    return result;
+  }
+}
+
+async function Reload(client, message, type, names) {
+  if (!Array.isArray(names)) {
+    names = [names];
+  }
+
+  if (type !== "languages" && names.length === 0) {
     return createEmbed(
-      `❌ Couldn't reload **${type}${name ? `/${name}` : ''}**\n\n**Error:** ${e.message}`,
+      '❌ Please provide at least one file name to reload.',
       COLORS.ERROR,
-      'Error'
+      'Missing Names'
     );
   }
+
+  const results = [];
+  const selectionQueue = [];
+
+  if (type === RELOAD_TYPES.LANGUAGES) {
+    const result = await processSingleReload(client, type, 'languages', false);
+    results.push(result);
+  }
+
+  for (const name of names) {
+    if (!name || name.trim().length === 0) continue;
+
+    if (!type) {
+      const matches = findAllMatches(name);
+
+      if (matches.length === 0) {
+        results.push({
+          name,
+          type: null,
+          status: 'notfound'
+        });
+        continue;
+      }
+
+      if (matches.length === 1) {
+        const result = await processSingleReload(client, matches[0].type, name, true);
+        results.push(result);
+      } else {
+        selectionQueue.push({
+          name,
+          matches
+        });
+      }
+    } else {
+      const result = await processSingleReload(client, type, name, false);
+      results.push(result);
+    }
+  }
+
+  if (selectionQueue.length > 0) {
+    await promptForSelection(
+      client,
+      message,
+      selectionQueue[0].matches,
+      selectionQueue[0].name,
+      selectionQueue,
+      results,
+      names
+    );
+    return null;
+  }
+
+  if (results.length === 1 && results[0].status === 'success' && names.length === 1) {
+    const r = results[0];
+    let desc = `✅ Reloaded ${r.type}: **${r.name}**.js`;
+    if (r.autoDetected) {
+      desc = `🔍 Auto-detected as **${r.type}**\n${desc}`;
+    }
+    return createEmbed(desc, COLORS.SUCCESS, 'Success');
+  }
+
+  const successResults = results.filter(r => r.status === 'success');
+  const errorResults = results.filter(r => r.status === 'error');
+  const notFoundResults = results.filter(r => r.status === 'notfound');
+
+  let description = '';
+
+  if (successResults.length > 0) {
+    description += `✅ **Reloaded (${successResults.length}):**\n`;
+    successResults.forEach(r => {
+      description += `• **${r.name}**.js (${r.type}${r.autoDetected ? ', auto-detected' : ''})\n`;
+    });
+    description += '\n';
+  }
+
+  if (errorResults.length > 0) {
+    description += `❌ **Errors (${errorResults.length}):**\n`;
+    errorResults.forEach(r => {
+      description += `• **${r.name}**.js${r.type ? ` (${r.type})` : ''} - ${r.error}\n`;
+    });
+    description += '\n';
+  }
+
+  if (notFoundResults.length > 0) {
+    description += `⚠️ **Not Found (${notFoundResults.length}):**\n`;
+    notFoundResults.forEach(r => {
+      description += `• **${r.name}**.js\n`;
+    });
+  }
+
+  return createEmbed(
+    description || 'No files processed.',
+    COLORS.SUCCESS,
+    `Reload Results (${results.length} files)`
+  );
 }
 
 module.exports = Reload;

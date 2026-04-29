@@ -43,8 +43,17 @@ class Paginator {
     });
 
     setTimeout(() => {
-      if (this.client.paginate.get(this.user))
+      if (this.client.paginate.get(this.user)) {
+        const msgId = this.client.paginate.get(this.user).message;
+        const channelId = this.client.paginate.get(this.user).channel;
+        
+        try {
+          this.client.channels.cache.get(channelId)?.messages.fetch(msgId).then((msg) => {
+            msg.removeAllReactions().catch(() => {});
+          });
+        } catch {}
         this.client.paginate.delete(this.user);
+      }
     }, this.timeout);
   }
 }

@@ -4,6 +4,57 @@ const dhms = require(`../functions/dhms`);
 const PollDB = require("../models/polls");
 const Paginator = require(`../functions/pagination`);
 
+async function endPollEarly(client, poll, db) {
+  try {
+    const channel = await client.channels.resolve(poll.channelId);
+    if (!channel) return;
+
+    const msg = await channel.messages?.fetch(poll.messageId).catch(() => null);
+    if (!msg) return;
+
+    await PollDB.findOneAndUpdate({ messageId: poll.messageId }, { ended: true });
+    await client.polls.get(poll.messageId).poll.update();
+
+    let tooMuch = [];
+    if (poll.desc?.length > 80)
+      tooMuch.push(`**Title**: ${poll.desc}`);
+    poll.options?.name?.filter((e) => e).forEach((e, i) => {
+        i++;
+        if (e.length > 70) {
+          tooMuch.push(`**${i}.** ${e}`);
+        }
+      });
+
+    const pollImage = await fetch(`${process.env.CDN}/api/upload`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        apikey: process.env.CDN_KEY,
+        image: client.polls.get(poll.messageId).poll.canvas.toDataURL("image/png"),
+        timeframe: 60,
+        messageId: poll.messageId,
+        last: true,
+      }),
+    }).then((i) => i.json());
+
+    await msg.edit({
+      embeds: [
+        new EmbedBuilder()
+          .setDescription(
+            `${client.translate.get(poll.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map((e) => e).join("\n")}` : ""}`,
+          )
+          .setImage(`${process.env.CDN}${pollImage.url}`)
+          .setColor(`#A52F05`),
+      ],
+    });
+
+    await msg.removeAllReactions().catch(() => { });
+    client.polls.delete(poll.messageId);
+  } catch(e) {console.log(e)}
+}
+
 module.exports = {
     config: {
         name: `polls`,
@@ -14,102 +65,80 @@ module.exports = {
         aliases: ["poll"]
     },
     run: async (client, message, args, db) => {
-      // const subcommand = args[0]?.toLowerCase();
+      const subcommand = args[0]?.toLowerCase();
 
-      // if (subcommand === "view") {
-      //   const option = args[1]?.toLowerCase() || "user";
+      if (subcommand === "view") {
+        const polls = await PollDB.find({ owner: message.author.id, ended: false });
+        if (polls.length === 0) {
+          return message.reply({
+            embeds: [new EmbedBuilder()
+              .setDescription(client.translate.get(db.language, "Commands.polls.noUserPolls"))
+              .setColor(`#FF0000`)]
+          });
+        }
 
-      //   if (option === "server") {
-      //     const polls = await PollDB.find({ serverId: message.guild.id });
-      //     if (polls.length === 0) {
-      //       return message.reply({
-      //         embeds: [new EmbedBuilder()
-      //           .setDescription(client.translate.get(db.language, "Commands.polls.noServerPolls") || "No polls found in this server.")
-      //           .setColor(`#FF0000`)]
-      //       });
-      //     }
+        const chunkSize = 3;
+        const chunks = [];
+        for (let i = 0; i < polls.length; i += chunkSize) {
+          chunks.push(polls.slice(i, i + chunkSize));
+        }
 
-      //     const chunkSize = 3;
-      //     const chunks = [];
-      //     for (let i = 0; i < polls.length; i += chunkSize) {
-      //       chunks.push(polls.slice(i, i + chunkSize));
-      //     }
+        const embeds = chunks.map((chunk, pageIndex) => {
+          const embed = new EmbedBuilder()
+            .setTitle(client.translate.get(db.language, "Commands.polls.polls"))
+            .setColor(`#A52F05`);
 
-      //     const embeds = chunks.map((chunk, pageIndex) => {
-      //       const embed = new EmbedBuilder()
-      //         .setTitle(`${client.translate.get(db.language, "Commands.polls.polls") || "Polls"} - ${client.translate.get(db.language, "Commands.polls.server") || "Server"}`)
-      //         .setColor(`#A52F05`);
+          chunk.forEach((poll, index) => {
+            embed.addFields({
+              name: `#${pageIndex * chunkSize + index + 1}: ${poll.desc.slice(0, 75)}`,
+              value: `${client.translate.get(db.language, "Commands.polls.message")}: [msg](https://fluxer.app/channels/${poll.serverId}/${poll.channelId}/${poll.messageId})`,
+              inline: false
+            });
+          });
 
-      //       chunk.forEach((poll, index) => {
-      //         embed.addFields({
-      //           name: `${client.translate.get(db.language, "Commands.polls.poll") || "Poll"} ${pageIndex * chunkSize + index + 1}: ${poll.desc || "No description"}`,
-      //           value: `Owner: <@${poll.owner}> | Channel: <#${poll.channelId}>`,
-      //           inline: false
-      //         });
-      //       });
+          return embed;
+        });
 
-      //       return embed;
-      //     });
+        if (embeds.length === 1) {
+          return message.reply({ embeds });
+        }
 
-      //     if (embeds.length === 1) {
-      //       return message.reply({ embeds });
-      //     }
+        const paginator = new Paginator({
+          user: message.author.id,
+          client: client,
+          timeout: 60000
+        });
 
-      //     const paginator = new Paginator({
-      //       user: message.author.id,
-      //       client: client,
-      //       timeout: 60000
-      //     });
+        embeds.forEach(embed => paginator.add(embed));
+        return paginator.start(message.channel);
+      }
 
-      //     embeds.forEach(embed => paginator.add(embed));
-      //     return paginator.start(message.channel);
-      //   }
+      if (subcommand === "delete") {
+        const pollNumber = parseInt(args[1]);
+        if (!pollNumber || isNaN(pollNumber)) {
+          return message.reply({
+            embeds: [new EmbedBuilder()
+              .setDescription(`${client.translate.get(db.language, "Commands.polls.validNumber")}: f!poll delete 1`)
+              .setColor(`#FF0000`)]
+          });
+        }
 
-      //   const polls = await PollDB.find({ owner: message.author.id });
-      //   if (polls.length === 0) {
-      //     return message.reply({
-      //       embeds: [new EmbedBuilder()
-      //         .setDescription(client.translate.get(db.language, "Commands.polls.noUserPolls") || "You have no active polls.")
-      //         .setColor(`#FF0000`)]
-      //     });
-      //   }
+        const poll = await PollDB.findOne({ owner: message.author.id, ended: false });
+        if (!poll) {
+          return message.reply({
+            embeds: [new EmbedBuilder()
+              .setDescription(client.translate.get(db.language, "Commands.polls.pollNotFound", { pollNumber }))
+              .setColor(`#FF0000`)]
+          });
+        }
 
-      //   const chunkSize = 3;
-      //   const chunks = [];
-      //   for (let i = 0; i < polls.length; i += chunkSize) {
-      //     chunks.push(polls.slice(i, i + chunkSize));
-      //   }
-
-      //   const embeds = chunks.map((chunk, pageIndex) => {
-      //     const embed = new EmbedBuilder()
-      //       .setTitle(`${client.translate.get(db.language, "Commands.polls.polls") || "Polls"} - ${client.translate.get(db.language, "Commands.polls.user") || "User"}`)
-      //       .setColor(`#A52F05`);
-
-      //     chunk.forEach((poll, index) => {
-      //       console.log(poll)
-      //       embed.addFields({
-      //         name: `${client.translate.get(db.language, "Commands.polls.poll") || "Poll"} ${pageIndex * chunkSize + index + 1}: ${poll.desc || "No description"}`,
-      //         value: `Server: ${poll.serverId ? `<@${poll.serverId}>` : "Unknown"} | Channel: ${poll.channelId ? `<#${poll.channelId}>` : "Unknown"}`,
-      //         inline: false
-      //       });
-      //     });
-
-      //     return embed;
-      //   });
-
-      //   if (embeds.length === 1) {
-      //     return message.reply({ embeds });
-      //   }
-
-      //   const paginator = new Paginator({
-      //     user: message.author.id,
-      //     client: client,
-      //     timeout: 60000
-      //   });
-
-      //   embeds.forEach(embed => paginator.add(embed));
-      //   return paginator.start(message.channel);
-      // }
+        await endPollEarly(client, poll, db);
+        return message.reply({
+          embeds: [new EmbedBuilder()
+            .setDescription(client.translate.get(db.language, "Commands.polls.deleted", { pollNumber }))
+            .setColor(`#A52F05`)]
+        });
+      }
 
       const check = await PollDB.find({ owner: message.author.id, ended: false })
       if (check.length === 5) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.polls.tooMany")).setColor(`#FF0000`)] });
@@ -127,6 +156,9 @@ module.exports = {
 
       const names = [options[2], options[3], options[4] ? options[4] : null, options[5] ? options[5] : null, options[6] ? options[6] : null, options[7] ? options[7] : null, options[8] ? options[8] : null, options[9] ? options[9] : null, options[10] ? options[10] : null, options[11] ? options[11] : null];
       const reactions = [client.config.emojis.one, client.config.emojis.two, options[4] ? client.config.emojis.three : null, options[5] ? client.config.emojis.four : null, options[6] ? client.config.emojis.five : null, options[7] ? client.config.emojis.six : null, options[8] ? client.config.emojis.seven : null, options[9] ? client.config.emojis.eight : null, options[10] ? client.config.emojis.nine : null, options[11] ? client.config.emojis.ten : null, client.config.emojis.stop];
+
+      const highestPoll = await PollDB.findOne({ owner: message.author.id }).sort({ pollNumber: -1 });
+      const nextPollNumber = highestPoll?.pollNumber ? highestPoll.pollNumber + 1 : 1;
 
       const poll = new Polls({
         time,
@@ -157,8 +189,9 @@ module.exports = {
         for (const reaction of reactions) {
           await msg.react(reaction).catch(() => {});
         }
-        
-        await poll.start(msg, poll, { tooMuch });
+
+        msg.guildId = message.guildId
+        await poll.start(msg, poll, { tooMuch, pollNumber: nextPollNumber });
         await message.delete().catch(() => { });
         });
     },

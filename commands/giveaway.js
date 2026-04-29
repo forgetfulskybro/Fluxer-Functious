@@ -1,12 +1,12 @@
 const { EmbedBuilder, PermissionFlags } = require('@erinjs/core')
 const Giveaways = require(`../models/giveaways`)
 const dhms = require(`../functions/dhms`);
-const regex = new RegExp(/^channel:\s*(?:<#!?\d+>|[\d.]+)$/);
+const regex = new RegExp(/^channel:\s*(?:<#(\d+)>|#?([\w-]+)|(\d+))$/i);
 
 module.exports = {
     config: {
         name: `giveaway`,
-        usage: true,
+        usage: "help",
         cooldown: 5000,
         permissions: { name: "Manage Guild", bitField: PermissionFlags.ManageGuild },
         available: true,
@@ -82,7 +82,7 @@ module.exports = {
       if (!check) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\n\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\``).setColor(`#FF0000`)] });
       if (check.owner !== message.author.id) return message.reply({ content: client.translate.get(db.language, "Commands.giveaway.notOwner") });
       
-      await Giveaways.findOneAndDelete({ messageId: msgId });
+      await Giveaways.findOneAndUpdate({ messageId: msgId }, { ended: true });
       try {
         const newMsg = await (await client.channels.resolve(check.channelId))?.messages?.fetch(check.messageId);
         newMsg.delete().catch(() => { });
@@ -103,11 +103,12 @@ module.exports = {
       let requirement;
       let channel = true;
       if (options[3]) {
-        try { message.guild.fetchChannels(); } catch { };
+        const channels = await message.guild.fetchChannels();
         let option = options[3] ? options[3].match(regex) : null;
         requirement = options[3].slice(0, 500).replace(`${option ? option[0] : ''}`, "").trim();
         if (requirement.length === 0) requirement = null;
-        if (options[3] && regex.test(options[3])) channel = option[3] ? message.guild.channels.find(e => e.id === option[3]) : message.guild.channels.find(e => e.id === option[2])
+        if (options[3] && regex.test(options[3])) channel = option[1] ? channels.find(e => e.id === option[1]) : channels.find(e => e.id === option[2])
+        if (channel?.type === 2 || channel?.type === 4) channel = null;
         if (!channel) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validChannel")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt | channel:#giveaways\`\n\n> ${client.translate.get(db.language, "Commands.giveaway.validChannel2")}`).setColor(`#FF0000`)] });
         if (channel === true || /^\s*$/.test(requirement)) channel = message.channel
       } else { requirement = null; channel = message.channel; }

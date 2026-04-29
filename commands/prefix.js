@@ -5,7 +5,7 @@ module.exports = {
     name: "prefix",
     cooldown: 3000,
     available: true,
-    usage: true,
+    usage: "change <text>",
     permissions: {
       name: "Manage Guild",
       bitField: PermissionFlags.ManageGuild,

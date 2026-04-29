@@ -51,14 +51,14 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
             }).then((i) => i.json())
 
             const newMsg = await (await client.channels.resolve(pollCheck.channelId))?.messages?.fetch(pollCheck.messageId)
-            return newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(pollCheck.language, "Commands.giveaway.time")}: <t:${Math.floor((pollCheck.poll.time + Date.now()) / 1000)}:R>${tooMuch.length > 0 ? `\n\n${tooMuch.map(e => e).join("\n")}` : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { });
+            return newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(pollCheck.language, "Commands.giveaway.time")}: <t:${Math.floor((pollCheck.poll.time + Date.now()) / 1000)}:R>${tooMuch.length > 0 ? `\n\n${tooMuch.map(e => e).join("\n")}` : ""}`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { });
         } else return;
     }
 
     const convert = emojis.findIndex(e => e.name === emojiId);
 
     if (convert === 10 && pollCheck.owner === userId) {
-        await PollDB.findOneAndDelete({ messageId: message.messageId });
+        await PollDB.findOneAndUpdate({ messageId: message.messageId }, { ended: true });
         await pollCheck.poll.update();
 
         const pollImage = await fetch(`${process.env.CDN}/api/upload`, {
@@ -127,7 +127,7 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
 
         await reactionMsg?.edit({
             embeds: [new EmbedBuilder()
-                .setDescription(`${client.translate.get(pollCheck.lang, "Commands.giveaway.time")}: <t:${Math.floor((pollCheck.poll.time + Date.now()) / 1000)}:R>${tooMuch.length ? `\n\n${tooMuch.join("\n")}` : ""}\n_ _`)
+                .setDescription(`${client.translate.get(pollCheck.lang, "Commands.giveaway.time")}: <t:${Math.floor((pollCheck.poll.time + Date.now()) / 1000)}:R>${tooMuch.length ? `\n\n${tooMuch.join("\n")}` : ""}`)
                 .setImage(`${process.env.CDN}${pollImage.url}`)
                 .setColor("#A52F05")]
         }).catch(() => {});

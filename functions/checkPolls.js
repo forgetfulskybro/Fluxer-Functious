@@ -59,7 +59,7 @@ async function endPoll(client, poll) {
       embeds: [
         new EmbedBuilder()
           .setDescription(
-            `${client.translate.get(poll.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map((e) => e).join("\n")}` : ""}\n_ _`,
+            `${client.translate.get(poll.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map((e) => e).join("\n")}` : ""}`,
           )
           .setImage(`${process.env.CDN}${pollImage.url}`)
           .setColor(`#A52F05`),

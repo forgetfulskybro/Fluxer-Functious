@@ -43,7 +43,8 @@
       "success": "Successfully added role {role}",
       "noPerms": "I do not have permission to give role {role}",
       "role": "role",
-      "deleteCollector": "Successfully stopped reaction collector!"
+      "deleteCollector": "Successfully stopped reaction collector!",
+      "ownerError": "The bot cannot add roles to the server owner. Fluxer doesn't allow bots to add roles to server owners"
     },
     "messageReactionRemove": {
       "title": "Title",
@@ -91,7 +92,7 @@
     "dReminder": "DM reminder",
     "deleteReminder": "Deleted reminder",
     "yourMessage": "Your message has {numbers} characters",
-    "dmReminder": "Your reminder has been set. I'll DM when you it's time.",
+    "dmReminder": "Your reminder has been set. I'll DM you when it's time.",
     "success": "Ok, reminding you in",
           "tooFar": "The time you provided is too far in the future. The maximum time is 2 years."
   },
@@ -148,7 +149,14 @@
       "noReset": "There is nothing to reset. Temporary channels are already disabled for this server.",
       "successReset": "Temporary channels have been reset. Parent/child channels and all temporary channels were removed.",
       "noArgs": "You must provide at least one option when using this command",
-      "noArgsDesc": "This example will make new temporary channels only allow 5 users, and be named \"My Channel (Number)\"."
+      "noArgsDesc": "This example will make new temporary channels only allow 5 users, and be named \"My Channel (Number)\".",
+      "manage": "Channel Management",
+      "manageCreate": "Manage Voice Chat",
+      "manageDefine": "Allows the owner of the voice channel to edit it.",
+      "manageMessage": "Manage Message:",
+      "manageTitle": "Manage Your Voice Chat",
+      "manageDescription": "**Select an emoji to edit your voice chat settings**\n\n<:channelName:1498099550363509257> - This edits the voice channel's name.\n\n<:userLimit:1498101792919392863> - This edits the user limit allowed in your voice channel.\n\n<:blockUser:1498101705656877648> - This blocks specific users from joining your voice channel.\n\n<:unblockUser:1498101686866420308> - This allows people in your channel if blocked or the channel is private.\n\n<:view:1498405262088803743> - This makes your channel private from everyone else.",
+      "manageFooter": "When you select an emoji the bot will DM you asking for your input on editing your settings."
     },
     "timezone": {
       "usage": "help",
@@ -371,11 +379,14 @@
       "polls": "Polls",
       "title": "Title",
       "example": "How are you? | Good | Bad",
-      "loading": "Loading poll"
+      "loading": "Loading poll",
+      "validNumber": "Please provide a valid poll number.\nExample",
+      "pollNotFound": "Poll #{pollNumber} not found or already ended.",
+      "deleted": "Poll #{pollNumber} has been ended early.",
+      "message": "Message",
+      "noUserPolls": "You have no polls to view."
     },
     "reroll": {
-      "description": "Reroll winners from giveaways. Winner number is based on the order of the winners in the embed.",
-      "usage": "[Message ID] [Winner Number, e.g. 1, 2, all | Default: all]",
       "input": "Provide a giveaway's message ID to reroll its winners.",
       "notValid": "Provide a valid giveaway message ID to reroll its winners.",
       "winners": "Please provide a winner number (e.g. 1, 2, 3) or use `all` to reroll all winners!",
@@ -423,6 +434,35 @@
     }
   },
   "Functions": {
+    "manageVC": {
+      "stopped": "Cancelled the message collector. React to the voice channel menu to start a new one.",
+      "rename": "Voice Channel Renamed",
+      "renameDesc": "Channel name has been updated.\n\n**From:** {channelName}\n**To:** {content}",
+      "unlimited": "Unlimited",
+      "usersMax": "{number} users max",
+      "invalidLimit": "Invalid limit text. Make sure to provide a number when setting the limit.",
+      "limitUpdate": "User Limit Updated",
+      "limitUpdateDesc": "The maximum number of users has been changed.\n\n**From:** {oldText}\n**To:** {newText}",
+      "invalidUser": "Invalid user. Make sure to provide a user's mention or ID.",
+      "blockUser": "User Blocked",
+      "blockUserDesc": "{username} has been blocked from joining your voice channel.\n\n**User:** {userMention}",
+      "userAccess": "User Access Granted",
+      "userAccessDesc": "{username} can now join your voice channel.\n\n**User:** {userMention}",
+      "renameChannel": "Rename Voice Channel",
+      "cancelLimit": "**How to cancel:** Type \"cancel\"\n**Time limit:** 1 minute",
+      "renameChannelDesc": "Type the new name for your voice channel and send it.",
+      "setLimit": "Set User Limit",
+      "setLimitDesc": "Type a number to set how many users can join your voice channel.\n\n**0** = Unlimited users\n**1-99** = That many users max",
+      "setBlock": "Block User",
+      "setBlockDesc": "Type a user's mention (@username) or ID to prevent them from joining your voice channel.\n\nIf they are currently in your channel, they will be removed.",
+      "allowUser": "Allow User Access",
+      "allowUserDesc": "Type a user's mention (@username) or ID to let them join your voice channel.\n\nThis will remove any block on the user.",
+      "isPrivate": "Your voice channel is now private. Only you can join.",
+      "isNotPrivate": "Your voice channel is now public. Everyone can join.",
+      "privacy": "Privacy Updated",
+      "collectEnded": "This message collector has ended",
+      "dmsOff": "if you want to edit your Voice Channel settings then enable Direct Messages for this server."
+    },
     "fetchTime": {
       "years": "year(s)",
       "days": "day(s)",

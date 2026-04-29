@@ -4,7 +4,7 @@ const getRoles = require('../functions/getRoles');
 module.exports = {
   config: {
     name: "bypass",
-    usage: true,
+    usage: "help",
     cooldown: 2000,
     available: true,
     permissions: {

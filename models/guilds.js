@@ -22,11 +22,10 @@ const guilds = new Schema({
     channelName: { type: String, default: null },
     channelLimit: { type: Number, default: null },
     counting: { type: Boolean, default: false },
-    manage: { type: Boolean, default: false },
     customParent: { type: String, default: null },
+    manage: { type: String, default: null },
+    manageMessage: { type: String, default: null },
   },
-  // getInvites: { type: Boolean, default: false },
-  // invites: { type: Array, default: [] },
 });
 
 module.exports = model("guilds", guilds);

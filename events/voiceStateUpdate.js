@@ -1,4 +1,6 @@
 const { PermissionFlags, resolvePermissionsToBitfield } = require('@erinjs/core');
+const errorHandler = require("../functions/errorHandler");
+
 module.exports = async (client, oldState, newState) => {
   const state = newState ?? oldState;
   const userId = state?.userId ?? state?.user_id ?? state?.member?.user?.id;
@@ -12,9 +14,9 @@ module.exports = async (client, oldState, newState) => {
 
   const guild = client.guilds.get(guildId);
   if (!guild) return;
-  guild.fetchChannels();
+  //const channels = await guild.fetchChannels();
 
-  const channel = newChannelId ? await guild.channels.get(newChannelId) : null;
+  //const channel = newChannelId ? await guild.channels.find((c) => c.id === newChannelId) : null;
   const db = await client.database.getGuild(guildId);
   if (!db) return;
 
@@ -33,7 +35,7 @@ module.exports = async (client, oldState, newState) => {
       if ([...client.observedVoiceUsers.values()]
         .filter(data => data?.channelId === observe.channelId)
         .length === 0) {
-        const tempChan = await guild.channels.get(observe.channelId);
+        const tempChan = await guild.channels.find((c) => c.id === observe.channelId);
         if (tempChan) await tempChan.delete();
 
         const updatedTemps = tempChannels.filter(
@@ -46,18 +48,20 @@ module.exports = async (client, oldState, newState) => {
     }
   }
 
+  // && channel?.parentId === parentChannelId
   if (
       parentChannelId &&
       childChannel &&
-      newChannelId === childChannel &&
-      channel?.parentId === parentChannelId) {
+      newChannelId === childChannel) {
       const member = await guild.fetchMember(userId);
       if (!member) return;
       
-      if (!client.observedVoiceUsers.get(userId)) {
+    if (!client.observedVoiceUsers.get(userId)) {
+      try {
         client.observedVoiceUsers.set(userId, { channelId: newChannelId, guildId });
-        const channelNameBase = db.config?.channelName ? db.config.channelName : state.member?.user?.global_name ? `${state.member.user.global_name}'s Channel` : `${state.member.user.username}'s Channel`
+        const channelNameBase = db.config?.channelName ? db.config.channelName : state.member.nick ? `${state.member.nick}${state.member.nick[state.member.nick.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel` : state.member?.user?.global_name ? `${state.member.user.global_name}${state.member.user.global_name[state.member.user.global_name.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel` : `${state.member.user.username}${state.member.user.username[state.member.user.username.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel`
         const channelName = db?.config?.counting ? `${channelNameBase} (${(db?.tempChannels?.length ?? 0) + 1})` : channelNameBase;
+        
         const voiceChannel = await guild.createChannel({
           type: 2,
           name: `${channelName}`,
@@ -93,6 +97,15 @@ module.exports = async (client, oldState, newState) => {
             { ownerId: userId, channelId: voiceChannel.id, parentChannel },
           ],
         });
+      } catch (error) {
+        await errorHandler({
+          type: "function",
+          message: null,
+          error,
+          config: { client, userId },
+          sendInChannel: false,
+        });
+      }
       }
     }
 };

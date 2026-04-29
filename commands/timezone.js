@@ -48,7 +48,7 @@ function getCurrentTimeInTimezone(timezone) {
 module.exports = {
     config: {
         name: "timezone",
-        usage: true,
+        usage: "help",
         cooldown: 2000,
         available: true,
         permissions: {},

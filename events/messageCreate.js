@@ -1,17 +1,15 @@
 const { EmbedBuilder, PermissionFlags } = require("@erinjs/core");
 const Collector = require("../functions/messageCollector");
 const EditCollector = require("../functions/messageEdit");
+const errorHandler = require("../functions/errorHandler");
 const parseTime = require("../functions/parseTime");
-const color = require("../functions/colorCodes");
+const manageVC = require("../functions/manageVC");
 
 module.exports = async (client, message) => {
-  if (
-    !message?.channel ||
-    message.channel.type === 1 ||
-    !message.content ||
-    message.author.bot
-  )
-    return;
+  if (!message?.channel || !message.content || message.author.bot) return;
+  const MVC = client.manageVC.get(message.author.id);
+  if (message.channel.type === 1 && MVC) return await manageVC(client, message)
+  if (message.channel.type === 1) return;
 
   // const channel = message.channel;
   // const chanPerms = me && channel ? me.permissionsIn(channel) : null;
@@ -25,7 +23,7 @@ module.exports = async (client, message) => {
 
   if (client.messageEdit.has(message.author.id) && client.messageEdit.get(message.author.id).channelId === message.channelId && !client.messageEdit.get(message.author.id).messageId)
     return await EditCollector(client, message, db);
-  
+
   let prefixLength = db.prefix.length;
   if (db.timezoneConvert) {
     const userData = await client.database.getUser(message.author.id, false);
@@ -135,8 +133,9 @@ module.exports = async (client, message) => {
       used,
       client,
       db.language,
+      false, true
     );
-    
+
     const embed = new EmbedBuilder()
       .setColor("#A52F05")
       .setDescription(
@@ -153,14 +152,23 @@ module.exports = async (client, message) => {
   client.used.set(usedKey, cooldown);
   setTimeout(() => client.used.delete(usedKey), cooldown);
 
-  return commandfile.run(
-    client,
-    message,
-    message.content
-      .slice(prefixLength)
-      .slice(cmd.length)
-      .trim()
-      .split(/ +/g),
-    db,
-  );
+  try {
+    return await commandfile.run(
+      client,
+      message,
+      message.content
+        .slice(prefixLength)
+        .slice(cmd.length)
+        .trim()
+        .split(/ +/g),
+      db,
+    );
+  } catch (error) {
+    await errorHandler({
+      type: "command",
+      message,
+      error,
+      config: {}
+    });
+  }
 };

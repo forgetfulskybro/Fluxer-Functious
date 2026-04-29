@@ -28,7 +28,6 @@ async function checkVoiceStates(client) {
         await channel?.delete?.().catch(() => {});
       } catch (e) {}
 
-      
       deletedChannels.push(channelId);
     }
 

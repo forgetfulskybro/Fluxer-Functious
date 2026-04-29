@@ -18,8 +18,7 @@ class Polls {
     }
 
     async start(message, poll, first = false) {
-      message = await message;
-        this.client.polls.set(message.id, { poll, messageId: message.id, channelId: message.channelId, owner: this.owner })
+        this.client.polls.set(message.id, { poll, messageId: message.id, channelId: message.channelId, serverId: message.guildId, owner: this.owner })
 
         if (first) {
           const pollImage = await fetch(`${process.env.CDN}/api/upload`, {
@@ -34,9 +33,9 @@ class Polls {
               messageId: message.id,
             })
           }).then((i) => i.json())
-          
+
           //const newMsg = await (await this.client.channels.resolve(message.channelId))?.messages?.fetch(message.id)
-          message.edit({ embeds: [new EmbedBuilder().setDescription(`${this.client.translate.get(this.lang, "Commands.giveaway.time")}: <t:${Math.floor((this.time + Date.now()) / 1000)}:R>${first.tooMuch.length > 0 ? `\n\n${first.tooMuch.map(e => e).join("\n")}` : ""}\n_ _`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { })
+          message.edit({ embeds: [new EmbedBuilder().setDescription(`${this.client.translate.get(this.lang, "Commands.giveaway.time")}: <t:${Math.floor((this.time + Date.now()) / 1000)}:R>${first.tooMuch.length > 0 ? `\n\n${first.tooMuch.map(e => e).join("\n")}` : ""}`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(`#A52F05`)] }).catch(() => { })
         }
 
         if (this.time < 0) return;

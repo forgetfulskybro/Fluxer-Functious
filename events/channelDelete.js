@@ -23,6 +23,13 @@ module.exports = async (client, channel) => {
     });
   }
 
+  if (db.config?.manage === channel.id) {
+    await client.database.updateGuild(guildId, {
+      'config.manage': null,
+      'config.manageMessage': null,
+    });
+  }
+
   await Giveaways.deleteMany({ serverId: guildId, channelId: channel.id });
 
   await Polls.deleteMany({ serverId: guildId, channelId: channel.id });

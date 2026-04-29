@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlags } = require("@erinjs/core");
+const { EmbedBuilder, PermissionFlags, resolvePermissionsToBitfield } = require("@erinjs/core");
 const emoji = require('node-emoji');
 
 const EMBED_COLORS = {
@@ -7,12 +7,12 @@ const EMBED_COLORS = {
   INFO: '#A52F05'
 };
 
-const VALID_FIELDS = ['name', 'limit', 'counting', 'category'];
+const VALID_FIELDS = ['name', 'limit', 'counting', 'category', 'manage'];
 
 module.exports = {
   config: {
     name: "tempchannels",
-    usage: true,
+    usage: "help",
     cooldown: 3000,
     available: true,
     permissions: {
@@ -86,9 +86,9 @@ module.exports = {
         };
       }
 
-      await guild.fetchChannels();
-      const byId = guild?.channels?.resolve?.(categoryInput) ?? null;
-      const byName = guild?.channels?.find?.(
+      const channels = await guild.fetchChannels();
+      const byId = channels?.find((c) => c.id === categoryInput) ?? null;
+      const byName = channels?.find?.(
         (c) => c?.name?.toLowerCase?.() === categoryInput.toLowerCase(),
       ) ?? null;
       const resolved = byId ?? byName;
@@ -134,8 +134,54 @@ module.exports = {
       }
       return true;
     }
+  
+    async function configManage(type, msg, category = null) {
+      if (type === "create") {
+        const channel = await msg.guild.createChannel({
+          type: 0,
+          name: client.translate.get(db.language, "Commands.tempchannels.manageCreate"),
+          parent_id: category ? category.id : db.config?.customParent ? db.config?.customParent : db.parentChannel,
+        });
+        
+        await channel.editPermission(msg.guild.roles.find((r) => r.name === "@everyone").id, {
+          type: 0,
+          deny: resolvePermissionsToBitfield(["SendMessages", "AddReactions"])
+        })
+        
+        const embed = new EmbedBuilder()
+          .setColor(EMBED_COLORS.INFO)
+          .setTitle(client.translate.get(db.language, "Commands.tempchannels.manageTitle"))
+          .setDescription(client.translate.get(db.language, "Commands.tempchannels.manageDescription"))
+          .setFooter({ text: client.translate.get(db.language, "Commands.tempchannels.manageFooter") });
+        
+        const message = await channel.send({ embeds: [embed] });
+        const reactions = ['<:channelName:1498099550363509257>', '<:userLimit:1498101792919392863>', '<:blockUser:1498101705656877648>', '<:unblockUser:1498101686866420308>', '<:view:1498405262088803743>'];
+        
+        for (const reaction of reactions) {
+          await message.react(reaction).catch(() => {});
+        }
+        
+        return { channel, message };
+      } else if (type === "delete") {
+        if (typeof db.config?.manage == 'string') {
+          const channel = await client.channels.resolve(db.config.manage);
+          if (channel) await channel.delete();
+          return null;
+        } else {
+          return db.config?.manage ?? null;
+        }
+      }
+    }
+    
     async function disableTemps() {
       if (!db.parentChannel && !db.childChannel && db.tempChannels?.length === 0) return false;
+      
+      await client.database.updateGuild(message.guildId, {
+        parentChannel: null,
+        childChannel: null,
+        tempChannels: [],
+        config: null,
+      });
       
       try {
         const parentChannel = await client.channels.resolve(db.parentChannel);
@@ -143,6 +189,7 @@ module.exports = {
 
         if (childChannel) await childChannel.delete();
         if (!db.config?.customParent && parentChannel) await parentChannel.delete();
+        if (db.config?.manage) await configManage("delete")
         
         if (db.tempChannels?.length > 0) {
           for (const entry of db.tempChannels) {
@@ -154,25 +201,33 @@ module.exports = {
         }
       } catch  { };
       
-      return await client.database.updateGuild(message.guildId, {
-        parentChannel: null,
-        childChannel: null,
-        tempChannels: [],
-        config: null,
-      });
+      return;
     }
     
-    async function enableTemps() {
+    async function enableTemps(customCat = null, manage = null) {
       try {
         let category;
-        if (db.config?.customParent) {
-          category = await client.channels.resolve(db.config.customParent);
+        if (customCat) {
+          category = await client.channels.resolve(customCat.id);
           if (!category || category.type !== 4) return null;
         } else {
-          category = await message.guild.createChannel({
-            type: 4,
-            name: client.translate.get(db.language, "Commands.tempchannels.tempChannels"),
-          });
+          if (db.config?.customParent) {
+            category = await client.channels.resolve(db.config.customParent);
+            if (!category || category.type !== 4) return null;
+          } else {
+            category = await message.guild.createChannel({
+              type: 4,
+              name: client.translate.get(db.language, "Commands.tempchannels.tempChannels"),
+            });
+          }
+        }
+        
+        let manageChannel = null;
+        let manageMessage = null;
+        if (manage ? manage : db.config?.manage) {
+          const opts = await configManage("create", message, category);
+          manageChannel = opts.channel;
+          manageMessage = opts.message;
         }
 
         const voiceChannel = await message.guild.createChannel({
@@ -182,7 +237,7 @@ module.exports = {
           bitrate: 64000,
         });
 
-        return { category, voiceChannel };
+        return { category, voiceChannel, manageChannel, manageMessage };
       } catch (error) {
         return null;
       }
@@ -191,7 +246,7 @@ module.exports = {
     const embed = createEmbed(
       EMBED_COLORS.INFO,
       client.translate.get(db.language, "Commands.tempchannels.helpUsage"),
-      `${client.translate.get(db.language, "Commands.tempchannels.setup")}\n\`${db.prefix}tc set default\`\n\n${client.translate.get(db.language, "Commands.tempchannels.resetSetup", { "default": "default", "config": "config" })}\n\`${db.prefix}tc set [${client.translate.get(db.language, "Commands.tempchannels.option")}, e.g. default | config] {reset}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.configuration")}\n\`${db.prefix}tc set config {name:${client.translate.get(db.language, "Commands.tempchannels.myChannel")}} {limit:5} {counting} {category:Temp Channels}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.editConfig")}\n\`${db.prefix}tc edit {name:New Name} {limit:10} {counting}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.deleteConfig")}\n\`${db.prefix}tc delete {counting} {limit} {name} {category}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.viewConfig")}\n\`${db.prefix}tc view\`\n\n**${client.translate.get(db.language, "Commands.tempchannels.optional")}**\n- \`{name:...}\`: ${client.translate.get(db.language, "Commands.tempchannels.nameDefine")}\n- \`{limit:...}\`: ${client.translate.get(db.language, "Commands.tempchannels.limitDefine")}\n- \`{counting}\`: ${client.translate.get(db.language, "Commands.tempchannels.countingDefine")}\n- \`{category:...}\`: ${client.translate.get(db.language, "Commands.tempchannels.categoryDefine")}\n- \`{reset}\`: ${client.translate.get(db.language, "Commands.tempchannels.resetDefine")}\n\n**${client.translate.get(db.language, "Commands.tempchannels.examples")}**\n\`${db.prefix}tc set default\`\n\`${db.prefix}tc set config {name:Private Room} {limit:2} {counting}\`\n\`${db.prefix}tc edit {name:Updated Room} {limit:3}\`\n\`${db.prefix}tc delete {counting} {limit}\`\n\`${db.prefix}tc set config {reset}\`\n\`${db.prefix}tc view\``
+      `${client.translate.get(db.language, "Commands.tempchannels.setup")}\n\`${db.prefix}tc set default\`\n\n${client.translate.get(db.language, "Commands.tempchannels.resetSetup", { "default": "default", "config": "config" })}\n\`${db.prefix}tc set [${client.translate.get(db.language, "Commands.tempchannels.option")}, e.g. default | config] {reset}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.configuration")}\n\`${db.prefix}tc set config {name:${client.translate.get(db.language, "Commands.tempchannels.myChannel")}} {limit:5} {counting} {category:Temp Channels} {manage}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.editConfig")}\n\`${db.prefix}tc edit {name:New Name} {limit:10} {counting}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.deleteConfig")}\n\`${db.prefix}tc delete {counting} {limit} {name} {category} {manage}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.viewConfig")}\n\`${db.prefix}tc view\`\n\n**${client.translate.get(db.language, "Commands.tempchannels.optional")}**\n- \`{name:...}\`: ${client.translate.get(db.language, "Commands.tempchannels.nameDefine")}\n- \`{limit:...}\`: ${client.translate.get(db.language, "Commands.tempchannels.limitDefine")}\n- \`{counting}\`: ${client.translate.get(db.language, "Commands.tempchannels.countingDefine")}\n- \`{category:...}\`: ${client.translate.get(db.language, "Commands.tempchannels.categoryDefine")}\n- \`{reset}\`: ${client.translate.get(db.language, "Commands.tempchannels.resetDefine")}\n- \`{manage}\`: ${client.translate.get(db.language, "Commands.tempchannels.manageDefine")}\n\n**${client.translate.get(db.language, "Commands.tempchannels.examples")}**\n\`${db.prefix}tc set default\`\n\`${db.prefix}tc set config {name:Private Room} {limit:2} {counting} {manage}\`\n\`${db.prefix}tc edit {name:Updated Room} {limit:3} {manage}\`\n\`${db.prefix}tc delete {counting} {limit}\`\n\`${db.prefix}tc set config {reset}\`\n\`${db.prefix}tc view\``
     );
     
     if (!args[0]) return message.reply({ embeds: [embed] });
@@ -202,10 +257,11 @@ module.exports = {
         break;
       
       case "view":
+        const manageStatus = db.config?.manage ? `${client.translate.get(db.language, "Commands.tempchannels.on")} (<#${db.config.manage}>)` : client.translate.get(db.language, "Commands.tempchannels.off");
         message.reply({ embeds: [createEmbed(
           EMBED_COLORS.INFO,
           client.translate.get(db.language, "Commands.tempchannels.tempConfig"),
-          `**${client.translate.get(db.language, "Commands.tempchannels.category")}**: ${db.config?.customParent ? `<#${db.config.customParent}>` : (db.parentChannel ? `<#${db.parentChannel}>` : client.translate.get(db.language, "Commands.tempchannels.notSet"))}\n**${client.translate.get(db.language, "Commands.tempchannels.mainChannel")}**: ${db.childChannel ? `<#${db.childChannel}>` : client.translate.get(db.language, "Commands.tempchannels.notSet")}\n\n**${client.translate.get(db.language, "Commands.tempchannels.channelName")}**: ${db.config?.channelName ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.userLimit")}**: ${db.config?.limit ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.countingToggle")}**: ${db.config?.counting ? client.translate.get(db.language, "Commands.tempchannels.on") : client.translate.get(db.language, "Commands.tempchannels.off")}`
+          `**${client.translate.get(db.language, "Commands.tempchannels.category")}**: ${db.config?.customParent ? `<#${db.config.customParent}>` : (db.parentChannel ? `<#${db.parentChannel}>` : client.translate.get(db.language, "Commands.tempchannels.notSet"))}\n**${client.translate.get(db.language, "Commands.tempchannels.mainChannel")}**: ${db.childChannel ? `<#${db.childChannel}>` : client.translate.get(db.language, "Commands.tempchannels.notSet")}\n\n**${client.translate.get(db.language, "Commands.tempchannels.channelName")}**: ${db.config?.channelName ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.userLimit")}**: ${db.config?.limit ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.countingToggle")}**: ${db.config?.counting ? client.translate.get(db.language, "Commands.tempchannels.on") : client.translate.get(db.language, "Commands.tempchannels.off")}\n**${client.translate.get(db.language, "Commands.tempchannels.manage")}**: ${manageStatus}`
         )] });
         break;
 
@@ -249,7 +305,7 @@ module.exports = {
               const countingRaw = parsed.counting;
               const resetRaw = parsed.reset;
               const categoryRaw = parsed.category;
-              //const manageRaw = parsed.manage;
+              const manageRaw = parsed.manage;
               
               let channelName;
               if (channelNameRaw) {
@@ -274,6 +330,9 @@ module.exports = {
 
               let reset = false;
               if (resetRaw === "") reset = true;
+              
+              let manage;
+              if (manageRaw === "") manage = true;
 
               let targetCategoryId;
               const categoryValidation = await resolveCategory(message.guild, categoryRaw, client, db, "set config");
@@ -284,22 +343,11 @@ module.exports = {
                 targetCategoryId = categoryValidation.value;
               }
 
-              // let manage;
-              // if (manageRaw) {
-              //   const v = String(manageRaw).trim().toLowerCase();
-              //   if (v === "true" || v === "on") manage = true;
-              //   else {
-              //     return message.reply(
-              //       { embeds: [new EmbedBuilder().setDescription(`Please provide a valid manage option (\`{manage:true}\` or \`{manage:on}\`).\n**Example**:\n\`${db.prefix}tc set config {manage:true}\``)] }
-              //     );
-              //   }
-              // }
-
               if (!checkNotSetupForSet(db, client, message, "set config", reset)) return;
 
               if (reset) {
                 const didReset = await disableTemps();
-                if (!channelName && !channelLimit && !counting && !targetCategoryId) {
+                if (!channelName && !channelLimit && !counting && !targetCategoryId && !manage) {
                   if (!didReset) {
                     return message.reply({
                       embeds: [
@@ -319,47 +367,15 @@ module.exports = {
                 }
               }
 
-              if (!channelName && !channelLimit && !counting && !targetCategoryId && !reset) {
+              if (!channelName && !channelLimit && !counting && !targetCategoryId && !reset && !manage) {
                 return message.reply(
-                  { embeds: [createEmbed(EMBED_COLORS.ERROR, null, `${client.translate.get(db.language, "Commands.tempchannels.noArgs")} (\`name\`, \`limit\`, \`counting\`, \`category\`).\n**${client.translate.get(db.language, "Commands.tempchannels.example")}**:\n\`${db.prefix}tc set config {name:${client.translate.get(db.language, "Commands.tempchannels.myChannel")}} {limit:5} {counting} {category:1484784325810897153}\`\n- ${client.translate.get(db.language, "Commands.tempchannels.noArgsDesc")}`)] }
+                  { embeds: [createEmbed(EMBED_COLORS.ERROR, null, `${client.translate.get(db.language, "Commands.tempchannels.noArgs")} (\`name\`, \`limit\`, \`counting\`, \`category\`, \`manage\`).\n**${client.translate.get(db.language, "Commands.tempchannels.example")}**:\n\`${db.prefix}tc set config {name:${client.translate.get(db.language, "Commands.tempchannels.myChannel")}} {limit:5} {counting} {category:1484784325810897153}\`\n- ${client.translate.get(db.language, "Commands.tempchannels.noArgsDesc")}`)] }
                 );
               }
-
-              let category;
-              let voiceChannel;
-              if (targetCategoryId) {
-                category = targetCategoryId;
-                if (!category) {
-                  return message.reply({
-                    embeds: [
-                      createEmbed(EMBED_COLORS.ERROR, null,
-                        client.translate.get(db.language, "Commands.tempchannels.failedSetup")
-                      ),
-                    ],
-                  });
-                }
-
-                voiceChannel = await message.guild.createChannel({
-                  type: 2,
-                  name: client.translate.get(db.language, "Commands.tempchannels.joinCreate"),
-                  parent_id: category.id,
-                  bitrate: 64000,
-                }) //catch
-
-                if (!voiceChannel) {
-                  return message.reply({
-                    embeds: [
-                      createEmbed(EMBED_COLORS.ERROR, null,
-                        client.translate.get(db.language, "Commands.tempchannels.failedSetup")
-                      ),
-                    ],
-                  });
-                }
-              } else {
-                const vc = await enableTemps();
-                if (!vc) return message.reply({ embeds: [createEmbed(EMBED_COLORS.ERROR, null, client.translate.get(db.language, "Commands.tempchannels.failedSetup"))] });
-                ({ category, voiceChannel } = vc);
-              }
+              
+              const vc = await enableTemps(targetCategoryId, manage);
+              if (!vc) return message.reply({ embeds: [createEmbed(EMBED_COLORS.ERROR, null, client.translate.get(db.language, "Commands.tempchannels.failedSetup"))] });
+              ({ category, voiceChannel, manageChannel, manageMessage } = vc);
 
               await client.database.updateGuild(message.guildId, {
                 config: {
@@ -367,7 +383,9 @@ module.exports = {
                   ...(channelLimit ? { channelLimit } : {}),
                   ...(counting ? { counting } : {}),
                   ...(targetCategoryId?.id ? { customParent: targetCategoryId.id } : { customParent: null }),
-                }, // ...(manage  ? { manage } : {}),
+                  ...(manage ? { manage: manageChannel.id } : { manage: null }),
+                  ...(manage ? { manageMessage: manageMessage.id } : { manageMessage: null }),
+                },
                 parentChannel: category.id,
                 childChannel: voiceChannel.id,
               });
@@ -388,6 +406,7 @@ module.exports = {
           const limitRaw = parsed.limit;
           const countingRaw = parsed.counting;
           const categoryRaw = parsed.category;
+          const manageRaw = parsed.manage;
           
           const currentConfig = db.config || {};
           const updates = {};
@@ -411,6 +430,18 @@ module.exports = {
           if (countingRaw === "") {
             updates.counting = !currentConfig.counting;
           }
+          
+          if (manageRaw === "") {
+            if (typeof currentConfig.manage == 'string') {
+              updates.manage = null;
+              updates.manageMessage = null;
+              await configManage("delete")
+            } else {
+              const result = await configManage("create", message);
+              updates.manage = result?.channel?.id;
+              updates.manageMessage = result?.message?.id;
+            }
+          }
 
           let targetCategoryId;
           if (categoryRaw) {
@@ -428,7 +459,7 @@ module.exports = {
             return message.reply({
               embeds: [
                 createEmbed(EMBED_COLORS.ERROR, null,
-                  `${client.translate.get(db.language, "Commands.tempchannels.noArgs")} (\`name\`, \`limit\`, \`counting\`, \`category\`).\n**${client.translate.get(db.language, "Commands.tempchannels.example")}**:\n\`${db.prefix}tc edit {name:${client.translate.get(db.language, "Commands.tempchannels.myChannel")}} {limit:5} {counting}\`\n- ${client.translate.get(db.language, "Commands.tempchannels.noArgsDesc")}`
+                  `${client.translate.get(db.language, "Commands.tempchannels.noArgs")} (\`name\`, \`limit\`, \`counting\`, \`category\`, \`manage\`).\n**${client.translate.get(db.language, "Commands.tempchannels.example")}**:\n\`${db.prefix}tc edit {name:${client.translate.get(db.language, "Commands.tempchannels.myChannel")}} {limit:5} {counting}\`\n- ${client.translate.get(db.language, "Commands.tempchannels.noArgsDesc")}`
                 ),
               ],
             });
@@ -446,6 +477,8 @@ module.exports = {
             if (key === 'counting') return `${client.translate.get(db.language, "Commands.tempchannels.counting")}: ${updates[key] ? client.translate.get(db.language, "Commands.tempchannels.on") : client.translate.get(db.language, "Commands.tempchannels.off")}`;
             if (key === 'channelLimit') return `${client.translate.get(db.language, "Commands.tempchannels.userLimit")}: ${updates[key]}`;
             if (key === 'channelName') return `${client.translate.get(db.language, "Commands.tempchannels.channelName")}: ${updates[key]}`;
+            if (key === 'manage') return `${client.translate.get(db.language, "Commands.tempchannels.manage")}: ${updates[key] ? client.translate.get(db.language, "Commands.tempchannels.on") : client.translate.get(db.language, "Commands.tempchannels.off")}`;
+            if (key === "manageMessage") return;
             return `${key}: ${updates[key]}`;
           }).join('\n');
 
@@ -470,7 +503,7 @@ module.exports = {
             return message.reply({
               embeds: [
                 createEmbed(EMBED_COLORS.ERROR, null,
-                  `${client.translate.get(db.language, "Commands.tempchannels.delete")}.\n**${client.translate.get(db.language, "Commands.tempchannels.example")}**:\n\`${db.prefix}tc delete {counting} {limit} {name} {category}\``
+                  `${client.translate.get(db.language, "Commands.tempchannels.delete")}.\n**${client.translate.get(db.language, "Commands.tempchannels.example")}**:\n\`${db.prefix}tc delete {counting} {limit} {name} {category} {manage}\``
                 ),
               ],
             });
@@ -500,6 +533,8 @@ module.exports = {
               updates.counting = false;
             } else if (field === 'category') {
               updates.customParent = null;
+            } else if (field === 'manage') {
+              updates.manage = null;
             }
           });
 
@@ -515,6 +550,7 @@ module.exports = {
             if (field === 'limit') return client.translate.get(db.language, "Commands.tempchannels.userLimit");
             if (field === 'counting') return client.translate.get(db.language, "Commands.tempchannels.counting");
             if (field === 'category') return client.translate.get(db.language, "Commands.tempchannels.category");
+            if (field === 'manage') return client.translate.get(db.language, "Commands.tempchannels.manage");
             return field;
           }).join(', ');
 

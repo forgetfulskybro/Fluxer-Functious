@@ -24,7 +24,17 @@ function fetchTime(ms, client, lang, short=false, minimal=false) {
     return `${seconds} ${secondStr}${seconds > 1 ? 's' : ''}`;
   }
   
-  if (short) return `${years ? `${years}y,` : ""} ${days ? `${days}d,` : ""} ${hours ? `${hours}h,` : ""} ${minutes ? `${minutes}m,` : ""} ${seconds}s`;
+  if (short) {
+    const parts = [];
+    if (years) parts.push(`${years}y`);
+    if (days) parts.push(`${days}d`);
+    if (hours) parts.push(`${hours}h`);
+    if (minutes) parts.push(`${minutes}m`);
+    parts.push(`${seconds}s`);
+    return parts.join(', ');
+  }
+  
+  
   return `${years ? `${years} ${yearStr}${years > 1 ? 's' : ''},` : ""} ${days ? `${days} ${dayStr}${days > 1 ? 's' : ''},` : ""} ${hours ? `${hours} ${hourStr}${hours > 1 ? 's' : ''},` : ""} ${minutes ? `${minutes} ${minuteStr}${minutes > 1 ? 's' : ''},` : ""} ${seconds} ${secondStr}${seconds > 1 ? 's' : ''}`;
 }
 

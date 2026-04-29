@@ -13,8 +13,10 @@ module.exports = {
             if (!command) return;
 
             let usage = '';
-            if (command.config.usage) {
-                usage = client.translate.get(db.language, `Commands.${command.config.name}.usage`);
+            if (typeof command.config.usage === 'string') {
+              usage = command.config.usage;
+            } else if (command.config.usage) {
+              usage = client.translate.get(db.language, `Commands.${command.config.name}.usage`);
             }
 
             const embed = new EmbedBuilder()

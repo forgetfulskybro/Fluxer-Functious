@@ -12,7 +12,15 @@ module.exports = async (client, msg) => {
 
   if (client.polls?.has(msgId)) {
     client.polls.delete(msgId);
-    await PollDB.findOneAndDelete({ messageId: msgId }).catch(() => null);
+    await PollDB.findOneAndUpdate({ messageId: msgId }, { ended: true }).catch(() => null);
+  }
+
+  const db = await client.database.getGuild(msg.guildId);
+  if (db && db.config?.manageMessage === msgId) {
+    await client.database.updateGuild(msg.guildId, {
+      'config.manage': null,
+      'config.manageMessage': null,
+    });
   }
 
   await Promise.all([
