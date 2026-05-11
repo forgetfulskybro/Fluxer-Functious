@@ -23,12 +23,14 @@ module.exports = async (client, channel) => {
     });
   }
 
-  if (db.config?.manage === channel.id) {
-    await client.database.updateGuild(guildId, {
-      'config.manage': null,
-      'config.manageMessage': null,
-    });
-  }
+  // if (db.config?.manage === channel.id) {
+  //   try {
+  //     await client.database.updateGuild(guildId, {
+  //       'config.manage': null,
+  //       'config.manageMessage': null,
+  //     });
+  //   } catch { }
+  // }
 
   await Giveaways.deleteMany({ serverId: guildId, channelId: channel.id });
 

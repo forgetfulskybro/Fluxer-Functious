@@ -12,7 +12,7 @@ async function Collector(client, message, db) {
   if (!message.content.match(regexAll) || message.content.match(regexAll)?.length === 0) {
     message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.noRoles")}: \`{role:Red}\`\n\n${client.translate.get(db.language, "Events.messageCreate.stop", { "prefix": db.prefix })}`)] }).then(async (m) => {
       setTimeout(() => {
-        message.delete().catch(() => { });
+        //message.delete().catch(() => { });
         m.delete().catch(() => { });
       }, 6000);
     });
@@ -23,7 +23,7 @@ async function Collector(client, message, db) {
   if (roles.length > 30) {
     message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.maxRoles"))] }).then(async (m) => {
       setTimeout(() => {
-        message.delete().catch(() => { });
+        //message.delete().catch(() => { });
         m.delete().catch(() => { });
       }, 6000);
     });

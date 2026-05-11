@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const fetchTime = require("../functions/fetchTime");
+const { handleNewReminder, handleDeletedReminder } = require("../functions/checkReminders");
 const { EmbedBuilder } = require("@erinjs/core");
 const chrono = require("chrono-node");
 
@@ -33,17 +34,22 @@ function cleanReminderMessage(text) {
     cleaned = cleaned.replace(new RegExp(mention, 'gi'), '');
   });
 
-  const words = cleaned.split(/\s+/);
+  const words = cleaned.split(/\s+/).filter(w => w.length > 0);
   const removedWords = new Set();
+  let contentStarted = false;
 
   return words
     .filter((word) => !CONFIG.MENTIONS.includes(word.toLowerCase()))
     .filter((word) => {
       const lowerWord = word.toLowerCase();
+      if (contentStarted) return true;
+      
       if (CONFIG.WORDS_TO_REMOVE.includes(lowerWord) && !removedWords.has(lowerWord)) {
         removedWords.add(lowerWord);
         return false;
       }
+      
+      contentStarted = true;
       return true;
     })
     .join(" ");
@@ -212,6 +218,8 @@ async function deleteReminder(userId, index, client) {
   }
 
   const reminderToDelete = reminders[index];
+
+  handleDeletedReminder(userId, reminderToDelete.id);
 
   await client.database.updateUser(
     userId,
@@ -389,6 +397,8 @@ async function handleCreate(message, args, prefix, isDM, client, language) {
       { reminders: [...(userData.reminders || []), newReminder] },
       true
     );
+
+    handleNewReminder(message.author.id, newReminder);
   } else {
     const reminderId = crypto.randomUUID();
     const newReminder = {
@@ -405,6 +415,8 @@ async function handleCreate(message, args, prefix, isDM, client, language) {
       { reminders: [...(userData.reminders || []), newReminder] },
       true
     );
+
+    handleNewReminder(message.author.id, newReminder);
 
     const timeUntil = (timestamp - now) * 1000;
     const timeStr = fetchTime(timeUntil, client, language, false, true).replace(/,/g, "");

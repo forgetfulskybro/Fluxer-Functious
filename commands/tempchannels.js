@@ -1,6 +1,8 @@
 const { EmbedBuilder, PermissionFlags, resolvePermissionsToBitfield } = require("@erinjs/core");
 const emoji = require('node-emoji');
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const EMBED_COLORS = {
   ERROR: '#FF0000',
   SUCCESS: '#A52F05',
@@ -135,8 +137,88 @@ module.exports = {
       return true;
     }
   
-    async function configManage(type, msg, category = null) {
+    async function updateLoadingMessage(msg, embed, steps, currentStep, manageEnabled = false, isDeleting = false, willCreate = true, usingCustomCategory = false) {
+      const stepEmojis = {
+        pending: '⏳',
+        active: '⏳',
+        done: '✅',
+        skip: '⏭️'
+      };
+      
+      let description = '';
+      
+      if (isDeleting) {
+        const deleteSteps = [
+          ...(steps.delTemps ? [{ key: 'delTemps', label: client.translate.get(db.language, "Commands.tempchannels.deletingTemps"), emoji: '🗑️' }] : []),
+          ...(steps.delMain ? [{ key: 'delMain', label: client.translate.get(db.language, "Commands.tempchannels.deletingMain"), emoji: '🔊' }] : []),
+          ...(steps.delCategory ? [{ key: 'delCategory', label: client.translate.get(db.language, "Commands.tempchannels.deletingCategory"), emoji: '📁' }] : []),
+          ...(steps.delManage ? [{ key: 'delManage', label: client.translate.get(db.language, "Commands.tempchannels.deletingManage"), emoji: '📋' }] : [])
+        ];
+        
+        for (const step of deleteSteps) {
+          let status = stepEmojis.pending;
+          if (steps[step.key] === 'active') status = stepEmojis.active;
+          if (steps[step.key] === 'done') status = stepEmojis.done;
+          description += `${status} ${step.emoji} ${step.label}\n`;
+        }
+        
+        if (deleteSteps.length === 0) {
+          description = client.translate.get(db.language, "Commands.tempchannels.noDeleteNeeded");
+        }
+        
+        if (willCreate) {
+          description += '\n' + (client.translate.get(db.language, "Commands.tempchannels.creatingNew")) + '\n\n';
+        }
+      }
+      
+      if (willCreate) {
+        const categoryLabel = usingCustomCategory 
+          ? client.translate.get(db.language, "Commands.tempchannels.usingCategory") || 'Using existing category'
+          : client.translate.get(db.language, "Commands.tempchannels.loadingCategory");
+        
+        const allSteps = [
+          { key: 'category', label: categoryLabel, emoji: '📁' },
+          { key: 'voice', label: client.translate.get(db.language, "Commands.tempchannels.loadingVoice"), emoji: '🔊' },
+          ...(manageEnabled ? [
+            { key: 'manageChannel', label: client.translate.get(db.language, "Commands.tempchannels.loadingManageChannel"), emoji: '📋' },
+            { key: 'manageMessage', label: client.translate.get(db.language, "Commands.tempchannels.loadingManageMessage"), emoji: '📝' }
+          ] : [])
+        ];
+        
+        for (const step of allSteps) {
+          let status = stepEmojis.pending;
+          if (steps[step.key] === 'active') status = stepEmojis.active;
+          if (steps[step.key] === 'done') status = stepEmojis.done;
+          if (steps[step.key] === 'skip') status = stepEmojis.skip;
+          description += `${status} ${step.emoji} ${step.label}\n`;
+        }
+      } else if (manageEnabled && !isDeleting) {
+        const manageOnlySteps = [
+          { key: 'manageChannel', label: client.translate.get(db.language, "Commands.tempchannels.loadingManageChannel"), emoji: '📋' },
+          { key: 'manageMessage', label: client.translate.get(db.language, "Commands.tempchannels.loadingManageMessage"), emoji: '📝' }
+        ];
+        
+        for (const step of manageOnlySteps) {
+          let status = stepEmojis.pending;
+          if (steps[step.key] === 'active') status = stepEmojis.active;
+          if (steps[step.key] === 'done') status = stepEmojis.done;
+          if (steps[step.key] === 'skip') status = stepEmojis.skip;
+          description += `${status} ${step.emoji} ${step.label}\n`;
+        }
+      }
+      
+      embed.setDescription(description || client.translate.get(db.language, "Commands.tempchannels.processing"));
+      return await msg.edit({ embeds: [embed] });
+    }
+
+    async function configManage(type, msg, category = null, loadingMsg = null, loadingEmbed = null, steps = null, skipBaseSteps = false) {
       if (type === "create") {
+        if (loadingMsg && loadingEmbed && steps) {
+          steps.manageChannel = 'active';
+          await updateLoadingMessage(loadingMsg, loadingEmbed, steps, 'manageChannel', true, false, !skipBaseSteps, false);
+          await delay(500);
+        }
+        
         const channel = await msg.guild.createChannel({
           type: 0,
           name: client.translate.get(db.language, "Commands.tempchannels.manageCreate"),
@@ -146,26 +228,48 @@ module.exports = {
         await channel.editPermission(msg.guild.roles.find((r) => r.name === "@everyone").id, {
           type: 0,
           deny: resolvePermissionsToBitfield(["SendMessages", "AddReactions"])
-        })
+        });
+        
+        if (loadingMsg && loadingEmbed && steps) {
+          steps.manageChannel = 'done';
+          steps.manageMessage = 'active';
+          await updateLoadingMessage(loadingMsg, loadingEmbed, steps, 'manageMessage', true, false, !skipBaseSteps, false);
+          await delay(500);
+        }
+
+        const CDNLang = {
+          en_EN: "https://functious-cdn.vercel.app/api/images/ef27463013d7f69f67a0f3eb38129717.png",
+          es_ES: "https://functious-cdn.vercel.app/api/images/9e51affa3d366da1cb46aba84246d712.png", 
+          pt_BR: "https://functious-cdn.vercel.app/api/images/bf709079782d5097798381835cf1e69b.png",
+          ar_AR: "https://functious-cdn.vercel.app/api/images/2791aacd0a1aef7ae25e124759f601a7.png"
+        }
         
         const embed = new EmbedBuilder()
           .setColor(EMBED_COLORS.INFO)
           .setTitle(client.translate.get(db.language, "Commands.tempchannels.manageTitle"))
-          .setDescription(client.translate.get(db.language, "Commands.tempchannels.manageDescription"))
+          .setImage(CDNLang[db.language])
           .setFooter({ text: client.translate.get(db.language, "Commands.tempchannels.manageFooter") });
         
         const message = await channel.send({ embeds: [embed] });
-        const reactions = ['<:channelName:1498099550363509257>', '<:userLimit:1498101792919392863>', '<:blockUser:1498101705656877648>', '<:unblockUser:1498101686866420308>', '<:view:1498405262088803743>'];
+        const reactions = ['<:rename:1502164676598628060>', '<:userlimit:1502164677802393309>', '<:region:1502164672647593687>', '<:privacy:1502164674153348824>', '<:unblock:1502164681409494751>', '<:block:1502164675642326745>', '<:transfer:1502164678616088286>', '<:close:1502185371235901763>'];
         
         for (const reaction of reactions) {
           await message.react(reaction).catch(() => {});
+          await delay(250);
+        }
+        
+        if (loadingMsg && loadingEmbed && steps) {
+          steps.manageMessage = 'done';
+          await updateLoadingMessage(loadingMsg, loadingEmbed, steps, 'complete', true, false, !skipBaseSteps, false);
         }
         
         return { channel, message };
       } else if (type === "delete") {
         if (typeof db.config?.manage == 'string') {
-          const channel = await client.channels.resolve(db.config.manage);
-          if (channel) await channel.delete();
+          try {
+            const channel = await client.channels.resolve(db.config.manage);
+            if (channel) await channel.delete();
+          } catch { }
           return null;
         } else {
           return db.config?.manage ?? null;
@@ -173,62 +277,137 @@ module.exports = {
       }
     }
     
-    async function disableTemps() {
+    async function disableTemps(deleteOptions = { temps: true, main: true, category: true, manage: true }, loadingMsg = null, loadingEmbed = null, manageEnabled = false, willCreate = true, usingCustomCategory = false) {
       if (!db.parentChannel && !db.childChannel && db.tempChannels?.length === 0) return false;
       
+      const hasTemps = db.tempChannels?.length > 0;
+      const hasMain = !!db.childChannel;
+      const hasCategory = !!db.parentChannel && !db.config?.customParent;
+      const hasManage = !!db.config?.manage;
+      
+      const steps = {
+        delTemps: deleteOptions.temps && hasTemps ? 'pending' : null,
+        delMain: deleteOptions.main && hasMain ? 'pending' : null,
+        delCategory: deleteOptions.category && hasCategory ? 'pending' : null,
+        delManage: deleteOptions.manage && hasManage ? 'pending' : null,
+        category: usingCustomCategory ? 'done' : 'pending',
+        voice: 'pending',
+        manageChannel: manageEnabled ? 'pending' : 'skip',
+        manageMessage: manageEnabled ? 'pending' : 'skip'
+      };
+      
+      if (loadingMsg && loadingEmbed) {
+        await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
+      }
+      
       await client.database.updateGuild(message.guildId, {
-        parentChannel: null,
-        childChannel: null,
-        tempChannels: [],
-        config: null,
+        parentChannel: deleteOptions.category ? null : db.parentChannel,
+        childChannel: deleteOptions.main ? null : db.childChannel,
+        tempChannels: deleteOptions.temps ? [] : db.tempChannels,
+        config: (deleteOptions.manage && db.config?.manage) ? { ...db.config, manage: null, manageMessage: null } : db.config,
       });
       
       try {
-        const parentChannel = await client.channels.resolve(db.parentChannel);
-        const childChannel = await client.channels.resolve(db.childChannel);
-
-        if (childChannel) await childChannel.delete();
-        if (!db.config?.customParent && parentChannel) await parentChannel.delete();
-        if (db.config?.manage) await configManage("delete")
-        
-        if (db.tempChannels?.length > 0) {
+        if (deleteOptions.temps && hasTemps) {
+          steps.delTemps = 'active';
+          if (loadingMsg && loadingEmbed) await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
+          
           for (const entry of db.tempChannels) {
             const channelId = typeof entry === "string" ? entry : (entry?.channelId ?? entry?.id);
             if (!channelId) continue;
             const channel = await client.channels.resolve(channelId);
             if (channel) await channel.delete();
+            await delay(250);
           }
+          steps.delTemps = 'done';
+          if (loadingMsg && loadingEmbed) await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
+          await delay(300);
+        }
+        
+        if (deleteOptions.manage && hasManage) {
+          steps.delManage = 'active';
+          if (loadingMsg && loadingEmbed) await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
+          await configManage("delete");
+          steps.delManage = 'done';
+          if (loadingMsg && loadingEmbed) await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
+          await delay(300);
+        }
+        
+        if (deleteOptions.main && hasMain) {
+          steps.delMain = 'active';
+          if (loadingMsg && loadingEmbed) await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
+          const childChannel = await client.channels.resolve(db.childChannel);
+          if (childChannel) await childChannel.delete();
+          steps.delMain = 'done';
+          if (loadingMsg && loadingEmbed) await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
+          await delay(300);
+        }
+        
+        if (deleteOptions.category && hasCategory) {
+          steps.delCategory = 'active';
+          if (loadingMsg && loadingEmbed) await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
+          const parentChannel = await client.channels.resolve(db.parentChannel);
+          if (parentChannel) await parentChannel.delete();
+          steps.delCategory = 'done';
+          if (loadingMsg && loadingEmbed) await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
+          await delay(300);
         }
       } catch  { };
       
-      return;
+      return steps;
     }
     
-    async function enableTemps(customCat = null, manage = null) {
+    async function enableTemps(customCat = null, manage = null, loadingMsg = null, loadingEmbed = null) {
       try {
+        const usingCustomCategory = !!customCat || !!db.config?.customParent;
+        
+        const steps = {
+          category: usingCustomCategory ? 'done' : 'pending',
+          voice: 'pending',
+          manageChannel: manage ? 'pending' : 'skip',
+          manageMessage: manage ? 'pending' : 'skip'
+        };
+        
+        if (loadingMsg && loadingEmbed) {
+          loadingEmbed.setTitle(client.translate.get(db.language, "Commands.tempchannels.creatingNew"));
+          await updateLoadingMessage(loadingMsg, loadingEmbed, steps, 'category', manage, false, true, usingCustomCategory);
+        }
+        
         let category;
         if (customCat) {
           category = await client.channels.resolve(customCat.id);
           if (!category || category.type !== 4) return null;
+          steps.category = 'done';
         } else {
           if (db.config?.customParent) {
             category = await client.channels.resolve(db.config.customParent);
             if (!category || category.type !== 4) return null;
+            steps.category = 'done';
           } else {
+            steps.category = 'active';
+            if (loadingMsg && loadingEmbed) {
+              await updateLoadingMessage(loadingMsg, loadingEmbed, steps, 'category', manage, false, true, usingCustomCategory);
+            }
+            await delay(500);
+            
             category = await message.guild.createChannel({
               type: 4,
               name: client.translate.get(db.language, "Commands.tempchannels.tempChannels"),
             });
+            steps.category = 'done';
           }
         }
         
-        let manageChannel = null;
-        let manageMessage = null;
-        if (manage ? manage : db.config?.manage) {
-          const opts = await configManage("create", message, category);
-          manageChannel = opts.channel;
-          manageMessage = opts.message;
+        if (loadingMsg && loadingEmbed) {
+          await updateLoadingMessage(loadingMsg, loadingEmbed, steps, 'category', manage, false, true, usingCustomCategory);
+          await delay(300);
         }
+        
+        steps.voice = 'active';
+        if (loadingMsg && loadingEmbed) {
+          await updateLoadingMessage(loadingMsg, loadingEmbed, steps, 'voice', manage);
+        }
+        await delay(500);
 
         const voiceChannel = await message.guild.createChannel({
           type: 2,
@@ -236,6 +415,20 @@ module.exports = {
           parent_id: category.id,
           bitrate: 64000,
         });
+        steps.voice = 'done';
+        
+        if (loadingMsg && loadingEmbed) {
+          await updateLoadingMessage(loadingMsg, loadingEmbed, steps, 'voice', manage);
+          await delay(300);
+        }
+        
+        let manageChannel = null;
+        let manageMessage = null;
+        if (manage ? manage : db.config?.manage) {
+          const opts = await configManage("create", message, category, loadingMsg, loadingEmbed, steps);
+          manageChannel = opts.channel;
+          manageMessage = opts.message;
+        }
 
         return { category, voiceChannel, manageChannel, manageMessage };
       } catch (error) {
@@ -279,12 +472,18 @@ module.exports = {
 
               if (!checkNotSetupForSet(db, client, message, "set default", reset)) return;
 
-              if (reset) await disableTemps();
-              const vc = await enableTemps();
-              if (!vc) return message.reply({ embeds: [createEmbed(EMBED_COLORS.ERROR, null, client.translate.get(db.language, "Commands.tempchannels.failedSetup"))] });
+              const loadingEmbed = createEmbed(EMBED_COLORS.INFO, client.translate.get(db.language, "Commands.tempchannels.resetting"), "");
+              const loadingMsg = await message.reply({ embeds: [loadingEmbed] });
+
+              if (reset) await disableTemps({ temps: true, main: true, category: true, manage: true }, loadingMsg, loadingEmbed, false, true, false);
+              const vc = await enableTemps(null, null, loadingMsg, loadingEmbed);
+              if (!vc) {
+                const errorEmbed = createEmbed(EMBED_COLORS.ERROR, null, client.translate.get(db.language, "Commands.tempchannels.failedSetup"));
+                return await loadingMsg.edit({ embeds: [errorEmbed] });
+              }
               const { category, voiceChannel } = vc;
               
-              client.database.updateGuild(message.guildId, {
+              await client.database.updateGuild(message.guildId, {
                 parentChannel: category.id,
                 childChannel: voiceChannel.id,
                 config: {
@@ -292,13 +491,16 @@ module.exports = {
                   customParent: null,
                 },
               });
-              message.reply({ embeds: [createEmbed(EMBED_COLORS.SUCCESS, null, client.translate.get(db.language, "Commands.tempchannels.successSetup", { voiceChannel: `<#${voiceChannel.id}>` }))] });
+              
+              const successEmbed = createEmbed(EMBED_COLORS.SUCCESS, null, client.translate.get(db.language, "Commands.tempchannels.successSetup", { voiceChannel: `<#${voiceChannel.id}>` }));
+              await loadingMsg.edit({ embeds: [successEmbed] });
             }
             break;
 
           case "config":
             {
-              const parsed = parseArguments(args.join(" ").replace(/\bset\b|\bconfig\b/gi, " "));
+              const argsString = args.join(" ").replace(/\bset\b|\bconfig\b/gi, " ");
+              const parsed = parseArguments(argsString);
 
               const channelNameRaw = parsed.name;
               const limitRaw = parsed.limit;
@@ -325,13 +527,13 @@ module.exports = {
                 channelLimit = validation.value;
               }
 
-              let counting;
+              let counting = false;
               if (countingRaw === "") counting = true;
 
               let reset = false;
               if (resetRaw === "") reset = true;
               
-              let manage;
+              let manage = false;
               if (manageRaw === "") manage = true;
 
               let targetCategoryId;
@@ -343,38 +545,37 @@ module.exports = {
                 targetCategoryId = categoryValidation.value;
               }
 
-              if (!checkNotSetupForSet(db, client, message, "set config", reset)) return;
-
-              if (reset) {
-                const didReset = await disableTemps();
-                if (!channelName && !channelLimit && !counting && !targetCategoryId && !manage) {
-                  if (!didReset) {
-                    return message.reply({
-                      embeds: [
-                        createEmbed(EMBED_COLORS.ERROR, null,
-                          client.translate.get(db.language, "Commands.tempchannels.noReset")
-                        ),
-                      ],
-                    });
-                  }
-                  return message.reply({
-                    embeds: [
-                      createEmbed(EMBED_COLORS.SUCCESS, null,
-                        client.translate.get(db.language, "Commands.tempchannels.successReset")
-                      ),
-                    ],
-                  });
-                }
-              }
-
               if (!channelName && !channelLimit && !counting && !targetCategoryId && !reset && !manage) {
                 return message.reply(
-                  { embeds: [createEmbed(EMBED_COLORS.ERROR, null, `${client.translate.get(db.language, "Commands.tempchannels.noArgs")} (\`name\`, \`limit\`, \`counting\`, \`category\`, \`manage\`).\n**${client.translate.get(db.language, "Commands.tempchannels.example")}**:\n\`${db.prefix}tc set config {name:${client.translate.get(db.language, "Commands.tempchannels.myChannel")}} {limit:5} {counting} {category:1484784325810897153}\`\n- ${client.translate.get(db.language, "Commands.tempchannels.noArgsDesc")}`)] }
+                  { embeds: [createEmbed(EMBED_COLORS.ERROR, null, `${client.translate.get(db.language, "Commands.tempchannels.noArgs")} (\`name\`, \`limit\`, \`counting\`, \`category\`, \`manage\`).\n**${client.translate.get(db.language, "Commands.tempchannels.example")}**:\n\`${db.prefix}tc set config {name:${client.translate.get(db.language, "Commands.tempchannels.myChannel")}} {limit:5} {counting} {category:1484784325810897153} {manage}\`\n- ${client.translate.get(db.language, "Commands.tempchannels.noArgsDesc")}`)] }
                 );
               }
+
+              if (!checkNotSetupForSet(db, client, message, "set config", reset)) return;
+
+              const loadingEmbed = createEmbed(EMBED_COLORS.INFO, client.translate.get(db.language, "Commands.tempchannels.resetting"), "");
+              const loadingMsg = await message.reply({ embeds: [loadingEmbed] });
+
+              const willCreate = !!(channelName || channelLimit || counting || targetCategoryId || manage);
+              const usingCustomCategory = !!targetCategoryId;
               
-              const vc = await enableTemps(targetCategoryId, manage);
-              if (!vc) return message.reply({ embeds: [createEmbed(EMBED_COLORS.ERROR, null, client.translate.get(db.language, "Commands.tempchannels.failedSetup"))] });
+              if (reset) {
+                const didReset = await disableTemps({ temps: true, main: true, category: true, manage: true }, loadingMsg, loadingEmbed, manage, willCreate, usingCustomCategory);
+                if (!channelName && !channelLimit && !counting && !targetCategoryId && !manage) {
+                  if (!didReset) {
+                    const errorEmbed = createEmbed(EMBED_COLORS.ERROR, null, client.translate.get(db.language, "Commands.tempchannels.noReset"));
+                    return await loadingMsg.edit({ embeds: [errorEmbed] });
+                  }
+                  const successEmbed = createEmbed(EMBED_COLORS.SUCCESS, null, client.translate.get(db.language, "Commands.tempchannels.successReset"));
+                  return await loadingMsg.edit({ embeds: [successEmbed] });
+                }
+              }
+              
+              const vc = await enableTemps(targetCategoryId, manage, loadingMsg, loadingEmbed);
+              if (!vc) {
+                const errorEmbed = createEmbed(EMBED_COLORS.ERROR, null, client.translate.get(db.language, "Commands.tempchannels.failedSetup"));
+                return await loadingMsg.edit({ embeds: [errorEmbed] });
+              }
               ({ category, voiceChannel, manageChannel, manageMessage } = vc);
 
               await client.database.updateGuild(message.guildId, {
@@ -390,7 +591,8 @@ module.exports = {
                 childChannel: voiceChannel.id,
               });
               
-              message.reply({ embeds: [createEmbed(EMBED_COLORS.SUCCESS, null, client.translate.get(db.language, "Commands.tempchannels.successSetup", { "voiceChannel": `<#${voiceChannel.id}>` }))] });
+              const successEmbed = createEmbed(EMBED_COLORS.SUCCESS, null, client.translate.get(db.language, "Commands.tempchannels.successSetup", { "voiceChannel": `<#${voiceChannel.id}>` }));
+              await loadingMsg.edit({ embeds: [successEmbed] });
             }
             break;
         }
@@ -431,13 +633,24 @@ module.exports = {
             updates.counting = !currentConfig.counting;
           }
           
+          let loadingMsg = null;
+          let loadingEmbed = null;
           if (manageRaw === "") {
-            if (typeof currentConfig.manage == 'string') {
+            const isRemovingManage = typeof currentConfig.manage == 'string';
+
+            if (isRemovingManage) {
+              await configManage("delete", message);
               updates.manage = null;
               updates.manageMessage = null;
-              await configManage("delete")
             } else {
-              const result = await configManage("create", message);
+              loadingEmbed = createEmbed(EMBED_COLORS.INFO, client.translate.get(db.language, "Commands.tempchannels.resetting"), client.translate.get(db.language, "Commands.tempchannels.loadingManageChannel"));
+              loadingMsg = await message.reply({ embeds: [loadingEmbed] });
+
+              const category = await client.channels.resolve(db.parentChannel);
+              const result = await configManage("create", message, category, loadingMsg, loadingEmbed, {
+                manageChannel: 'pending',
+                manageMessage: 'pending'
+              }, true);
               updates.manage = result?.channel?.id;
               updates.manageMessage = result?.message?.id;
             }
@@ -482,13 +695,15 @@ module.exports = {
             return `${key}: ${updates[key]}`;
           }).join('\n');
 
-          message.reply({
-            embeds: [
-              createEmbed(EMBED_COLORS.SUCCESS, null,
-                `${client.translate.get(db.language, "Commands.tempchannels.successEdit")}:\n\n${changedFields}`
-              ),
-            ],
-          });
+          const successEmbed = createEmbed(EMBED_COLORS.SUCCESS, null,
+            `${client.translate.get(db.language, "Commands.tempchannels.successEdit")}:\n\n${changedFields}`
+          );
+
+          if (loadingMsg) {
+            await loadingMsg.edit({ embeds: [successEmbed] });
+          } else {
+            await message.reply({ embeds: [successEmbed] });
+          }
         }
         break;
 

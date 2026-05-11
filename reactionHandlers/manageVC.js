@@ -17,7 +17,7 @@ module.exports = async (client, message, userId, emojiId) => {
   let result;
   let type;
   switch (emote) {
-    case "<:channelName:1498099550363509257>":
+    case "<:rename:1502164676598628060>":
       type = "channelName";
       result = new EmbedBuilder()
         .setColor(COLOR)
@@ -25,7 +25,7 @@ module.exports = async (client, message, userId, emojiId) => {
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.renameChannelDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
     
-    case "<:userLimit:1498101792919392863>":
+    case "<:userlimit:1502164677802393309":
       type = "userLimit";
       result = new EmbedBuilder()
         .setColor(COLOR)
@@ -33,7 +33,7 @@ module.exports = async (client, message, userId, emojiId) => {
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.setLimitDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
     
-    case "<:blockUser:1498101705656877648>":
+    case "<:block:1502164675642326745>":
       type = "blockUser";
       result = new EmbedBuilder()
         .setColor(COLOR)
@@ -41,7 +41,7 @@ module.exports = async (client, message, userId, emojiId) => {
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.setBlockDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
     
-    case "<:unblockUser:1498101686866420308>":
+    case "<:unblock:1502164681409494751>":
       type = "unblockUser";
       result = new EmbedBuilder()
         .setColor(COLOR)
@@ -49,7 +49,74 @@ module.exports = async (client, message, userId, emojiId) => {
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.allowUserDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
     
-    case "<:view:1498405262088803743>":
+    case "<:region:1502164672647593687>":
+      const regionMap = {
+        'automatic': 'automatic',
+        'australia': 'australia',
+        'brazil': 'brazil',
+        'chile': 'chile',
+        'eucentral': 'eu-central',
+        'eu-central': 'eu-central',
+        'eueast': 'eu-east',
+        'eu-east': 'eu-east',
+        'euwest': 'eu-west',
+        'eu-west': 'eu-west',
+        'india': 'india',
+        'singapore': 'singapore',
+        'southafrica': 'southafrica',
+        'south africa': 'southafrica',
+        'southkorea': 'south-korea',
+        'south korea': 'south-korea',
+        'korea': 'south-korea',
+        'useast': 'us-east',
+        'us-east': 'us-east',
+        'ussouth': 'us-south',
+        'us-south': 'us-south',
+        'uswest': 'us-west',
+        'us-west': 'us-west'
+      };
+
+    function groupRegions(reg) {
+      const grouped = {};
+    
+      Object.entries(reg).forEach(([key, value]) => {
+        if (!grouped[value]) {
+          grouped[value] = [];
+        }
+        grouped[value].push(key);
+      });
+    
+      const result = Object.entries(grouped).map(([canonical, aliases]) => {
+        return canonical;
+      });
+    
+      return result;
+    }
+      
+      type = "changeRegion";
+      result = new EmbedBuilder()
+        .setColor(COLOR)
+        .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.changeRegion")}`)
+        .setDescription(`${client.translate.get(db.language, "Functions.manageVC.changeRegionDesc")}\`${(groupRegions(regionMap)).join(', ')}\`\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
+      break;
+
+    case "<:transfer:1502164678616088286>":
+      type = "transferOwner";
+      result = new EmbedBuilder()
+        .setColor(COLOR)
+        .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.transferOwner")}`)
+        .setDescription(`${client.translate.get(db.language, "Functions.manageVC.transferOwnerDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
+      break;
+
+    case "<:close:1502185371235901763>":
+      type = "closeChannel";
+      result = new EmbedBuilder()
+        .setColor(COLOR)
+        .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.closeChannel")}`)
+        .setDescription(`${client.translate.get(db.language, "Functions.manageVC.closeChannelDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
+      break;
+
+    case "<:privacy:1502164674153348824>":
       try {
         const channel = guild.channels.get(connected.channelId);
         const everyone = guild.roles.find((r) => r.name === "@everyone");

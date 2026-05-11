@@ -2,7 +2,7 @@ const { EmbedBuilder } = require("@erinjs/core");
 
 module.exports = async (client, message, userId, editCollector, reactionChan, reactionMsg, emojiId, event = "add") => {
   if (emojiId === client.config.emojis.check && editCollector.botMessage === reactionMsg?.id) {
-    if (editCollector.roles.length > 0) return;
+    if (editCollector.roles.length > 0 || editCollector.rolesDone.length === 0 || editCollector.regex.length > 0) return;
 
     const db = await client.database.getGuild(message.guildId);
     const reactions = editCollector.rolesDone.map((e) => e.emoji);
@@ -43,7 +43,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
       await client.database.updateGuild(message.guildId, { roles: db.roles });
       await msg.delete().catch(() => { });
       
-      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `https://fluxer.app/channels/${message.guild.id}/${editCollector.channelId}/${editCollector.oldMessageId}` }))] }).catch(() => {});
+      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.app/channels/${message.guild.id}/${editCollector.channelId}/${editCollector.oldMessageId})` }))] }).catch(() => {});
     } catch (error) {
       reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`An error occured: ${error.message}`)] }).catch(() => {});
       console.error(error);

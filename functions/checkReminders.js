@@ -1,7 +1,14 @@
 const cron = require("node-cron");
 const db = require("../models/users");
 
-let cronJob = null;
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
+
+let refreshCronJob = null;
+let clientRef = null;
+
+const reminderQueue = new Map();
+let windowEndTime = 0;
 
 function formatTimeWithTimezone(timestamp) {
     return `<t:${timestamp}:f>`;
@@ -45,49 +52,161 @@ async function sendDMReminderWithRetry(client, userId, message, createdAt, maxRe
     return { success: false };
 }
 
-async function processDueReminders(client) {
-    const usersWithReminders = await db.find({ "reminders.0": { $exists: true } });
-    if (!usersWithReminders?.length) return;
+async function deleteReminderFromDB(userId, reminderId) {
+    try {
+        if (!clientRef || !clientRef.database) return;
 
-    const nowSeconds = Math.floor(Date.now() / 1000);
+        const userData = await db.findOne({ userId });
+        if (!userData) return;
 
-    for (const userData of usersWithReminders) {
-        const userId = userData.userId;
-        const dueReminders = userData.reminders.filter(r => r.timestamp <= nowSeconds);
-
-        if (dueReminders.length === 0) continue;
-
-        for (const reminder of dueReminders) {
-            if (reminder.type === "guild") {
-                await sendGuildReminderWithRetry(client, reminder.channelId, userId, reminder.message, reminder.createdAt);
-            } else {
-                await sendDMReminderWithRetry(client, userId, reminder.message, reminder.createdAt);
-            }
+        const updatedReminders = userData.reminders.filter(r => r.id !== reminderId);
+        if (updatedReminders.length !== userData.reminders.length) {
+            await clientRef.database.updateUser(userId, { reminders: updatedReminders }, true);
         }
-
-        try {
-            const remainingReminders = userData.reminders.filter(r => r.timestamp > nowSeconds);
-            await client.database.updateUser(userId, { reminders: remainingReminders }, true);
-        } catch (err) {
-        }
+    } catch (err) {
     }
 }
 
-function startReminderCron(client) {
-    if (cronJob) {
-        cronJob.stop();
+async function processReminder(client, userId, reminder) {
+    const queueKey = `${userId}:${reminder.id}`;
+
+    reminderQueue.delete(queueKey);
+
+    if (reminder.type === "guild") {
+        await sendGuildReminderWithRetry(client, reminder.channelId, userId, reminder.message, reminder.createdAt);
+    } else {
+        await sendDMReminderWithRetry(client, userId, reminder.message, reminder.createdAt);
     }
 
-    cronJob = cron.schedule("*/5 * * * * *", async () => {
-        await processDueReminders(client);
+    await deleteReminderFromDB(userId, reminder.id);
+}
+
+function addReminderToQueue(userId, reminder) {
+    const now = Date.now();
+    const reminderTime = reminder.timestamp * 1000;
+    const queueKey = `${userId}:${reminder.id}`;
+
+    if (reminderQueue.has(queueKey)) {
+        const existing = reminderQueue.get(queueKey);
+        if (existing.timeout) {
+            clearTimeout(existing.timeout);
+        }
+    }
+
+    const delay = reminderTime - now;
+
+    if (delay <= 0) {
+        processReminder(clientRef, userId, reminder);
+        return;
+    }
+
+    const timeout = setTimeout(() => {
+        processReminder(clientRef, userId, reminder);
+    }, delay);
+
+    reminderQueue.set(queueKey, {
+        timeout,
+        userId,
+        reminderId: reminder.id,
+        timestamp: reminder.timestamp
+    });
+}
+
+function removeReminderFromQueue(userId, reminderId) {
+    const queueKey = `${userId}:${reminderId}`;
+    const queued = reminderQueue.get(queueKey);
+
+    if (queued && queued.timeout) {
+        clearTimeout(queued.timeout);
+    }
+
+    reminderQueue.delete(queueKey);
+}
+
+async function loadRemindersIntoQueue() {
+    if (!clientRef) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    windowEndTime = now + TWELVE_HOURS_SECONDS;
+
+    for (const [key, value] of reminderQueue) {
+        if (value.timeout) {
+            clearTimeout(value.timeout);
+        }
+    }
+    reminderQueue.clear();
+
+    try {
+        const usersWithReminders = await db.find({
+            "reminders.0": { $exists: true },
+            "reminders.timestamp": { $lte: windowEndTime, $gt: now }
+        });
+
+        for (const userData of usersWithReminders) {
+            const userId = userData.userId;
+            const upcomingReminders = userData.reminders.filter(r => r.timestamp <= windowEndTime && r.timestamp > now);
+
+            for (const reminder of upcomingReminders) {
+                addReminderToQueue(userId, reminder);
+            }
+        }
+    } catch (err) {
+    }
+}
+
+async function handleNewReminder(userId, reminder) {
+    const now = Math.floor(Date.now() / 1000);
+
+    if (reminder.timestamp <= windowEndTime && reminder.timestamp > now) {
+        addReminderToQueue(userId, reminder);
+    }
+}
+
+function handleDeletedReminder(userId, reminderId) {
+    removeReminderFromQueue(userId, reminderId);
+}
+
+function getRemainingWindowMs() {
+    const now = Date.now();
+    const windowEndMs = windowEndTime * 1000;
+    return Math.max(0, windowEndMs - now);
+}
+
+function getQueueStatus() {
+    return {
+        queueSize: reminderQueue.size,
+        windowEndTime,
+        remainingWindowMs: getRemainingWindowMs()
+    };
+}
+
+function startReminderCron(client) {
+    clientRef = client;
+
+    if (refreshCronJob) {
+        refreshCronJob.stop();
+    }
+
+    loadRemindersIntoQueue();
+
+    refreshCronJob = cron.schedule("0 */12 * * *", async () => {
+        await loadRemindersIntoQueue();
     });
 }
 
 function stopReminderCron() {
-    if (cronJob) {
-        cronJob.stop();
-        cronJob = null;
+    if (refreshCronJob) {
+        refreshCronJob.stop();
+        refreshCronJob = null;
     }
+
+    for (const [key, value] of reminderQueue) {
+        if (value.timeout) {
+            clearTimeout(value.timeout);
+        }
+    }
+    reminderQueue.clear();
+    clientRef = null;
 }
 
 module.exports = {
@@ -95,4 +214,8 @@ module.exports = {
     sendDMReminderWithRetry,
     startReminderCron,
     stopReminderCron,
+    handleNewReminder,
+    handleDeletedReminder,
+    getQueueStatus,
+    getRemainingWindowMs,
 };

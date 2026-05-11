@@ -106,12 +106,12 @@ async function manageVC(client, message) {
       guild = await client.guilds.get(MVC.guildId);
       member = await getMember(guild, content)
       if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
-    
+
       result = new EmbedBuilder()
         .setColor(COLOR)
         .setTitle(client.translate.get(db.language, "Functions.manageVC.userAccess"))
         .setDescription(client.translate.get(db.language, "Functions.manageVC.userAccessDesc", { "username": member.user.username, "userMention": `<@${member.user.id}>` }));
-      
+
       try {
         await channel.editPermission(member.id, {
           type: 1,
@@ -122,10 +122,110 @@ async function manageVC(client, message) {
         await processError(client, err, message);
       }
       break;
+
+    case "changeRegion":
+      const regionInput = content.toLowerCase().replace(/\s/g, '');
+      const regionMap = {
+        'automatic': 'automatic',
+        'australia': 'australia',
+        'brazil': 'brazil',
+        'chile': 'chile',
+        'eucentral': 'eu-central',
+        'eu-central': 'eu-central',
+        'eueast': 'eu-east',
+        'eu-east': 'eu-east',
+        'euwest': 'eu-west',
+        'eu-west': 'eu-west',
+        'india': 'india',
+        'singapore': 'singapore',
+        'southafrica': 'southafrica',
+        'south africa': 'southafrica',
+        'southkorea': 'south-korea',
+        'south korea': 'south-korea',
+        'korea': 'south-korea',
+        'useast': 'us-east',
+        'us-east': 'us-east',
+        'ussouth': 'us-south',
+        'us-south': 'us-south',
+        'uswest': 'us-west',
+        'us-west': 'us-west'
+      };
+
+      const region = regionMap[regionInput];
+      if (!region) {
+        return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidRegion"))] });
+      }
+
+      result = new EmbedBuilder()
+        .setColor(COLOR)
+        .setTitle(client.translate.get(db.language, "Functions.manageVC.regionUpdate"))
+        .setDescription(client.translate.get(db.language, "Functions.manageVC.regionUpdateDesc", { "newRegion": region }));
+
+      try {
+        await channel.edit({
+          rtc_region: region === 'automatic' ? null : region
+        });
+      } catch (err) {
+        result = null;
+        await processError(client, err, message);
+      }
+      break;
+
+    case "transferOwner":
+      guild = await client.guilds.get(MVC.guildId);
+      member = await getMember(guild, content);
+      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
+      if (member.user.bot) return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.noBots"))] });
+
+      result = new EmbedBuilder()
+        .setColor(COLOR)
+        .setTitle(client.translate.get(db.language, "Functions.manageVC.ownerTransferred"))
+        .setDescription(client.translate.get(db.language, "Functions.manageVC.ownerTransferredDesc", { "username": member.user.username, "userMention": `<@${member.user.id}>` }));
+
+      try {
+        await client.database.updateGuild(MVC.guildId, {
+          tempChannels: db.tempChannels.map(vc =>
+            vc.channelId === MVC.channelId ? { ...vc, ownerId: member.id } : vc
+          )
+        });
+
+        await channel.editPermission(member.id, {
+          type: 1,
+          allow: resolvePermissionsToBitfield(["Connect"])
+        });
+      } catch (err) {
+        result = null;
+        await processError(client, err, message);
+      }
+      break;
+
+    case "closeChannel":
+      if (content.toLowerCase() !== 'confirm') {
+        return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.closeConfirm"))] });
+      }
+
+      try {
+        client.observedVoiceUsers.delete(message.author.id);
+        const updatedTemps = db.tempChannels.filter(vc => vc.channelId !== MVC.channelId);        
+        await client.database.updateGuild(MVC.guildId, {
+          tempChannels: updatedTemps
+        });
+
+        await channel.delete();
+
+        result = new EmbedBuilder()
+          .setColor(COLOR)
+          .setTitle(client.translate.get(db.language, "Functions.manageVC.channelClosed"))
+          .setDescription(client.translate.get(db.language, "Functions.manageVC.channelClosedDesc"));
+      } catch (err) {
+        result = null;
+        await processError(client, err, message);
+      }
+      break;
   }
   
   if (result) {
-    clearTimeout(client.observedVoiceUsers.get(message.author.id).timeout);
+    if (client.observedVoiceUsers.get(message.author.id)) clearTimeout(client.observedVoiceUsers.get(message.author.id).timeout);
     client.manageVC.delete(message.author.id);
     message.reply({ embeds: [result] });
   }

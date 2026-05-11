@@ -1,4 +1,5 @@
 module.exports = async (client, message, userId, emojiId, event = "add") => {
+  const exclusiveRoles = [];
   const emote = message.emoji?.id
     ? `<:${emojiId}:${message.emoji.id}>`
     : emojiId;
@@ -25,11 +26,20 @@ module.exports = async (client, message, userId, emojiId, event = "add") => {
   if (event === "add" && hasRole) return;
   if (event === "remove" && !hasRole) return;
 
+  let otherRoles = 0;
   let error = false;
   if (event === "add") {
     await member.roles.add(role.role).catch(() => {
       error = true;
     });
+
+    if (msgRoles.exclusive && !error) {
+      otherRoles = msgRoles.roles.filter((e) => e.emoji !== emote && member.roles.cache.has(e.role));
+      for (const otherRole of otherRoles) {
+        exclusiveRoles.push(otherRole);
+        await member.roles.remove(otherRole.role).catch(() => {});
+      }
+    }
   } else {
     await member.roles.remove(role.role).catch(() => {
       error = true;
@@ -39,9 +49,9 @@ module.exports = async (client, message, userId, emojiId, event = "add") => {
   if (db2.dm) {
     const key = error
       ? guild.ownerId === userId ? `Events.messageReactionAdd.ownerError` : `Events.messageReaction${event === "add" ? "Add" : "Remove"}.noPerms`
-      : `Events.messageReaction${event === "add" ? "Add" : "Remove"}.success`;
+      : otherRoles.length > 0 ? `Events.messageReactionAdd.exclusive` : `Events.messageReaction${event === "add" ? "Add" : "Remove"}.success`;
 
-    const dmContent = `**[${guild.name}]** ${client.translate.get(db2.language, key, { role: `**${role.name}**` })}!`;
+    const dmContent = `**[${guild.name}]** ${client.translate.get(db2.language, key, otherRoles?.length > 0 ? { role: `**${role.name}**`, role2: `**${exclusiveRoles.map((e) => e.name).join(", ")}**` } : { role: `**${role.name}**` })}!`;
     member.user?.createDM().then((dm) => dm.send(dmContent)).catch(() => {});
   }
 };

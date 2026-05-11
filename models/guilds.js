@@ -23,8 +23,8 @@ const guilds = new Schema({
     channelLimit: { type: Number, default: null },
     counting: { type: Boolean, default: false },
     customParent: { type: String, default: null },
-    manage: { type: String, default: null },
-    manageMessage: { type: String, default: null },
+    manage: { type: String, nullable: true, default: null },
+    manageMessage: { type: String, nullable: true, default: null },
   },
 });
 

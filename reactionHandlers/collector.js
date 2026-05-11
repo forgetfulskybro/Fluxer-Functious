@@ -2,10 +2,11 @@ const { EmbedBuilder } = require("@erinjs/core");
 
 module.exports = async (client, message, userId, collector, reactionChan, reactionMsg, emojiId, event = "add") => {
     if (emojiId === client.config.emojis.check && collector.oldMessageId === reactionMsg.id) {
-        if (collector.roles.length === 0) {
+        if (collector.roles.length === 0 && collector.rolesDone.length > 0 && collector.regex.length === 0) {
           const reactions = [...collector.rolesDone.map(e => e.emoji)];
             let db, oldMsg, msg;
             db = await client.database.getGuild(message.guildId);
+
             try {
               oldMsg = await reactionChan?.messages?.fetch(collector?.oldMessageId).catch(() => { });
               msg = await reactionChan?.messages?.fetch(collector?.messageId).catch(() => {});
@@ -16,23 +17,29 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
                 msg = null;
               }
             };
-            
-            if (!msg) return reactionMsg.channel.send({ content: "Unable to find your reacted message. If this error persists, " });
-                      
-            try {
-              await oldMsg?.delete().catch(() => {});
-              await reactionMsg?.delete();
-            } catch {}
 
-            reactionMsg?.channel.send(
-                collector.type === "content"
-                    ? { content: msg.content }
-                    : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(msg.embeds[0].description)] }
-            ).then(async m => {
-                try { await msg.delete(); } catch { }
-                for (const reaction of reactions) await m.react(reaction).catch(() => {});
-                db.roles.push({ msgId: m.id, chanId: message.channelId, roles: [...collector.rolesDone] });
-                await client.database.updateGuild(message.guildId, { roles: db.roles });
+            await oldMsg?.delete().catch(() => {});
+            await reactionMsg?.delete().catch(() => {});
+
+            const targetChannelId = collector.targetChannelId || reactionMsg.channelId;
+            const targetChannel = await client.channels.resolve(targetChannelId).catch(() => null);
+
+            const finalContent = collector.type === "content"
+                ? { content: msg.content || "" }
+                : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(msg.embeds?.[0]?.description || "")] };
+
+            targetChannel.send(finalContent).then(async m => {
+              await msg?.delete().catch(() => {});
+              for (const reaction of reactions) await m.react(reaction).catch(() => {});
+              db.roles.push({ msgId: m.id, chanId: targetChannel.id, roles: [...collector.rolesDone] });
+              await client.database.updateGuild(message.guildId, { roles: db.roles });
+
+              console.log(targetChannel.id, message.channelId)
+              if (targetChannel.id !== message.channelId) {
+                await reactionChan.send(`${client.translate.get(db.language, "Commands.roles.success")} <#${targetChannel.id}>`).catch(() => {});
+              }
+            }).catch(err => {
+                console.error("[Collector] Error sending final message:", err);
             });
 
             clearTimeout(client.messageCollector.get(userId)?.timeout);

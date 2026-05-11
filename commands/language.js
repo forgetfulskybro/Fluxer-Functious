@@ -19,16 +19,17 @@ module.exports = {
       .setColor(`#A52F05`);
 
     if (!args[0]) return message.reply({ embeds: [embed] });
-    if (!client.translate.availableLanguages.includes(args[0]))
-      return message.reply(
-        client.translate.get(db.language, "Commands.language.notAvailable"),
-        false,
-      );
+    if (!client.translate.availableLanguages.includes(args[0])) {
+      const errorEmbed = new EmbedBuilder()
+        .setDescription(client.translate.get(db.language, "Commands.language.notAvailable"))
+        .setColor("#FF0000");
+      return message.reply({ embeds: [errorEmbed] });
+    }
 
     await client.database.updateGuild(message.guildId, { language: args[0] });
-    message.reply(
-      `${client.translate.get(args[0], "Commands.language.success")} **${args[0]}**`,
-      false,
-    );
+    const successEmbed = new EmbedBuilder()
+      .setDescription(`${client.translate.get(args[0], "Commands.language.success")} **${args[0]}**`)
+      .setColor("#A52F05");
+    message.reply({ embeds: [successEmbed] });
   },
 };
