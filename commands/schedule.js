@@ -286,7 +286,7 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
                 const updated = scheduled.filter((_, i) => i !== index - 1);
                 await client.database.updateGuild(message.guildId, { scheduledMessages: updated });
 
-                message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.deleteSuccess", { "index": index })).setColor("#A52F05")] });
+                message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.deleteSuccess", { "number": index })).setColor("#A52F05")] });
                 break;
             }
 

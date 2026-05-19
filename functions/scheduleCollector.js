@@ -27,6 +27,32 @@ async function clearBotMessageReactions(client, session) {
     } catch {}
 }
 
+function parseTimeWithTimezone(inputText, userTimezone) {
+  if (!userTimezone) {
+    return chrono.parse(inputText, new Date(), { forwardDate: true });
+  }
+
+  try {
+    const now = new Date();
+    const offsetMinutes = -Math.round(
+      (now.getTime() - 
+       new Date(now.toLocaleString("en-US", { timeZone: userTimezone })).getTime()
+      ) / 60000
+    );
+
+    const reference = {
+      instant: now,
+      timezone: offsetMinutes
+    };
+
+    return chrono.parse(inputText, reference, {
+      forwardDate: true
+    });
+  } catch (e) {
+    return chrono.parse(inputText, new Date(), { forwardDate: true });
+  }
+}
+
 async function updateEmbedPreview(client, session, db) {
     try {
         const chan = await client.channels.resolve(session.channelId);
@@ -567,10 +593,9 @@ async function ScheduleCollector(client, message, db) {
             if (userData?.timezone) tz = userData.timezone;
         } catch {}
 
-        const refDate = new Date();
         const parsedResults = tz
-            ? chrono.parse(message.content, refDate, { forwardDate: true, timezone: tz })
-            : chrono.parse(message.content, refDate, { forwardDate: true });
+            ? parseTimeWithTimezone(message.content, tz)
+            : parseTimeWithTimezone(message.content)
         let timestamp = null;
 
         if (parsedResults && parsedResults.length > 0) {

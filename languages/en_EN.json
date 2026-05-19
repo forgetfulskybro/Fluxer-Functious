@@ -528,7 +528,7 @@
       "invalidTime": "Invalid time format. Please use something like",
       "futureTime": "Provided time is in the past. Please use a future time to proceed.",
       "success": "Message scheduled. It will be sent {time} in {channel}.",
-      "webhookAddon": "\nWebhook name:"
+      "webhookAddon": "\nWebhook name"
     },
     "manageVC": {
       "stopped": "Cancelled the message collector. React to the voice channel menu to start a new one.",
