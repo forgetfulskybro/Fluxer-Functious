@@ -58,7 +58,7 @@ function showFinalResults(message, results, allNames) {
   if (successResults.length > 0) {
     description += `✅ **Reloaded (${successResults.length}):**\n`;
     successResults.forEach(r => {
-      description += `• **${r.name}**.js (${r.type}${r.autoDetected ? ', auto-detected' : ''})\n`;
+      description += `• **${r.name}**.js (${r.type}})\n`;
     });
     description += '\n';
   }

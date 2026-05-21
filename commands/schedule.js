@@ -20,9 +20,10 @@ module.exports = {
         permissions: { name: "Manage Guild", bitField: PermissionFlags.ManageGuild },
         aliases: ["sched", "scheduler"],
     },
-    run: async (client, message, args, db) => {
-        const botMember = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
-        if (!botMember?.permissions.has(PermissionFlags.ManageMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permissionCheck")).setColor("#FF0000")] });
+  run: async (client, message, args, db) => {
+      // Dumb fluxer
+        // const botMember = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
+        // if (!botMember?.permissions.has(PermissionFlags.ManageMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permissionCheck")).setColor("#FF0000")] });
 
         switch (args[0]?.toLowerCase()) {
             case "help":
@@ -309,7 +310,8 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
 
                 if (CHANNEL_MENTION_REGEX.test(content)) {
                     const channelId = content.match(CHANNEL_MENTION_REGEX).groups.id;
-                    targetChannel = message.guild.channels.find(e => e.id === channelId);
+                    const channels = await message.guild.fetchChannels();
+                    targetChannel = channels.find((c) => c.id === channelId)
 
                     if (targetChannel?.type === 2 || targetChannel?.type === 4) {
                         targetChannel = message.channel;

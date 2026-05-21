@@ -220,7 +220,7 @@ function showFinalResults(message, results, allNames) {
   if (successResults.length > 0) {
     description += `✅ **Reloaded (${successResults.length}):**\n`;
     successResults.forEach(r => {
-      description += `• **${r.name}**.js (${r.type}${r.autoDetected ? ', auto-detected' : ''})\n`;
+      description += `• **${r.name}**.js (${r.type}})\n`;
     });
     description += '\n';
   }
@@ -357,7 +357,7 @@ async function Reload(client, message, type, names) {
     const r = results[0];
     let desc = `✅ Reloaded ${r.type}: **${r.name}**.js`;
     if (r.autoDetected) {
-      desc = `🔍 Auto-detected as **${r.type}**\n${desc}`;
+      desc = `🔍 Found **${r.type}**\n${desc}`;
     }
     return createEmbed(desc, COLORS.SUCCESS, 'Success');
   }
@@ -371,7 +371,7 @@ async function Reload(client, message, type, names) {
   if (successResults.length > 0) {
     description += `✅ **Reloaded (${successResults.length}):**\n`;
     successResults.forEach(r => {
-      description += `• **${r.name}**.js (${r.type}${r.autoDetected ? ', auto-detected' : ''})\n`;
+      description += `• **${r.name}**.js (${r.type}})\n`;
     });
     description += '\n';
   }

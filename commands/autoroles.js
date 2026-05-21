@@ -16,8 +16,8 @@ module.exports = {
     aliases: ["autorole", "ar"],
   },
   run: async (client, message, args, db) => {
-  const me = message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null);
-  if (!me.permissions.has(PermissionFlags.ManageRoles)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noPerms")}`).setColor(`#FF0000`) ] });
+  // const me = message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null);
+  // if (!me.permissions.has(PermissionFlags.ManageRoles)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noPerms")}`).setColor(`#FF0000`) ] });
 
   const options = args.join(` `).replace(/sticky|join|add|remove/gi, '').split(`,`).map(x => x.trim()).filter(x => x);
   switch (args[0]?.toLowerCase()) {

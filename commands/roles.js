@@ -59,9 +59,10 @@ module.exports = {
         permissions: { name: "Manage Guild", bitField: PermissionFlags.ManageGuild },
         aliases: ["reactionroles", "reactions", "reactroles", "reactionrole", "rr"],
     },
-    run: async (client, message, args, db) => {
+  run: async (client, message, args, db) => {
+      // Stupid fluxer doesn't have decent perm checking without issues. Such a pain
       const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
-        if (!me.permissions.has(PermissionFlags.ManageRoles)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noPerms")}`).setColor(`#FF0000`)] });
+      //   if (!me.permissions.has(PermissionFlags.ManageRoles)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noPerms")}`).setColor(`#FF0000`)] });
 
         switch (args[0]?.toLowerCase()) {
           case "help":
@@ -113,8 +114,8 @@ module.exports = {
           case "fix":
           case "reactionsfix":
           case "reactionfix":
-            if (!args[1]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.fix")}:\n\`${db.prefix}roles fix <messageId>\``).setColor(`#FF0000`)] });
-            if (!me.permissions.has(PermissionFlags.ManageMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.roles.noPerms2")).setColor(`#FF0000`)] });
+            // if (!args[1]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.fix")}:\n\`${db.prefix}roles fix <messageId>\``).setColor(`#FF0000`)] });
+            // if (!me.permissions.has(PermissionFlags.ManageMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.roles.noPerms2")).setColor(`#FF0000`)] });
 
             const reactMsg = db.roles.find(e => e.msgId === args[1]);
             if (!reactMsg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });

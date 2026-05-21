@@ -129,16 +129,17 @@ async function scheduleNextRecurring(client, guildId, msgData) {
     try {
         const now = Math.floor(Date.now() / 1000);
         let nextTimestamp = null;
+        let interval = null;
 
         switch (msgData.recurring) {
             case "daily":
-                nextTimestamp = now + 86400;
+                interval = 86400;
                 break;
             case "weekly":
-                nextTimestamp = now + 604800;
+                interval = 604800;
                 break;
             case "monthly":
-                nextTimestamp = now + 2592000;
+                interval = 2592000;
                 break;
             default:
                 if (msgData.recurring.startsWith("cron:")) {
@@ -146,21 +147,27 @@ async function scheduleNextRecurring(client, guildId, msgData) {
                     if (cronParts.length === 5) {
                         const minField = cronParts[0];
                         if (minField === '*') {
-                            nextTimestamp = now + 600;
+                            interval = 600;
                         } else if (minField.startsWith('*/')) {
                             const step = parseInt(minField.slice(2), 10);
-                            nextTimestamp = now + Math.max(step, 10) * 60;
+                            interval = Math.max(step, 10) * 60;
                         } else {
-                            nextTimestamp = now + 3600;
+                            interval = 3600;
                         }
                     } else {
-                        nextTimestamp = now + 86400;
+                        interval = 86400;
                     }
                 }
                 break;
         }
 
-        if (!nextTimestamp) return;
+        if (!interval) return;
+
+        nextTimestamp = msgData.timestamp;
+
+        while (nextTimestamp <= now) {
+            nextTimestamp += interval;
+        }
 
         const newMsgData = {
             ...msgData,

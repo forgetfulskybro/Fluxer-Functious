@@ -1,7 +1,7 @@
+const ScheduleCollector = require("../functions/scheduleCollector");
 const { EmbedBuilder, PermissionFlags } = require("@erinjs/core");
 const Collector = require("../functions/messageCollector");
 const EditCollector = require("../functions/messageEdit");
-const ScheduleCollector = require("../functions/scheduleCollector");
 const errorHandler = require("../functions/errorHandler");
 const parseTime = require("../functions/parseTime");
 const manageVC = require("../functions/manageVC");
@@ -15,7 +15,7 @@ module.exports = async (client, message) => {
   // const channel = message.channel;
   // const chanPerms = me && channel ? me.permissionsIn(channel) : null;
 
-  const member = message.guild.members.get(message.author.id) ?? await message.guild.fetchMember(message.author.id);
+  let member = message.guild.members.get(message.author.id) ?? await message.guild.fetchMember(message.author.id);
   const isMention = new RegExp(`^(<@!?${client.user.id}>)`).test(message.content);
   const db = await client.database.getGuild(message.guildId, true);
 
@@ -111,19 +111,40 @@ module.exports = async (client, message) => {
   }
 
   if (commandfile.config.permissions?.name && !member?.permissions.has(commandfile.config.permissions.bitField) && !client.config.owners.includes(message.author.id) && !bypass) {
-    return message
-      .reply(
-        {
-          embeds: [
-            new EmbedBuilder()
-              .setColor("#FF0000")
-              .setDescription(
-                `${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [${String(commandfile.config.permissions.name)}]`,
-              ),
-          ],
-        },
-      )
-      .catch(() => {});
+    try {
+      const freshMember = await message.guild.fetchMember(message.author.id);
+      if (freshMember?.permissions.has(commandfile.config.permissions.bitField)) {
+        member = freshMember;
+        message.guild.members.set(freshMember.id, freshMember);
+      } else {
+        return message
+          .reply({
+            embeds: [
+              new EmbedBuilder()
+                  .setColor("#FF0000")
+                  .setDescription(
+                    `${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [${String(commandfile.config.permissions.name)}]`,
+                  ),
+              ],
+            },
+          )
+          .catch(() => {});
+      }
+    } catch {
+      return message
+        .reply(
+          {
+            embeds: [
+              new EmbedBuilder()
+                .setColor("#FF0000")
+                .setDescription(
+                  `${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [${String(commandfile.config.permissions.name)}]`,
+                ),
+            ],
+          },
+        )
+        .catch(() => {});
+    }
   }
 
   const usedKey = `${message.author.id}-${cmd}`;
