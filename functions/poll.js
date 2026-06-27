@@ -119,11 +119,11 @@ class Polls {
         roundRect(ctx, 0, 0, width, height, 5, true, false); // background
 
         ctx.fillStyle = "#4E535A";
-        ctx.font = `normal 12px Arial`;
+        ctx.font = 'normal 17px Arial, "Noto Sans", "DejaVu Sans", sans-serif';
         //ctx.fillText(name, padding, padding + 2 + nameHeight / 2); // name
 
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = `normal 17px Arial`;
+        ctx.font = 'normal 17px Arial, "Noto Sans", "DejaVu Sans", sans-serif';
         ctx.fillText(description, padding, padding + 15 + nameHeight + descHeight / 2); // description
 
         var headerHeight = padding + descHeight + nameHeight + 15;
