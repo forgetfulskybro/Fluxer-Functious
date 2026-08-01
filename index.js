@@ -18,7 +18,7 @@ const client = new Client({
       text: "Looking for f!help"
     }
   },
-  waitForGuilds: true
+  // waitForGuilds: true
 });
 
 function connectedToFluxer() {
