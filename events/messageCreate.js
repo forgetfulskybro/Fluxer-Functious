@@ -7,7 +7,6 @@ const parseTime = require("../functions/parseTime");
 const manageVC = require("../functions/manageVC");
 
 module.exports = async (client, message) => {
-  console.log(!message.channel, !message.content, message.author.bot)
   if (!message?.channel || !message.content || message.author.bot) return;
   const MVC = client.manageVC.get(message.author.id);
   if (message.channel.type === 1 && MVC) return await manageVC(client, message)
@@ -37,7 +36,6 @@ module.exports = async (client, message) => {
     }
   }
 
-  console.log(message.guildId, isMention, message.content.startsWith(db.prefix))
   if (!isMention && !message.content.startsWith(db.prefix)) return;
   const mentionMatch = isMention && message.content.match(new RegExp(`^(<@!?${client.user.id}>)`));
   const rawPrefixLength = isMention ? mentionMatch[0].length : db.prefix.length;
@@ -55,12 +53,10 @@ module.exports = async (client, message) => {
 
   const args = message.content.slice(prefixLength).trim().split(/ +/g);
   const cmd = args.shift()?.toLowerCase();
-  console.log(message.guildId, cmd)
   if (!cmd) return;
 
   const commandfile =
     client.commands.get(cmd) || client.commands.get(client.aliases.get(cmd));
-  console.log(message.guildId, commandfile)
   if (!commandfile) return;
 
   // Turn off permission checking for the bot as Fluxer has lots of issues with it currently and I'd rather have the bot error than not respond when it should.
