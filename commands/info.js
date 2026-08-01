@@ -74,7 +74,7 @@ module.exports = {
       .addFields({
         name: `🔗 **${client.translate.get(db.language, "Commands.info.links")}**`,
         value: [
-          `[${client.translate.get(db.language, "Commands.info.links1")}](https://functious.vercel.app)`,
+          `[${client.translate.get(db.language, "Commands.info.links4")}](https://functious.vercel.app)`,
           `[${client.translate.get(db.language, "Commands.info.links2")}](https://web.fluxer.app/oauth2/authorize?client_id=1475548817821799084&scope=bot&permissions=13510799704222800)`,
           `[${client.translate.get(db.language, "Commands.info.links3")}](https://fluxer.gg/YnINU09E)`,
           `[GitHub](https://github.com/forgetfulskybro/Fluxer-Functious)`,
