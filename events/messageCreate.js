@@ -7,6 +7,7 @@ const parseTime = require("../functions/parseTime");
 const manageVC = require("../functions/manageVC");
 
 module.exports = async (client, message) => {
+  client.guilds.fetch(message.guild.id);
   console.log(message.guild.name, message.guild.members.size)
 
   if (!message?.channel || !message.content || message.author.bot) return;
