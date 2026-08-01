@@ -20,7 +20,7 @@ module.exports = async (client, message) => {
 
   let member = guild.members.get(message.author.id) ?? await guild.fetchMember(message.author.id);
   const isMention = new RegExp(`^(<@!?${client.user.id}>)`).test(message.content);
-  const db = await client.database.getGuild(guildId, true);
+  const db = await client.database.getGuild(message.guildId, true);
 
   if (client.messageCollector.has(message.author.id) && client.messageCollector.get(message.author.id).channelId === message.channelId && !client.messageCollector.get(message.author.id).messageId)
     return await Collector(client, message, db);
@@ -39,7 +39,7 @@ module.exports = async (client, message) => {
     }
   }
 
-  console.log(guildId, isMention, message.content.startsWith(db.prefix))
+  console.log(message.guildId, isMention, message.content.startsWith(db.prefix))
   if (!isMention && !message.content.startsWith(db.prefix)) return;
   const mentionMatch = isMention && message.content.match(new RegExp(`^(<@!?${client.user.id}>)`));
   const rawPrefixLength = isMention ? mentionMatch[0].length : db.prefix.length;
@@ -57,12 +57,12 @@ module.exports = async (client, message) => {
 
   const args = message.content.slice(prefixLength).trim().split(/ +/g);
   const cmd = args.shift()?.toLowerCase();
-  console.log(guildId, cmd)
+  console.log(message.guildId, cmd)
   if (!cmd) return;
 
   const commandfile =
     client.commands.get(cmd) || client.commands.get(client.aliases.get(cmd));
-  console.log(guildId, commandfile)
+  console.log(message.guildId, commandfile)
   if (!commandfile) return;
 
   // Turn off permission checking for the bot as Fluxer has lots of issues with it currently and I'd rather have the bot error than not respond when it should.
