@@ -478,7 +478,8 @@
       "library": "Biblioteca",
       "links": "Links",
       "links2": "Convite",
-      "links3": "Suporte"
+      "links3": "Suporte",
+      "links4": "Website"
     },
     "giveaway": {
       "description": "Cria um sorteio. Reações tem um intervalo de 3 segundos.",

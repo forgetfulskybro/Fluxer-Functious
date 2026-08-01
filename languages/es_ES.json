@@ -478,7 +478,8 @@
       "library": "Librería",
       "links": "Enlaces",
       "links2": "Invitación",
-      "links3": "Soporte técnico"
+      "links3": "Soporte técnico",
+      "links4": "Website"
     },
     "giveaway": {
       "description": "Crea un sorteo. Las reacciones tienen un tiempo de enfriamiento de 3 segundos.",
