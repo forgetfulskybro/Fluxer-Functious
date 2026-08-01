@@ -7,6 +7,7 @@ const parseTime = require("../functions/parseTime");
 const manageVC = require("../functions/manageVC");
 
 module.exports = async (client, message) => {
+  console.log(message)
   if (!message?.channel || !message.content || message.author.bot) return;
   const MVC = client.manageVC.get(message.author.id);
   if (message.channel.type === 1 && MVC) return await manageVC(client, message)
