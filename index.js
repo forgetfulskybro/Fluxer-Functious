@@ -12,8 +12,8 @@ const client = new Client({
   defaultReplyPing: false,
   intents: 0,
   cache: {
-      guilds: 1000,
-    },
+      guilds: 0,
+  },
   presence: {
     custom_status: {
       emoji_id: "",
