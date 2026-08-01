@@ -11,6 +11,9 @@ const Sentry = require("@sentry/node");
 const client = new Client({ 
   defaultReplyPing: false,
   intents: 0,
+  cache: {
+      guilds: 1000,
+    },
   presence: {
     custom_status: {
       emoji_id: "",
