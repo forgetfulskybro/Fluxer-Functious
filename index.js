@@ -12,7 +12,8 @@ const client = new Client({
   defaultReplyPing: false,
   intents: 0,
   cache: {
-      guilds: 0,
+    guilds: 0,
+    channels: 0,
   },
   presence: {
     custom_status: {
