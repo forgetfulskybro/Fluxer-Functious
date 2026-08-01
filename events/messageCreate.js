@@ -34,7 +34,8 @@ module.exports = async (client, message) => {
     if (db.timezoneConvert) {
       const userData = await client.database.getUser(message.author.id, false);
       if (userData?.timezone && parseTime(message.content)) {
-        message.react("⌚").catch(() => { });
+        message.react("⌚")
+        // .catch(() => { });
       }
     }
 
@@ -50,7 +51,8 @@ module.exports = async (client, message) => {
         .setTitle(client.user.username)
         .setDescription(`${client.translate.get(db.language, "Events.messageCreate.prefix")} \`${db.prefix}\`\n${client.translate.get(db.language, "Events.messageCreate.prefix2")} \`${db.prefix}help\``);
 
-      return message.reply({ embeds: [mention] }, false).catch(() => { });
+      return message.reply({ embeds: [mention] }, false)
+        // .catch(() => { });
     }
 
     const args = message.content.slice(prefixLength).trim().split(/ +/g);
@@ -98,7 +100,7 @@ module.exports = async (client, message) => {
           },
           false,
         )
-        .catch(() => { });
+        // .catch(() => { });
     }
 
     let bypass = false;
@@ -136,7 +138,7 @@ module.exports = async (client, message) => {
               ],
             },
             )
-            .catch(() => { });
+            // .catch(() => { });
         }
       } catch {
         client.timeout.set(permCooldownKey, true);
@@ -154,7 +156,7 @@ module.exports = async (client, message) => {
               ],
             },
           )
-          .catch(() => { });
+          // .catch(() => { });
       }
     }
 
@@ -180,8 +182,9 @@ module.exports = async (client, message) => {
 
       return message
         .reply({ embeds: [embed] })
-        .then((m) => setTimeout(() => m.delete().catch(() => { }), used))
-        .catch(() => { });
+        .then((m) => setTimeout(() => m.delete()
+          .catch(() => { }), used))
+        // .catch(() => { });
     }
 
     const cooldown = commandfile.config.cooldown;
@@ -203,6 +206,7 @@ module.exports = async (client, message) => {
       db,
     );
   } catch (error) {
+    console.log(error)
     await errorHandler({
       type: "command",
       message,
