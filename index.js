@@ -4,10 +4,12 @@ const TranslationHandler = require("./handlers/translation");
 const { Collection } = require("@discordjs/collection");
 const DatabaseHandler = require("./handlers/database");
 const color = require("./functions/colorCodes");
-const { Client } = require("@erinjs/core");
+const createApiServer = require("./api/index");
+const { Client } = require("@fluxerjs/core");
 const Sentry = require("@sentry/node");
 
 const client = new Client({ 
+  defaultReplyPing: false,
   intents: 0,
   presence: {
     custom_status: {
@@ -57,3 +59,4 @@ client.login(process.env.TOKEN);
 
 setInterval(() => connectedToFluxer(), 15000); 
 getVoiceStates(client);
+createApiServer(client);

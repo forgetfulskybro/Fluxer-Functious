@@ -1,7 +1,7 @@
-const { Webhook, EmbedBuilder } = require("@erinjs/core");
+const { Webhook, EmbedBuilder } = require("@fluxerjs/core");
 
 module.exports = async (client, message, userId) => {
-  const db = await client.database.getGuild(message.guildId);
+  const db = await client.database.getGuild(message.reaction.guildId);
   if (!db?.timezoneConvert) return;
 
   const userData = await client.database.getUser(userId, false);

@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("@erinjs/core");
+const { EmbedBuilder } = require("@fluxerjs/core");
 const db = require("../models/polls");
 const cron = require("node-cron");
 const Polls = require("./poll");

@@ -27,6 +27,7 @@ const guilds = new Schema({
     manage: { type: String, nullable: true, default: null },
     manageMessage: { type: String, nullable: true, default: null },
   },
+  tags: { type: Array, default: [] }, 
 });
 
 module.exports = model("guilds", guilds);

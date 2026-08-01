@@ -12,6 +12,14 @@ services:
       - BOTID=${BOTID}
       - CDN=${CDN}
       - CDN_KEY=${CDN_KEY}
+      - API_PORT=${API_PORT:-8889}
+      - API_KEY=${API_KEY}
+      - WEBSITE_URL=${WEBSITE_URL}
+      - FLUXER_REDIRECT_URI=${FLUXER_REDIRECT_URI}
+      - FLUXER_CLIENT_SECRET=${FLUXER_CLIENT_SECRET}
+      - FLUXER_CLIENT_ID=${FLUXER_CLIENT_ID}
+    ports:
+      - "${API_PORT:-8889}:${API_PORT:-8889}"
     volumes:
       - .:/app
       - /app/node_modules

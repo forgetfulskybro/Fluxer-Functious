@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('@erinjs/core');
+const { EmbedBuilder } = require('@fluxerjs/core');
 const getRoles = require('./getRoles');
 async function Collector(client, message, db) {
   if (message.content.toLowerCase() === `${db.prefix}roles stop`) {
@@ -6,8 +6,8 @@ async function Collector(client, message, db) {
     return message.reply({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.stopped"))] })
   }
   
-  const regex = /{role:(?: |)(.*?)}/;
-  const regexAll = /{role:(?: |)(.*?)}/g;
+  const regex = /{role:\s*(.*?)\s*}/i;
+  const regexAll = /{role:\s*(.*?)\s*}/gi;
   const mentionRegex = /{mention}/g;
   const collector = client.messageCollector.get(message.author.id);
   if (!message.content.match(regexAll) || message.content.match(regexAll)?.length === 0) {
@@ -35,7 +35,7 @@ async function Collector(client, message, db) {
   const roleIds = await getRoles(roles, message, client, db);
   if (!roleIds) return;
 
-  let cleanedContent = message.content.replace(/\{role:\s*(.*?)\}/g, '{role:$1}');
+  let cleanedContent = message.content.replace(/\{role:\s*(.*?)\s*\}/gi, '{role:$1}');
   const useMention = mentionRegex.test(message.content);
   const finalContent = cleanedContent.replace(mentionRegex, '');
   message.delete().catch(() => { });

@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlags } = require("@erinjs/core");
+const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const { inspect } = require("util");
 const Paginator = require("../functions/pagination");
 

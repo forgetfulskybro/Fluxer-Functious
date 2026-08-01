@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlags } = require("@erinjs/core");
+const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require("../functions/pagination");
 const checkScheduled = require("../functions/checkScheduledMessages");
 
@@ -487,7 +487,6 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
                 let targetChannel = message.channel;
                 let commandArgs = args.slice(1).join(" ");
 
-                // Parse channel mention if present
                 if (CHANNEL_MENTION_REGEX.test(commandArgs)) {
                     const channelId = commandArgs.match(CHANNEL_MENTION_REGEX).groups.id;
                     const channels = await message.guild.fetchChannels();

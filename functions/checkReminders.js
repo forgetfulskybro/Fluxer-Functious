@@ -137,14 +137,14 @@ async function loadRemindersIntoQueue() {
     reminderQueue.clear();
 
     try {
-        const usersWithReminders = await db.find({
-            "reminders.0": { $exists: true },
-            "reminders.timestamp": { $lte: windowEndTime, $gt: now }
-        });
+      const usersWithReminders = await db.find({
+        "reminders.0": { $exists: true },
+        "reminders.timestamp": { $lte: windowEndTime }
+      });
 
         for (const userData of usersWithReminders) {
             const userId = userData.userId;
-            const upcomingReminders = userData.reminders.filter(r => r.timestamp <= windowEndTime && r.timestamp > now);
+            const upcomingReminders = userData.reminders.filter(r => r.timestamp <= windowEndTime);
 
             for (const reminder of upcomingReminders) {
                 addReminderToQueue(userId, reminder);
@@ -157,8 +157,8 @@ async function loadRemindersIntoQueue() {
 async function handleNewReminder(userId, reminder) {
     const now = Math.floor(Date.now() / 1000);
 
-    if (reminder.timestamp <= windowEndTime && reminder.timestamp > now) {
-        addReminderToQueue(userId, reminder);
+    if (reminder.timestamp <= windowEndTime) {
+      addReminderToQueue(userId, reminder);
     }
 }
 

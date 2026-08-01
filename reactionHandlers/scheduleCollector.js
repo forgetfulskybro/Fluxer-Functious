@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("@erinjs/core");
+const { EmbedBuilder } = require("@fluxerjs/core");
 const ScheduleCollector = require("../functions/scheduleCollector");
 
 module.exports = async (client, message, userId, collector, reactionChan, reactionMsg, emojiId, event = "add") => {
@@ -11,7 +11,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
 
     if (emojiId === client.config.emojis.cross) {
         if (collector.editing && collector.editMode !== "menu") {
-            await ScheduleCollector.showEditMenu(client, collector, message.guildId);
+            await ScheduleCollector.showEditMenu(client, collector, message.reaction.guildId);
             return;
         }
 
@@ -36,13 +36,10 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
     if (collector.editMode === "menu") {
         await reactionMsg.removeAllReactions().catch(() => {});
 
-        // For command type, reactions are: 1️⃣ = arguments, 2️⃣ = time, 3️⃣ = recurring
-        // For content/embed type, reactions are: 1️⃣ = content, 2️⃣ = time, 3️⃣ = recurring, 4️⃣ = webhook
         const isCommand = collector.type === "command";
 
         if (emojiId === "1️⃣") {
             if (isCommand) {
-                // For commands, 1️⃣ is arguments
                 collector.editMode = "commandArgs";
                 collector.waitingForCommandArgs = true;
                 const argsEmbed = new EmbedBuilder()
@@ -51,7 +48,6 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
                 await reactionMsg.edit({ embeds: [argsEmbed] });
                 await reactionMsg.react(client.config.emojis.cross);
             } else {
-                // For content/embed, 1️⃣ is content
                 collector.editMode = "content";
                 if (collector.type === "content") {
                     const promptEmbed = new EmbedBuilder()
@@ -75,7 +71,6 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
                 }
             }
         } else if (emojiId === "2️⃣") {
-            // For both command and content/embed, 2️⃣ is time
             collector.editMode = "time";
             collector.waitingForTime = true;
             const timeEmbed = new EmbedBuilder()
@@ -83,11 +78,9 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
                 .setDescription(client.translate.get(db.language, "Commands.schedule.editSendTime", { time: `<t:${collector.timestamp}:f> (<t:${collector.timestamp}:R>)`, exampleTime: "(e.g. `2:30pm`, `in 30 minutes`, `6:00am`)" }));
             await reactionMsg.edit({ embeds: [timeEmbed] });
         } else if (emojiId === "3️⃣") {
-            // For both command and content/embed, 3️⃣ is recurring
             collector.editMode = "recurring";
             await ScheduleCollector.askRecurring(client, collector);
         } else if (emojiId === "4️⃣" && !isCommand) {
-            // For content/embed, 4️⃣ is webhook
             collector.editMode = "webhook";
             if (collector.webhook?.name) {
                 const webhookEmbed = new EmbedBuilder()
@@ -104,8 +97,8 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
 
     if (emojiId === client.config.emojis.check) {
         if (collector.editing && collector.editMode === "content") {
-            await ScheduleCollector.saveEditChanges(client, collector, message.guildId);
-            await ScheduleCollector.showEditMenu(client, collector, message.guildId);
+            await ScheduleCollector.saveEditChanges(client, collector, message.reaction.guildId);
+            await ScheduleCollector.showEditMenu(client, collector, message.reaction.guildId);
             return;
         }
 

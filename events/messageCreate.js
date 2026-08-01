@@ -1,5 +1,5 @@
 const ScheduleCollector = require("../functions/scheduleCollector");
-const { EmbedBuilder, PermissionFlags } = require("@erinjs/core");
+const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Collector = require("../functions/messageCollector");
 const EditCollector = require("../functions/messageEdit");
 const errorHandler = require("../functions/errorHandler");

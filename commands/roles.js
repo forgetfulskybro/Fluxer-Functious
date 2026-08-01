@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlags } = require("@erinjs/core");
+const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require("../functions/pagination");
 
 const CHANNEL_MENTION_REGEX = /^<#(?<id>\d+)>/;
@@ -326,18 +326,19 @@ Color Roles:
                 const messageType = pickedTypes[0] || "content";
 
                 client.messageCollector.set(userId, {
-                    user: userId,
-                    timeout: null,
-                    oldMessageId: setupMsg.id,
-                    botMessage: setupMsg.id,
-                    messageId: null,
-                    channelId: message.channel.id,
-                    targetChannelId: targetChannel.id,
-                    type: messageType,
-                    rolesDone: [],
-                    roles: [],
-                    regex: [],
-                    useRoleMention: false,
+                  user: userId,
+                  timeout: null,
+                  oldMessageId: setupMsg.id,
+                  botMessage: setupMsg.id,
+                  messageId: null,
+                  channelId: message.channel.id,
+                  targetChannelId: targetChannel.id,
+                  type: messageType,
+                  rolePosition: 0,
+                  rolesDone: [],
+                  roles: [],
+                  regex: [],
+                  useRoleMention: false,
                 });
 
                 const createTimeout = setTimeout(async () => {

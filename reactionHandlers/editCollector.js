@@ -1,6 +1,39 @@
-const { EmbedBuilder } = require("@erinjs/core");
+const { EmbedBuilder } = require("@fluxerjs/core");
+const explainCooldown = new Map();
 
 module.exports = async (client, message, userId, editCollector, reactionChan, reactionMsg, emojiId, event = "add") => {
+  if (event === "add" && message.messageId === editCollector.oldMessageId && emojiId !== client.config.emojis.check && emojiId !== client.config.emojis.cross) {
+    const cooldownKey = `${userId}_${editCollector.oldMessageId}`;
+    const lastExplanation = explainCooldown.get(cooldownKey);
+    const now = Date.now();
+    
+    if (!lastExplanation || now - lastExplanation > 5000) {
+      explainCooldown.set(cooldownKey, now);
+
+      const db = await client.database.getGuild(message.reaction.guildId);
+      const botMessage = await reactionChan.messages.fetch(editCollector.messageId).catch(() => null);
+      let explanation;
+      if (botMessage) {
+        explanation = await botMessage.reply({
+          content: client.translate.get(db.language, "Commands.roles.reactWrong"),
+        }).catch(() => {});
+        
+      } else {
+        explanation = await reactionChan.send({ 
+          content: client.translate.get(db.language, "Commands.roles.reactWrong"),
+        }).catch(() => {});
+      }
+      
+      if (explanation) {
+        setTimeout(() => {
+          explanation.delete().catch(() => {});
+          explainCooldown.delete(cooldownKey);
+        }, 5000);
+      }
+    }
+    return;
+  }
+  
   if (emojiId === client.config.emojis.check && editCollector.botMessage === reactionMsg?.id) {
     if (editCollector.roles.length > 0 || editCollector.rolesDone.length === 0 || editCollector.regex.length > 0) return;
 
@@ -14,17 +47,17 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
         ?.send({
           embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.noMessage"))],
         })
-        .catch(() => {});
+        .catch(() => { });
 
       clearTimeout(client.messageEdit.get(userId)?.timeout);
       client.messageEdit.delete(userId);
-      await reactionMsg?.delete().catch(() => {});
+      await reactionMsg?.delete().catch(() => { });
       return;
     }
 
     try {
-      await reactionMsg?.delete().catch(() => {});
-      await oldMsg.removeAllReactions().catch(() => {});
+      await reactionMsg?.delete().catch(() => { });
+      await oldMsg.removeAllReactions().catch(() => { });
       await oldMsg.edit(
         editCollector.type === "content"
           ? { content: msg.content }
@@ -32,7 +65,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
       );
 
       for (const reaction of reactions) {
-        await oldMsg.react(reaction).catch(() => {});
+        await oldMsg.react(reaction).catch(() => { });
       }
 
       db.roles = [
@@ -43,9 +76,9 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
       await client.database.updateGuild(message.guildId, { roles: db.roles });
       await msg.delete().catch(() => { });
       
-      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.app/channels/${message.guild.id}/${editCollector.channelId}/${editCollector.oldMessageId})` }))] }).catch(() => {});
+      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.app/channels/${message.guild.id}/${editCollector.channelId}/${editCollector.oldMessageId})` }))] }).catch(() => { });
     } catch (error) {
-      reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`An error occured: ${error.message}`)] }).catch(() => {});
+      reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`An error occured: ${error.message}`)] }).catch(() => { });
       console.error(error);
     }
 
@@ -58,14 +91,14 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
     const db = await client.database.getGuild(message.guildId);
 
     client.messageEdit.delete(userId);
-    await reactionMsg?.delete({ silent: true }).catch(() => {});
+    await reactionMsg?.delete({ silent: true }).catch(() => { });
 
     return reactionChan?.send({
       embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))],
     });
   }
 
-  if (event === "remove") {
+  if (event === "remove" && message.messageId === editCollector.messageId) {
     const emote = message.emoji?.id ? `<:${emojiId}:${message.emoji.id}>` : emojiId;
     const emoji = editCollector.rolesDone.find((e) => e.emoji === emote);
 
@@ -91,24 +124,25 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
         ? { content: newMsg.content.replace(replaceText, withText) }
         : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(newMsg.embeds[0]?.description?.replace(replaceText, withText) || "")] };
 
-    return newMsg.edit(editContent).catch(() => {});
+    return newMsg.edit(editContent).catch(() => { });
   }
 
   if (editCollector.roles.length === 0) return;
+  if (message.messageId === editCollector.messageId) {
+    const emote = message.emoji?.id ? `<:${emojiId}:${message.emoji.id}>` : emojiId;
+    editCollector.rolesDone.push({ emoji: emote, role: editCollector.roles[0].id, name: editCollector.roles[0].name });
 
-  const emote = message.emoji?.id ? `<:${emojiId}:${message.emoji.id}>` : emojiId;
-  editCollector.rolesDone.push({ emoji: emote, role: editCollector.roles[0][0], name: editCollector.roles[0][1].name });
+    const roleDisplay = editCollector.useMention ? `<@&${editCollector.roles[0].id}>` : editCollector.roles[0].name;
+    const replaceText = `{role:${editCollector.regex[0]}}`;
+    const withText = `${emote} ${roleDisplay}`;
 
-  const roleDisplay = editCollector.useMention ? `<@&${editCollector.roles[0][0]}>` : editCollector.roles[0][1].name;
-  const replaceText = `{role:${editCollector.regex[0]}}`;
-  const withText = `${emote} ${roleDisplay}`;
+    await reactionMsg?.edit(
+      editCollector.type === "content"
+        ? { content: reactionMsg.content.replace(replaceText, withText) }
+        : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(reactionMsg.embeds[0]?.description?.replace(replaceText, withText) || "")] },
+    ).catch(() => { });
 
-  await reactionMsg?.edit(
-    editCollector.type === "content"
-      ? { content: reactionMsg.content.replace(replaceText, withText) }
-      : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(reactionMsg.embeds[0]?.description?.replace(replaceText, withText) || "")] },
-  ).catch(() => {});
-
-  editCollector.roles.shift();
-  editCollector.regex.shift();
+    editCollector.roles.shift();
+    editCollector.regex.shift();
+  }
 };

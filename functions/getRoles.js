@@ -1,94 +1,132 @@
-const { EmbedBuilder } = require('@erinjs/core');
+const { EmbedBuilder } = require('@fluxerjs/core');
 const emoji = require('node-emoji');
 
 async function getRoles(roles, message, client, db, format = true, position = true, toDelete = true) {
-  try { message.guild.fetchRoles(); } catch {}
-  const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null));
-  const processedRoles = roles.map(r => emoji.emojify(r));
+  try {
+    if (message.guild) await message.guild.fetchRoles().catch(() => {});
+  } catch {}
+
+  const me = (message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe().catch(() => null) : null));
+
+  if (!me) {
+    return message.reply({
+      embeds: [new EmbedBuilder().setColor("#FF0000").setDescription("Failed to fetch bot member.")]
+    }).catch(() => {});
+  }
+
+  const processedRoles = roles.map(r => emoji.emojify(r).trim());
   const roleIds = [];
 
   let newRoles = processedRoles.map((processed) => {
-    const stripped = processed.replace(/^<@&(\d+)>$/, '$1');
+    const stripped = processed.replace(/^<@&(\d+)>$/, '$1').trim();
     const isId = /^\d+$/.test(stripped);
 
-    const guildRoles = [...message.guild.roles].map((r) => r);
-    if (isId) return guildRoles.find((role) => role[0] === stripped || role[1]?.id === stripped);
-    return guildRoles.find((role) => stripped.toLowerCase() === role[1]?.name?.toLowerCase());
+    const guildRoles = [...message.guild.roles.values()];
+
+    if (isId) {
+      return guildRoles.find(role => role.id === stripped);
+    }
+    return guildRoles.find(role => stripped.toLowerCase() === role.name.toLowerCase());
   });
 
-  newRoles.map((r) => roleIds.push(r));
+  newRoles.forEach(r => {
+    if (r) roleIds.push(r);
+  });
 
-  if (roleIds.map((r) => !r).includes(true)) {
-      let unknown = [];
-      roleIds.map((r, i) => {
-          i++
-          if (!r) {
-              unknown.push(roles[i - 1]);
-          }
-      });
+  if (roleIds.length !== newRoles.length) {
+    const unknown = [];
+    newRoles.forEach((r, i) => {
+      if (!r) unknown.push(roles[i].trim());
+    });
 
-      message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.unknown")}\n${unknown.map(e => `\`${format ? `{role:${e}}` : e}\``).join(", ")}`)] }).then(async (m) => {
-        setTimeout(() => {
-          if (toDelete) {
-            message.delete().catch(() => { });
-            m.delete().catch(() => { });
-          }
-        }, 9000);
-      });
-      return message.react(client.config.emojis.cross).catch(() => { return });
+    message.reply({
+      embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(
+        `${client.translate.get(db.language, "Events.messageCreate.unknown")}\n` +
+        `${unknown.map(e => `\`${format ? `{role:${e}}` : e}\``).join(", ")}`
+      )]
+    }).then(m => {
+      setTimeout(() => {
+        if (toDelete) {
+          message.delete().catch(() => {});
+          m.delete().catch(() => {});
+        }
+      }, 9000);
+    });
+
+    return message.react(client.config.emojis.cross).catch(() => {});
   }
 
-  let duplicate = [];
-  roleIds.map((r, i) => {
-      i++
-      if (roleIds.filter(e => e[0] === r[0]).length > 1) duplicate.push(roleIds[i - 1]);
+  const seen = new Set();
+  const duplicate = [];
+
+  roleIds.forEach((r, i) => {
+    if (seen.has(r.id)) {
+      duplicate.push(r);
+    } else {
+      seen.add(r.id);
+    }
   });
 
   if (duplicate.length > 0) {
-      message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.duplicate")}\n${duplicate.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}`)] }).then(async (m) => {
+    message.reply({
+      embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(
+        `${client.translate.get(db.language, "Events.messageCreate.duplicate")}\n` +
+        `${duplicate.map(e => `\`${format ? `{role:${e.name.trim()}}` : e.name.trim()}\``).join(", ")}`
+      )]
+    }).then(m => {
+      setTimeout(() => {
+        if (toDelete) {
+          message.delete().catch(() => {});
+          m.delete().catch(() => {});
+        }
+      }, 9000);
+    });
+    return message.react(client.config.emojis.cross).catch(() => {});
+  }
+
+    if (position) {
+    const botHighestRole = [...me.roles.cache.values()]
+      .reduce((highest, role) =>
+        role.position > highest.position ? role : highest
+      );
+
+    if (!botHighestRole) {
+      message.reply({
+        embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(
+          client.translate.get(db.language, "Events.messageCreate.noBotRole")
+        )]
+      }).then(m => {
         setTimeout(() => {
           if (toDelete) {
-            message.delete().catch(() => { });
-            m.delete().catch(() => { });
+            message.delete().catch(() => {});
+            m.delete().catch(() => {});
           }
         }, 9000);
       });
-      return message.react(client.config.emojis.cross).catch(() => { return });
+      return message.react(client.config.emojis.cross).catch(() => {});
+    }
+
+    const tooHigh = roleIds.filter(r => r.position >= botHighestRole.position);
+
+    if (tooHigh.length > 0) {
+      message.reply({
+        embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(
+          `${client.translate.get(db.language, "Events.messageCreate.positions")}\n` +
+          `${tooHigh.map(e => `\`${format ? `{role:${e.name.trim()}}` : e.name.trim()}\``).join(", ")}\n\n` +
+          client.translate.get(db.language, "Events.messageCreate.fix")
+        )]
+      }).then(m => {
+        setTimeout(() => {
+          if (toDelete) {
+            message.delete().catch(() => {});
+            m.delete().catch(() => {});
+          }
+        }, 9000);
+      });
+      return message.react(client.config.emojis.cross).catch(() => {});
+    }
   }
 
-  if (position) {
-    let positions = [];
-    const botRole = [...me.roles.cache.values()].reduce((high, role) => role.position > high.position ? role : high);
-    if (!botRole) {
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Events.messageCreate.noBotRole"))] }).then(async (m) => {
-          setTimeout(() => {
-            if (toDelete) {
-              message.delete().catch(() => { });
-              m.delete().catch(() => { });
-            }
-          }, 9000);
-        });
-        return message.react(client.config.emojis.cross).catch(() => { return });
-    }
-    
-    roleIds.map((r, i) => {
-        i++
-        if (r[1].position >= botRole.position) positions.push(roleIds[i - 1])
-    });
-  
-    if (positions.length > 0) {
-        message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Events.messageCreate.positions")}\n${positions.map(e => `\`${format ? `{role:${e[1].name}}` : e[1].name}\``)}\n\n${client.translate.get(db.language, "Events.messageCreate.fix")}`)] }).then(async (m) => {
-          setTimeout(() => {
-            if (toDelete) {
-              message.delete().catch(() => { });
-              m.delete().catch(() => { });
-            }
-          }, 9000);
-        });
-        return message.react(client.config.emojis.cross).catch(() => { return });
-    } 
-  }
-  
   return roleIds;
 }
 

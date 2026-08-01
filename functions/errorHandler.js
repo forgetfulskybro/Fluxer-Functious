@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("@erinjs/core");
+const { EmbedBuilder } = require("@fluxerjs/core");
 
 const DEFAULT_CONFIG = {
   command: {
@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
     permissionTitle: "Permission Error",
     defaultDescription: "An unexpected error occurred while processing this event.",
     permissionFooter: "Please contact a server admin to resolve this issue.",
-    errorFooter: "Please report this issue to the bot developers.",
+    errorFooter: "Please join the support server and report to Sky about this issue: https://fluxer.gg/YnINU09E",
     silent: true
   },
   function: {
@@ -23,7 +23,7 @@ const DEFAULT_CONFIG = {
     permissionTitle: "Permission Error",
     defaultDescription: "An unexpected error occurred while executing a function.",
     permissionFooter: "Please contact a server admin to resolve this issue.",
-    errorFooter: "Please report this issue to the bot developers.",
+    errorFooter: "Please join the support server and report to Sky about this issue: https://fluxer.gg/YnINU09E",
     silent: true
   }
 };
@@ -33,7 +33,8 @@ const PERMISSION_MAP = {
   "TextChannel.send": "Send Messages",
   "_Message._send": "Send Messages",
   "VoiceChannel.edit": "Edit Channels",
-  "Guild.createChannel": "Create Channels"
+  "Guild.createChannel": "Create Channels",
+  "_GuildMember.move": "Move Members"
 };
 
 function analyzeError(error) {
@@ -46,8 +47,13 @@ function analyzeError(error) {
     
     for (const [pattern, permission] of Object.entries(PERMISSION_MAP)) {
       if (errorMessage.includes(pattern)) {
-        description = `The bot is missing permission to **${permission}**.`;
-        break;
+        if (pattern === "_GuildMember.move") {
+          description = `Bot errored trying to **${permission}**. This usually happens when the bot tries to move the owner of the server.`;
+          break;
+        } else {
+          description = `The bot is missing permission to **${permission}**.`;
+          break;
+        }
       }
     }
   } else if (errorMessage.includes("rate limited") || errorMessage.includes("RateLimit")) {

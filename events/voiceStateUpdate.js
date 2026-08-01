@@ -1,4 +1,4 @@
-const { PermissionFlags, resolvePermissionsToBitfield } = require('@erinjs/core');
+const { PermissionFlags, resolvePermissionsToBitfield } = require('@fluxerjs/core');
 const errorHandler = require("../functions/errorHandler");
 
 module.exports = async (client, oldState, newState) => {
@@ -86,13 +86,16 @@ module.exports = async (client, oldState, newState) => {
       const member = await guild.fetchMember(userId);
       if (!member) return;
       
+      const isOwner = member.id === guild.ownerId;
+      
     if (!client.observedVoiceUsers.get(userId)) {
+      let voiceChannel = null;
       try {
         client.observedVoiceUsers.set(userId, { channelId: newChannelId, guildId });
         const channelNameBase = db.config?.channelName ? db.config.channelName : state.member.nick ? `${state.member.nick}${state.member.nick[state.member.nick.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel` : state.member?.user?.global_name ? `${state.member.user.global_name}${state.member.user.global_name[state.member.user.global_name.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel` : `${state.member.user.username}${state.member.user.username[state.member.user.username.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel`
         const channelName = db?.config?.counting ? `${channelNameBase} (${(db?.tempChannels?.length ?? 0) + 1})` : channelNameBase;
         
-        const voiceChannel = await guild.createChannel({
+        voiceChannel = await guild.createChannel({
           type: 2,
           name: `${channelName}`,
           parent_id: parentChannelId,
@@ -119,15 +122,29 @@ module.exports = async (client, oldState, newState) => {
           guildId,
         });
         
-        await member.move(voiceChannel.id).catch(() => { });
-  
-        await client.database.updateGuild(guildId, {
-          tempChannels: [
-            ...tempChannels,
-            { ownerId: userId, channelId: voiceChannel.id, parentChannel },
-          ],
-        });
+        if (!isOwner) {
+          console.log(`Regular member path for user ${userId}`);
+          await member.move(voiceChannel.id);
+          
+          await client.database.updateGuild(guildId, {
+            tempChannels: [
+              ...tempChannels,
+              { ownerId: userId, channelId: voiceChannel.id, parentChannel },
+            ],
+          });
+        } else {
+          console.log(`Privileged user path for user ${userId}, isOwner: ${isOwner}, isAdmin: ${isAdmin}`);
+          await client.database.updateGuild(guildId, {
+            tempChannels: [
+              ...tempChannels,
+              { ownerId: userId, channelId: voiceChannel.id, parentChannel },
+            ],
+          });
+          
+          client.observedVoiceUsers.delete(userId);
+        }
       } catch (error) {
+        client.observedVoiceUsers.delete(userId);
         await errorHandler({
           type: "function",
           message: null,

@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("@erinjs/core");
+const { EmbedBuilder } = require("@fluxerjs/core");
 const Giveaway = require("../models/giveaways");
 const Polls = require("../models/polls");
 const { dependencies } = require("../package.json");
@@ -56,7 +56,7 @@ module.exports = {
             `> **${client.translate.get(db.language, "Commands.info.servers")}**: \`${client.guilds.size.toLocaleString()}\``,
             `> **${client.translate.get(db.language, "Commands.info.giveaways")}**: \`${giveawayCount.toLocaleString()}\``,
             `> **${client.translate.get(db.language, "Commands.info.polls")}**: \`${dbPing.pollCount.toLocaleString()}\``,
-            `> **${client.translate.get(db.language, "Commands.info.library")}**: [Erin.js](https://erin.js.org) \`${dependencies["@erinjs/core"]}\``,
+            `> **${client.translate.get(db.language, "Commands.info.library")}**: [Fluxer.js](https://fluxer.js.org) \`${dependencies["@fluxerjs/core"]}\``,
           ].join("\n"),
           inline: true
         },

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { EmbedBuilder } = require('@erinjs/core');
+const { EmbedBuilder } = require('@fluxerjs/core');
 
 const COLORS = {
   SUCCESS: '#A52F05',

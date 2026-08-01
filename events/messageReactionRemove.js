@@ -5,24 +5,54 @@ const giveawayHandler = require("../reactionHandlers/giveaway");
 const pollHandler = require("../reactionHandlers/poll");
 const Giveaways = require("../models/giveaways");
 
-module.exports = async (client, message, user) => {
-    if (user.bot) return;
+module.exports = async (client, reaction) => {
+    if (reaction.user?.bot) return;
 
-    const userId = user.id;
-    const emojiId = message.emoji?.name;
+    const userId = reaction.user.id;
+    const emojiId = reaction.emoji?.name;
 
-    const pollCheck = client.polls.get(message.messageId);
+    const pollCheck = client.polls.get(reaction.messageId);
     const collector = client.messageCollector.get(userId);
     const editCollector = client.messageEdit.get(userId);
 
-    const reactionChan = await client.channels.resolve(message.channelId).catch(() => null);
-    const reactionMsg  = await reactionChan?.messages.fetch(message.messageId).catch(() => null);
+    let reactionChan;
+    try {
+        reactionChan = await client.channels.fetch(reaction.channelId).catch(() => null);
+    } catch {
+        reactionChan = null;
+    }
 
-    if (collector && collector.messageId === message.messageId && collector.channelId === message.channelId) return collectorHandler(client, message, userId, collector, reactionChan, reactionMsg, emojiId, "remove");
-    if (editCollector && editCollector.messageId === message.messageId && editCollector.channelId === message.channelId) return editCollectorHandler(client, message, userId, editCollector, reactionChan, reactionMsg, emojiId, "remove");
-    if (pollCheck) return pollHandler(client, message, userId, pollCheck, reactionMsg, emojiId, "remove");
-  
-    const db = await Giveaways.findOne({ messageId: message.messageId });
-    if (db && !db.ended) return giveawayHandler(client, message, userId, db, emojiId, "remove");
-    return roleReactionHandler(client, message, userId, emojiId, "remove");
+    if (!reactionChan) return;
+
+    let reactionMsg;
+    try {
+        reactionMsg = await reactionChan.messages.fetch(reaction.messageId).catch(() => null);
+    } catch {
+        reactionMsg = null;
+    }
+
+    if (!reactionMsg) return;
+
+    if (collector && 
+        collector.messageId === reaction.messageId && 
+        collector.channelId === reaction.channelId) {
+        return collectorHandler(client, reaction, userId, collector, reactionChan, reactionMsg, emojiId, "remove");
+    }
+
+    if (editCollector && 
+        editCollector.messageId === reaction.messageId && 
+        editCollector.channelId === reaction.channelId) {
+        return editCollectorHandler(client, reaction, userId, editCollector, reactionChan, reactionMsg, emojiId, "remove");
+    }
+
+    if (pollCheck) {
+        return pollHandler(client, reaction, userId, pollCheck, reactionMsg, emojiId, "remove");
+    }
+
+    const db = await Giveaways.findOne({ messageId: reaction.messageId }).catch(() => null);
+    if (db && !db.ended) {
+        return giveawayHandler(client, reaction, userId, db, emojiId, "remove");
+    }
+
+    return roleReactionHandler(client, reaction, userId, emojiId, "remove");
 };

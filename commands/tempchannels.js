@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlags, resolvePermissionsToBitfield } = require("@erinjs/core");
+const { EmbedBuilder, PermissionFlags, resolvePermissionsToBitfield } = require("@fluxerjs/core");
 const emoji = require('node-emoji');
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));

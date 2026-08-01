@@ -1,4 +1,4 @@
-const { EmbedBuilder, MessageFlags } = require("@erinjs/core");
+const { EmbedBuilder, MessageFlags } = require("@fluxerjs/core");
 const Polls = require(`../functions/poll`)
 const dhms = require(`../functions/dhms`);
 const PollDB = require("../models/polls");

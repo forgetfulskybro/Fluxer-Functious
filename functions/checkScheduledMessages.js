@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const { EmbedBuilder, Webhook } = require("@erinjs/core");
+const { EmbedBuilder, Webhook } = require("@fluxerjs/core");
 const { processTemplate, gatherContext } = require("./scheduleTemplateEngine");
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
@@ -228,17 +228,12 @@ async function scheduleNextRecurring(client, guildId, msgData) {
 
         if (!interval) return;
 
-        // Use the original timestamp as base and add interval to get the next occurrence
-        // This ensures the exact same time of day as the original schedule
         nextTimestamp = msgData.timestamp + interval;
 
-        // If the next occurrence is still in the past (e.g., bot was offline for multiple intervals),
-        // keep adding the interval until we're in the future
         while (nextTimestamp <= now) {
             nextTimestamp += interval;
         }
 
-        // Update the existing message's timestamp instead of creating a new one
         const guildData = await client.database.getGuild(guildId);
         const updatedMessages = guildData.scheduledMessages?.map(m => {
             if (m.id === msgData.id) {
@@ -253,7 +248,6 @@ async function scheduleNextRecurring(client, guildId, msgData) {
 
         await client.database.updateGuild(guildId, { scheduledMessages: updatedMessages }, true);
 
-        // Update the queue with the new timestamp only if within the 12-hour window
         removeFromQueue(guildId, msgData.id);
         if (nextTimestamp <= windowEndTime) {
             const updatedMsgData = { ...msgData, timestamp: nextTimestamp, sendCount: (msgData.sendCount || 0) + 1 };
@@ -278,8 +272,6 @@ async function processQueue(guildId, msgId) {
         const result = await sendScheduledMessage(clientRef, guildId, msgData);
 
         if (result.success) {
-            // Only delete from database if it's not recurring
-            // Recurring messages are updated in scheduleNextRecurring
             if (!msgData.recurring || msgData.recurring === "none") {
                 const updated = guildData.scheduledMessages.filter(m => m.id !== msgId);
                 if (updated.length !== guildData.scheduledMessages.length) {

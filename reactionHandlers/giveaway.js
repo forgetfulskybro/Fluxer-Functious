@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("@erinjs/core");
+const { EmbedBuilder } = require("@fluxerjs/core");
 const { handleDelete } = require("../functions/checkGiveaways");
 
 module.exports = async (client, message, userId, db, emojiId, event = "add") => {

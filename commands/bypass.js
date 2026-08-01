@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlags } = require("@erinjs/core");
+const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const getRoles = require('../functions/getRoles');
 
 module.exports = {
@@ -73,10 +73,10 @@ module.exports = {
           ]
         });
       
-        if (db.bypassRoles.length > 0 && db.bypassRoles.find((r) => r.role === roleIds[0][0])) return message.reply({
+        if (db.bypassRoles.length > 0 && db.bypassRoles.find((r) => r.role === roleIds[0].id)) return message.reply({
           embeds: [
             new EmbedBuilder()
-              .setDescription(`${client.translate.get(db.language, "Commands.bypass.roleAlready")}: \`${db.bypassRoles.find((r) => r.role === roleIds[0][0])?.commands.join(", ")}\`\n\n${client.translate.get(db.language, "Commands.bypass.roleUse")}\n\`${db.prefix}bypass edit ${role} | [${client.translate.get(db.language, "Commands.bypass.lockCommands")}, e.g. giveaway, roles]\``)
+              .setDescription(`${client.translate.get(db.language, "Commands.bypass.roleAlready")}: \`${db.bypassRoles.find((r) => r.role === roleIds[0].id)?.commands.join(", ")}\`\n\n${client.translate.get(db.language, "Commands.bypass.roleUse")}\n\`${db.prefix}bypass edit ${role} | [${client.translate.get(db.language, "Commands.bypass.lockCommands")}, e.g. giveaway, roles]\``)
               .setColor(`#FF0000`),
           ]
         });
@@ -97,7 +97,7 @@ module.exports = {
           message.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(`${client.translate.get(db.language, "Commands.bypass.successAll")} <@&${roleIds[0][0]}>`)
+                .setDescription(`${client.translate.get(db.language, "Commands.bypass.successAll")} <@&${roleIds[0].id}>`)
                 .setColor(`#A52F05`),
             ]
           });
@@ -107,7 +107,7 @@ module.exports = {
           message.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(`${client.translate.get(db.language, "Commands.bypass.success", { "role": `<@&${roleIds[0][0]}>` })}:\n\`${cmds.join(", ")}\``)
+                .setDescription(`${client.translate.get(db.language, "Commands.bypass.success", { "role": `<@&${roleIds[0].id}>` })}:\n\`${cmds.join(", ")}\``)
                 .setColor(`#A52F05`),
             ]
           });
@@ -115,11 +115,11 @@ module.exports = {
           type = cmds;
         }
         
-        await client.database.updateGuild(message.guild.id, { bypassRoles: [...db.bypassRoles, { role: roleIds[0][0], commands: type }] });
+        await client.database.updateGuild(message.guild.id, { bypassRoles: [...db.bypassRoles, { role: roleIds[0].id, commands: type }] });
         break;
 
       case "remove":        
-        if (!db.bypassRoles.find((r) => r.role === roleIds[0][0])) return message.reply({
+        if (!db.bypassRoles.find((r) => r.role === roleIds[0].id)) return message.reply({
           embeds: [
             new EmbedBuilder()
               .setDescription(client.translate.get(db.language, "Commands.bypass.notBypassed"))
@@ -130,17 +130,17 @@ module.exports = {
         message.reply({
           embeds: [
             new EmbedBuilder()
-              .setDescription(client.translate.get(db.language, "Commands.bypass.removeSuccess", { "role": `<@&${roleIds[0][0]}>`}))
+              .setDescription(client.translate.get(db.language, "Commands.bypass.removeSuccess", { "role": `<@&${roleIds[0].id}>`}))
               .setColor(`#A52F05`),
           ]
         });
         
-        const roles = db.bypassRoles.filter(() => !roleIds[0][0]);
+        const roles = db.bypassRoles.filter(() => !roleIds[0].id);
         await client.database.updateGuild(message.guild.id, { bypassRoles: roles });
         break;
       
       case "edit":        
-        const bypassedRole = db.bypassRoles.find((r) => r.role === roleIds[0][0]);
+        const bypassedRole = db.bypassRoles.find((r) => r.role === roleIds[0].id);
         if (!bypassedRole) return message.reply({
           embeds: [
             new EmbedBuilder()
@@ -172,8 +172,8 @@ module.exports = {
           ]
         });
         
-        const editCmds = db.bypassRoles.filter(() => !roleIds[0][0]);
-        await client.database.updateGuild(message.guild.id, { bypassRoles: [...editCmds, { role: roleIds[0][0], commands: type }] });
+        const editCmds = db.bypassRoles.filter(() => !roleIds[0].id);
+        await client.database.updateGuild(message.guild.id, { bypassRoles: [...editCmds, { role: roleIds[0].id, commands: type }] });
         break;
       
       case "view": 
@@ -189,7 +189,15 @@ module.exports = {
           embeds: [
             new EmbedBuilder()
               .setTitle(client.translate.get(db.language, "Commands.bypass.bypassedRoles"))
-              .setDescription(db.bypassRoles.map((r) => `**${client.translate.get(db.language, "Commands.bypass.role")}**: <@&${r.role}>\n**${client.translate.get(db.language, "Commands.bypass.commands")}**: \`${r.commands.join(", ")}\``).join("\n"))
+              .setDescription(
+                db.bypassRoles.map((r, i) => {
+                  const cmdsDisplay = r.commands.includes("all")
+                    ? "All commands"
+                    : `\`${r.commands.join("`, `")}\``;
+                  return `**${i + 1}.** <@&${r.role}>\n┗ ${cmdsDisplay}`;
+                }).join("\n\n")
+              )
+              .setFooter({ text: `${db.bypassRoles.length} bypass role${db.bypassRoles.length !== 1 ? "s" : ""}` })
               .setColor(`#A52F05`),
           ]
         });

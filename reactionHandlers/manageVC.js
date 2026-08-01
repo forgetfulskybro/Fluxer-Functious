@@ -1,4 +1,4 @@
-const { EmbedBuilder, resolvePermissionsToBitfield } = require("@erinjs/core");
+const { EmbedBuilder, resolvePermissionsToBitfield } = require("@fluxerjs/core");
 const errorHandler = require("../functions/errorHandler");
 
 const COLOR = "#A52F05";

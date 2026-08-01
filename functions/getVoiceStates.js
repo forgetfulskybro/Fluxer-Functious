@@ -1,5 +1,5 @@
-const { getVoiceManager } = require("@erinjs/voice");
-const { Events, GatewayDispatchEvents } = require("@erinjs/core");
+const { getVoiceManager } = require("@fluxerjs/voice");
+const { Events, GatewayDispatchEvents } = require("@fluxerjs/core");
 const color = require("../functions/colorCodes");
 
 async function getVoiceStates(client) {

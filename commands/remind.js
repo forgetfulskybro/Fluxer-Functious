@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const fetchTime = require("../functions/fetchTime");
 const { handleNewReminder, handleDeletedReminder } = require("../functions/checkReminders");
-const { EmbedBuilder } = require("@erinjs/core");
+const { EmbedBuilder } = require("@fluxerjs/core");
 const chrono = require("chrono-node");
 
 const EMBED_COLORS = {
@@ -140,26 +140,18 @@ function parseRelativeTime(txt) {
   return { time, text };
 }
 
+
 function parseTimeWithTimezone(inputText, userTimezone) {
   if (!userTimezone) {
     return chrono.parse(inputText, new Date(), { forwardDate: true });
   }
 
   try {
-    const now = new Date();
-    const offsetMinutes = -Math.round(
-      (now.getTime() - 
-       new Date(now.toLocaleString("en-US", { timeZone: userTimezone })).getTime()
-      ) / 60000
-    );
-
-    const reference = {
-      instant: now,
-      timezone: offsetMinutes
-    };
-
-    return chrono.parse(inputText, reference, {
-      forwardDate: true
+    const refDate = new Date();
+    
+    return chrono.parse(inputText, refDate, {
+      forwardDate: true,
+      timezone: userTimezone,
     });
   } catch (e) {
     return chrono.parse(inputText, new Date(), { forwardDate: true });

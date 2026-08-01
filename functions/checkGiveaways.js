@@ -1,6 +1,6 @@
 const cron = require("node-cron");
 const Giveaways = require("../models/giveaways");
-const { EmbedBuilder } = require("@erinjs/core");
+const { EmbedBuilder } = require("@fluxerjs/core");
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
 let refreshCronJob = null;

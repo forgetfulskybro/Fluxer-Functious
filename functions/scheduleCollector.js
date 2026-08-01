@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("@erinjs/core");
+const { EmbedBuilder } = require("@fluxerjs/core");
 const { processTemplate } = require("./scheduleTemplateEngine");
 const chrono = require("chrono-node");
 const checkScheduled = require("./checkScheduledMessages");
@@ -33,20 +33,11 @@ function parseTimeWithTimezone(inputText, userTimezone) {
   }
 
   try {
-    const now = new Date();
-    const offsetMinutes = -Math.round(
-      (now.getTime() - 
-       new Date(now.toLocaleString("en-US", { timeZone: userTimezone })).getTime()
-      ) / 60000
-    );
-
-    const reference = {
-      instant: now,
-      timezone: offsetMinutes
-    };
-
-    return chrono.parse(inputText, reference, {
-      forwardDate: true
+    const refDate = new Date();
+    
+    return chrono.parse(inputText, refDate, {
+      forwardDate: true,
+      timezone: userTimezone,
     });
   } catch (e) {
     return chrono.parse(inputText, new Date(), { forwardDate: true });

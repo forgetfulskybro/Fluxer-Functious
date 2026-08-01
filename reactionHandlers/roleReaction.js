@@ -4,7 +4,7 @@ module.exports = async (client, message, userId, emojiId, event = "add") => {
     ? `<:${emojiId}:${message.emoji.id}>`
     : emojiId;
 
-  const db2 = await client.database.getGuild(message.guildId, true);
+  const db2 = await client.database.getGuild(message.reaction.guildId, true);
   if (!db2) return;
 
   const msgRoles = db2.roles.find((e) => e.msgId === message.messageId);
@@ -15,8 +15,9 @@ module.exports = async (client, message, userId, emojiId, event = "add") => {
 
   if (client.reactions.get(userId)) return;
 
-  const guild = client.guilds.cache.get(message.guildId) || (await client.guilds.fetch(message.guildId));
+  const guild = client.guilds.cache.get(message.reaction.guildId) || (await client.guilds.fetch(message.reaction.guildId));
   const member = await guild?.fetchMember(userId);
+
   if (!member) return;
 
   client.reactions.set(userId, Date.now() + 1500);
@@ -37,7 +38,9 @@ module.exports = async (client, message, userId, emojiId, event = "add") => {
       otherRoles = msgRoles.roles.filter((e) => e.emoji !== emote && member.roles.cache.has(e.role));
       for (const otherRole of otherRoles) {
         exclusiveRoles.push(otherRole);
-        await member.roles.remove(otherRole.role).catch(() => {});
+        await member.roles.remove(otherRole.role).catch(() => {
+          error = true;
+        });
       }
     }
   } else {
