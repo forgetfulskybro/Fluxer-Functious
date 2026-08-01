@@ -6,7 +6,7 @@
   "dependencies": {
     "@discordjs/collection": "^2.1.1",
     "@fluxerjs/core": "^2.1.0",
-    "@fluxerjs/voice": "^2.0.2",
+    "@fluxerjs/voice": "^2.1.0",
     "@sentry/node": "^10.42.0",
     "canvas": "^3.2.1",
     "chrono-node": "^2.9.0",
