@@ -200,6 +200,7 @@ module.exports = async (client, message) => {
       db,
     );
   } catch (error) {
+    console.error(error)
     await errorHandler({
       type: "command",
       message,
