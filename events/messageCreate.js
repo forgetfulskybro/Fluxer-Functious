@@ -7,9 +7,6 @@ const parseTime = require("../functions/parseTime");
 const manageVC = require("../functions/manageVC");
 
 module.exports = async (client, message) => {
-  client.guilds.fetch(message.guild.id);
-  console.log(message.guild.name, message.guild.members.size)
-
   if (!message?.channel || !message.content || message.author.bot) return;
   const MVC = client.manageVC.get(message.author.id);
   if (message.channel.type === 1 && MVC) return await manageVC(client, message)
@@ -18,9 +15,12 @@ module.exports = async (client, message) => {
   // const channel = message.channel;
   // const chanPerms = me && channel ? me.permissionsIn(channel) : null;
 
-  let member = message.guild.members.get(message.author.id) ?? await message.guild.fetchMember(message.author.id);
+  const guild = message.guild ?? await message.resolveGuild();
+  if (!guild) return;
+
+  let member = guild.members.get(message.author.id) ?? await guild.fetchMember(message.author.id);
   const isMention = new RegExp(`^(<@!?${client.user.id}>)`).test(message.content);
-  const db = await client.database.getGuild(message.guildId, true);
+  const db = await client.database.getGuild(guildId, true);
 
   if (client.messageCollector.has(message.author.id) && client.messageCollector.get(message.author.id).channelId === message.channelId && !client.messageCollector.get(message.author.id).messageId)
     return await Collector(client, message, db);
@@ -39,6 +39,7 @@ module.exports = async (client, message) => {
     }
   }
 
+  console.log(guildId, isMention, message.content.startsWith(db.prefix))
   if (!isMention && !message.content.startsWith(db.prefix)) return;
   const mentionMatch = isMention && message.content.match(new RegExp(`^(<@!?${client.user.id}>)`));
   const rawPrefixLength = isMention ? mentionMatch[0].length : db.prefix.length;
@@ -56,10 +57,12 @@ module.exports = async (client, message) => {
 
   const args = message.content.slice(prefixLength).trim().split(/ +/g);
   const cmd = args.shift()?.toLowerCase();
+  console.log(guildId, cmd)
   if (!cmd) return;
 
   const commandfile =
     client.commands.get(cmd) || client.commands.get(client.aliases.get(cmd));
+  console.log(guildId, commandfile)
   if (!commandfile) return;
 
   // Turn off permission checking for the bot as Fluxer has lots of issues with it currently and I'd rather have the bot error than not respond when it should.
@@ -118,10 +121,10 @@ module.exports = async (client, message) => {
     if (client.timeout.has(permCooldownKey)) return;
 
     try {
-      const freshMember = await message.guild.fetchMember(message.author.id);
+      const freshMember = await guild.fetchMember(message.author.id);
       if (freshMember?.permissions.has(commandfile.config.permissions.bitField)) {
         member = freshMember;
-        message.guild.members.set(freshMember.id, freshMember);
+        guild.members.set(freshMember.id, freshMember);
       } else {
         client.timeout.set(permCooldownKey, true);
         setTimeout(() => client.timeout.delete(permCooldownKey), 2500);
