@@ -15,7 +15,7 @@ module.exports = async (client, message) => {
   // const channel = message.channel;
   // const chanPerms = me && channel ? me.permissionsIn(channel) : null;
 
-  console.log(message.guild)
+  console.log(message.guild.name, message.guild.members.size)
   let member = message.guild.members?.get(message.author.id) ?? await message.guild.fetchMember(message.author.id);
   const isMention = new RegExp(`^(<@!?${client.user.id}>)`).test(message.content);
   const db = await client.database.getGuild(message.guildId, true);
