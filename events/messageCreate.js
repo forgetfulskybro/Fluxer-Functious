@@ -9,13 +9,14 @@ const manageVC = require("../functions/manageVC");
 module.exports = async (client, message) => {
   if (!message?.channel || !message.content || message.author.bot) return;
   const MVC = client.manageVC.get(message.author.id);
+  console.log(message.guild.name, message.guild.members.size)
+
   if (message.channel.type === 1 && MVC) return await manageVC(client, message)
   if (message.channel.type === 1) return;
 
   // const channel = message.channel;
   // const chanPerms = me && channel ? me.permissionsIn(channel) : null;
 
-  console.log(message.guild.name, message.guild.members.size)
   try {
     let member = message.guild.members?.get(message.author.id) ?? await message.guild.fetchMember(message.author.id);
     const isMention = new RegExp(`^(<@!?${client.user.id}>)`).test(message.content);
