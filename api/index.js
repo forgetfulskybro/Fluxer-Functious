@@ -6,7 +6,13 @@ const http = require('http');
 const FLUXER_API = 'https://api.fluxer.app/v1';
 
 function createApiServer(client) {
-  const app = express();
+const app = express();
+
+  app.use((req, res, next) => {
+    console.log(`[API DEBUG] ${req.method} ${req.url} - headers:`, JSON.stringify(req.headers));
+    next();
+  });
+
   const port = process.env.API_PORT || 4000;
   const apiKey = process.env.API_KEY;
   const allowedOrigin = process.env.WEBSITE_URL || 'http://localhost:3000';
