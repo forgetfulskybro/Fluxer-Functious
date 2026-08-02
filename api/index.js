@@ -1023,10 +1023,10 @@ function createApiServer(client) {
     ws.on('error', () => clearInterval(interval));
   });
 
-  server.listen(port, () => {
+  server.listen(port, '0.0.0.0', () => {
     console.log(`[API] Connected to ${port}`);
   });
-
+  
   return { app, server, wss };
 }
 
