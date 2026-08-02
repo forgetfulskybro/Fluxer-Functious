@@ -87,7 +87,9 @@ const app = express();
   });
 
   app.get('/health', (_req, res) => {
-    res.json(getBotStatus());
+    console.log('[API DEBUG] /health route hit');
+    res.status(200).send('ok');
+    // res.json(getBotStatus());
   });
 
   app.post('/api/guilds/filter', requireApiKey, async (req, res) => {
