@@ -140,18 +140,26 @@ function parseRelativeTime(txt) {
   return { time, text };
 }
 
-
 function parseTimeWithTimezone(inputText, userTimezone) {
   if (!userTimezone) {
     return chrono.parse(inputText, new Date(), { forwardDate: true });
   }
 
   try {
-    const refDate = new Date();
-    
-    return chrono.parse(inputText, refDate, {
-      forwardDate: true,
-      timezone: userTimezone,
+    const now = new Date();
+    const offsetMinutes = -Math.round(
+      (now.getTime() - 
+       new Date(now.toLocaleString("en-US", { timeZone: userTimezone })).getTime()
+      ) / 60000
+    );
+
+    const reference = {
+      instant: now,
+      timezone: offsetMinutes
+    };
+
+    return chrono.parse(inputText, reference, {
+      forwardDate: true
     });
   } catch (e) {
     return chrono.parse(inputText, new Date(), { forwardDate: true });
