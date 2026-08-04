@@ -19,15 +19,8 @@ services:
       - FLUXER_CLIENT_SECRET=${FLUXER_CLIENT_SECRET}
       - FLUXER_CLIENT_ID=${FLUXER_CLIENT_ID}
     ports:
-      - target: 8889
-        published: 8889
-        protocol: tcp
-        mode: ingress
+      - "${API_PORT:-8889}:${API_PORT:-8889}"
     volumes:
       - .:/app
       - /app/node_modules
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+    restart: unless-stopped
