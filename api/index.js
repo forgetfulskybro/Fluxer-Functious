@@ -12,7 +12,7 @@ const usersRouter = require('./routes/users');
 
 function createApiServer(client) {
   const app = express();
-  const port = process.env.API_PORT || 4000;
+  const port = Number(process.env.API_PORT) || 4000;
   const apiKey = process.env.API_KEY;
   const allowedOrigin = process.env.WEBSITE_URL || 'http://localhost:3000';
 
@@ -37,21 +37,47 @@ function createApiServer(client) {
   const wss = new WebSocketServer({ server, path: '/health/ws' });
 
   wss.on('connection', (ws) => {
-    ws.send(JSON.stringify(getBotStatus(client)));
+    try {
+      ws.send(JSON.stringify(getBotStatus(client)));
+    } catch (err) {
+      console.error('[API] :: Failed to send initial WS status:', err);
+    }
 
     const interval = setInterval(() => {
       if (ws.readyState === ws.OPEN) {
-        ws.send(JSON.stringify(getBotStatus(client)));
+        try {
+          ws.send(JSON.stringify(getBotStatus(client)));
+        } catch (err) {
+          console.error('[API] :: Failed to send WS status:', err);
+          clearInterval(interval);
+        }
       }
     }, 5000);
 
     ws.on('close', () => clearInterval(interval));
-    ws.on('error', () => clearInterval(interval));
+    ws.on('error', (err) => {
+      console.error('[API] :: WebSocket client error:', err);
+      clearInterval(interval);
+    });
   });
 
-  console.log(port)
+  wss.on('error', (err) => {
+    console.error('[API] :: WebSocketServer error:', err);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[API] :: Port ${port} is already in use`);
+    } else if (err.code === 'EACCES') {
+      console.error(`[API] :: Permission denied binding to port ${port}`);
+    } else {
+      console.error('[API] :: Server error:', err);
+    }
+  });
+
   server.listen(port, '0.0.0.0', () => {
-    console.log(`[API] :: Connected to ${port}`);
+    const addr = server.address();
+    console.log(`[API] :: Listening on ${addr.address}:${addr.port}`);
   });
 
   return { app, server, wss };
