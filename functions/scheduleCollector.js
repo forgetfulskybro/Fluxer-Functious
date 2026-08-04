@@ -33,11 +33,20 @@ function parseTimeWithTimezone(inputText, userTimezone) {
   }
 
   try {
-    const refDate = new Date();
-    
-    return chrono.parse(inputText, refDate, {
-      forwardDate: true,
-      timezone: userTimezone,
+    const now = new Date();
+    const offsetMinutes = -Math.round(
+      (now.getTime() - 
+       new Date(now.toLocaleString("en-US", { timeZone: userTimezone })).getTime()
+      ) / 60000
+    );
+
+    const reference = {
+      instant: now,
+      timezone: offsetMinutes
+    };
+
+    return chrono.parse(inputText, reference, {
+      forwardDate: true
     });
   } catch (e) {
     return chrono.parse(inputText, new Date(), { forwardDate: true });
@@ -644,6 +653,16 @@ async function ScheduleCollector(client, message, db) {
             return message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription("Please provide valid arguments. Use `|` to separate arguments.")] }).then(m => {
                 setTimeout(() => m.delete().catch(() => {}), 5000);
             });
+        }
+
+        if (session.commandName === 'giveaway' && parsedArgs.length < 3) {
+            return message.reply({
+                embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(
+                    "Giveaway requires at least 3 arguments: `duration | winners | prize`\n" +
+                    "Optional flags can follow: `dm:yes`, `ping:no`, `multiwin:yes`, `image:<url>`, `requirement:<text>`\n" +
+                    "Example: `20m | 3 | A t-shirt | dm:yes | ping:no`"
+                )]
+            }).then(m => setTimeout(() => m.delete().catch(() => {}), 8000));
         }
 
         session.commandArgs = parsedArgs;
