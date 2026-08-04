@@ -18,9 +18,15 @@ services:
       - FLUXER_REDIRECT_URI=${FLUXER_REDIRECT_URI}
       - FLUXER_CLIENT_SECRET=${FLUXER_CLIENT_SECRET}
       - FLUXER_CLIENT_ID=${FLUXER_CLIENT_ID}
-    ports:
-      - "${API_PORT:-8889}:${API_PORT:-8889}"
+    expose:
+      - "8889"
     volumes:
       - .:/app
       - /app/node_modules
     restart: unless-stopped
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
