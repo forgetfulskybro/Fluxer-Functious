@@ -32,7 +32,11 @@ function oauthRouter(_client, apiKey) {
       if (!tokenRes.ok) {
         const text = await tokenRes.text();
         console.error('[API] OAuth exchange failed:', tokenRes.status, text);
-        return res.status(502).json({ error: 'Token exchange failed', detail: text });
+        return res.status(502).json({
+          error: 'Token exchange failed',
+          status: tokenRes.status,
+          detail: text,
+        });
       }
 
       const { access_token } = await tokenRes.json();

@@ -50,7 +50,7 @@ function createApiServer(client) {
   });
 
   server.listen(port, '0.0.0.0', () => {
-    console.log(`[API] Connected to ${port}`);
+    console.log(`[API] :: Connected to ${port}`);
   });
 
   return { app, server, wss };
