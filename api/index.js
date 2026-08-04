@@ -49,6 +49,7 @@ function createApiServer(client) {
     ws.on('error', () => clearInterval(interval));
   });
 
+  console.log(port)
   server.listen(port, '0.0.0.0', () => {
     console.log(`[API] :: Connected to ${port}`);
   });
