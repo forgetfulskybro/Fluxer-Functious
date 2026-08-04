@@ -3,7 +3,7 @@ module.exports = async (client, member) => {
   const db = await client.database.getGuild(member.guild.id);
   if (!db?.stickyRolesEnabled) return;
 
-  const roleIds = member.roles.roleIds?.map((r) => r.id) || [];
+  const roleIds = member.roles.ids ?? [];
   if (roleIds.length === 0) return;
 
   const stickyRoles = [

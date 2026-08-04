@@ -35,7 +35,7 @@ module.exports = {
     const view = new EmbedBuilder()
       .setColor(`#A52F05`)
       .setTitle(client.translate.get(db.language, "Commands.autoroles.viewTitle"))
-      .setDescription(`**${client.translate.get(db.language, "Commands.autoroles.stickyTitle")}**: ${db.stickyRoles.enabled ? client.translate.get(db.language, "Commands.roles.on") : client.translate.get(db.language, "Commands.roles.off")}\n**${client.translate.get(db.language, "Commands.autoroles.joinTitle")}**: ${db.joinRoles?.length > 0 ? `\n${db.joinRoles.map((r) => `<@&${r}>`).join(', ')}` : client.translate.get(db.language, "Events.messageReactionAdd.none")}\n**${client.translate.get(db.language, "Commands.autoroles.timedTitle")}**: ${db.timedRoles?.length > 0 ? `\n${db.timedRoles.map((r) => `<@&${r.id}> (${fetchTime(r.time, client, db.language, true)})`).join(', ')}` : client.translate.get(db.language, "Events.messageReactionAdd.none")}`)
+      .setDescription(`**${client.translate.get(db.language, "Commands.autoroles.stickyTitle")}**: ${db.stickyRolesEnabled ? client.translate.get(db.language, "Commands.roles.on") : client.translate.get(db.language, "Commands.roles.off")}\n**${client.translate.get(db.language, "Commands.autoroles.joinTitle")}**: ${db.joinRoles?.length > 0 ? `\n${db.joinRoles.map((r) => `<@&${r}>`).join(', ')}` : client.translate.get(db.language, "Events.messageReactionAdd.none")}\n**${client.translate.get(db.language, "Commands.autoroles.timedTitle")}**: ${db.timedRoles?.length > 0 ? `\n${db.timedRoles.map((r) => `<@&${r.id}> (${fetchTime(r.time, client, db.language, true)})`).join(', ')}` : client.translate.get(db.language, "Events.messageReactionAdd.none")}`)
 
     message.reply({ embeds: [view] });
       break;

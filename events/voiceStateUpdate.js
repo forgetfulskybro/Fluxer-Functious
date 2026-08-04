@@ -123,7 +123,6 @@ module.exports = async (client, oldState, newState) => {
         });
         
         if (!isOwner) {
-          console.log(`Regular member path for user ${userId}`);
           await member.move(voiceChannel.id);
           
           await client.database.updateGuild(guildId, {
@@ -133,7 +132,6 @@ module.exports = async (client, oldState, newState) => {
             ],
           });
         } else {
-          console.log(`Privileged user path for user ${userId}, isOwner: ${isOwner}, isAdmin: ${isAdmin}`);
           await client.database.updateGuild(guildId, {
             tempChannels: [
               ...tempChannels,
@@ -144,7 +142,7 @@ module.exports = async (client, oldState, newState) => {
           client.observedVoiceUsers.delete(userId);
         }
       } catch (error) {
-        client.observedVoiceUsers.delete(userId);
+        //client.observedVoiceUsers.delete(userId);
         await errorHandler({
           type: "function",
           message: null,

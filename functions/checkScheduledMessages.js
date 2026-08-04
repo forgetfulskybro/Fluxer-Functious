@@ -138,18 +138,25 @@ async function executeScheduledCommand(client, guild, channel, msgData) {
         });
 
         const creator = await client.users.fetch(msgData.createdBy).catch(() => null);
-
         const simulatedMessage = {
             id: triggerMessage.id,
             channel: channel,
-            guild: guild,
+            guild: {
+                ...guild,
+                id: guild.id,
+                name: guild.name,
+                members: guild.members,
+                roles: guild.roles,
+                channels: guild.channels,
+                fetchChannels: guild.fetchChannels
+                    ? guild.fetchChannels.bind(guild)
+                    : async () => guild.channels || new Map(),
+            },
             guildId: guild.id,
             author: creator || { id: msgData.createdBy },
             content: `${msgData.commandArgs.join(" | ")}`,
             createdAt: new Date(),
-            delete: async () => {
-               
-            },
+            delete: async () => {},
             reply: async (options) => {
                 try {
                     return await channel.send(options);
@@ -170,8 +177,10 @@ async function executeScheduledCommand(client, guild, channel, msgData) {
             return { success: false, error: "Command not found" };
         }
 
+        const argsForCommand = msgData.commandArgs.join(' | ').split(' ');
+
         try {
-            await commandModule.run(client, simulatedMessage, msgData.commandArgs.join(" | ").split(" "), guildData);
+            await commandModule.run(client, simulatedMessage, argsForCommand, guildData);
             await triggerMessage.edit({ content: `✅ Executed scheduled ${msgData.commandName}` });
         } catch (err) {
             console.error(`Error executing scheduled command ${msgData.commandName}:`, err);

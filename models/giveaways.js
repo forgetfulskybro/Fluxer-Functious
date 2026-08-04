@@ -16,6 +16,16 @@ const giveaways = new Schema({
   lang: { type: String, required: true, default: "en_EN" },
   requirement: { type: String },
   endDate: { type: String },
+  dmWinners: { type: Boolean, default: false },
+  pingWinners: { type: Boolean, default: true },
+  allowMultipleWins: { type: Boolean, default: false },
+  imageUrl: { type: String, default: null },
+  bonusEntries: [
+    {
+      roleId: { type: String, required: true },
+      entries: { type: Number, required: true, min: 1, max: 100 },
+    },
+  ],
 });
 
 module.exports = model("giveaways", giveaways);

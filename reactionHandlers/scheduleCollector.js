@@ -42,9 +42,26 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
             if (isCommand) {
                 collector.editMode = "commandArgs";
                 collector.waitingForCommandArgs = true;
+
+                let argsHint = `Use \`|\` to separate arguments (e.g. \`5m | Title | Option 1 | Option 2\`)`;
+                let currentArgsDisplay = collector.commandArgs.join(" | ");
+
+                if (collector.commandName === 'giveaway') {
+                    argsHint =
+                        "Format: `duration | winners | prize`\n" +
+                        "Optional flags (add after prize): `dm:yes`, `ping:no`, `multiwin:yes`, `image:<url>`, `requirement:<text>`\n" +
+                        "Example: `20m | 3 | A t-shirt | dm:yes | ping:no | requirement:Must boost`";
+                } else if (collector.commandName === 'polls') {
+                    argsHint = "Format: `duration | title | option1 | option2 | ...` (2–10 options)\nExample: `30m | Favourite color? | Red | Blue | Green`";
+                } else if (collector.commandName === 'remind') {
+                    argsHint = "Format: `duration message`\nExample: `1h Don't forget the meeting`";
+                }
+
                 const argsEmbed = new EmbedBuilder()
                     .setColor("#A52F05")
-                    .setDescription(`**Current Arguments:**\n\`${collector.commandArgs.join(" | ")}\`\n\n**Send new arguments:**\nUse \`|\` to separate arguments (e.g. \`5m | Title | Option 1 | Option 2\`)\n\n**To cancel:** React with ${client.config.emojis.cross}`);
+                    .setDescription(
+                        `**Current Arguments:**\n\`\`\`\n${currentArgsDisplay}\n\`\`\`\n\n**Send new arguments:**\n${argsHint}\n\n**To cancel:** React with ${client.config.emojis.cross}`
+                    );
                 await reactionMsg.edit({ embeds: [argsEmbed] });
                 await reactionMsg.react(client.config.emojis.cross);
             } else {
