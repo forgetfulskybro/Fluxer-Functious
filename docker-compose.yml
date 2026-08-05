@@ -18,15 +18,16 @@ services:
       - FLUXER_REDIRECT_URI=${FLUXER_REDIRECT_URI}
       - FLUXER_CLIENT_SECRET=${FLUXER_CLIENT_SECRET}
       - FLUXER_CLIENT_ID=${FLUXER_CLIENT_ID}
-    expose:
-      - "8889"
+    ports:
+      - target: 8889
+        published: 8889
+        protocol: tcp
+        mode: ingress
     volumes:
       - .:/app
       - /app/node_modules
-    restart: unless-stopped
-    networks:
-      - dokploy-network
-
-networks:
-  dokploy-network:
-    external: true
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
