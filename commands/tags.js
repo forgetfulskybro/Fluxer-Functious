@@ -302,7 +302,6 @@ module.exports = {
         
           const editingTag = db.tags[editTagIndex];
         
-          // Single neat embed instead of two spread-out ones
           const contentPreview = editingTag.type === "text"
             ? editingTag.content.substring(0, 200) + (editingTag.content.length > 200 ? "..." : "")
             : editingTag.embedData.description.substring(0, 200) + (editingTag.embedData.description.length > 200 ? "..." : "");
