@@ -276,63 +276,57 @@ module.exports = {
         }
         break;
 
-      case "edit":
-        if (!args[1]) {
-          return message.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(`${client.translate.get(db.language, "Commands.tags.provideEditName")}\n${client.translate.get(db.language, "Commands.tags.usage")}: \`${db.prefix}tags edit ${client.translate.get(db.language, "Commands.tags.placeholders.name")}\``)
-                .setColor("#FF0000")
-            ]
-          });
-        }
+        case "edit":
+          if (!args[1]) {
+            return message.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription(`${client.translate.get(db.language, "Commands.tags.provideEditName")}\n${client.translate.get(db.language, "Commands.tags.usage")}: \`${db.prefix}tags edit ${client.translate.get(db.language, "Commands.tags.placeholders.name")}\``)
+                  .setColor("#FF0000")
+              ]
+            });
+          }
         
-        const tagToEdit = args[1];
-        const editTagIndex = db.tags?.findIndex(t => t.name.toLowerCase() === tagToEdit.toLowerCase());
+          const tagToEdit = args[1];
+          const editTagIndex = db.tags?.findIndex(t => t.name.toLowerCase() === tagToEdit.toLowerCase());
         
-        if (editTagIndex === -1 || editTagIndex === undefined) {
-          return message.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(client.translate.get(db.language, "Commands.tags.notFound", { "name": tagToEdit }))
-                .setColor("#FF0000")
-            ]
-          });
-        }
+          if (editTagIndex === -1 || editTagIndex === undefined) {
+            return message.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription(client.translate.get(db.language, "Commands.tags.notFound", { "name": tagToEdit }))
+                  .setColor("#FF0000")
+              ]
+            });
+          }
         
-        const editingTag = db.tags[editTagIndex];
+          const editingTag = db.tags[editTagIndex];
         
-        const currentInfo = new EmbedBuilder()
-          .setColor("#A52F05")
-          .setTitle(client.translate.get(db.language, "Commands.tags.editing", { "name": editingTag.name }))
-          .addFields(
-            { name: client.translate.get(db.language, "Commands.tags.type"), value: editingTag.type === "text" ? `📝 ${client.translate.get(db.language, "Commands.tags.text")}` : `📄 ${client.translate.get(db.language, "Commands.tags.embed")}`, inline: true },
-            { name: client.translate.get(db.language, "Commands.tags.uses"), value: editingTag.uses.toString(), inline: true },
-            { name: client.translate.get(db.language, "Commands.tags.created"), value: `<t:${Math.floor(editingTag.createdAt / 1000)}:R>`, inline: true }
-          );
+          // Single neat embed instead of two spread-out ones
+          const contentPreview = editingTag.type === "text"
+            ? editingTag.content.substring(0, 200) + (editingTag.content.length > 200 ? "..." : "")
+            : editingTag.embedData.description.substring(0, 200) + (editingTag.embedData.description.length > 200 ? "..." : "");
         
-        if (editingTag.type === "text") {
-          currentInfo.addFields({ name: client.translate.get(db.language, "Commands.tags.content"), value: editingTag.content.substring(0, 1024) + (editingTag.content.length > 1024 ? "..." : "") });
-        } else {
-          currentInfo.addFields({ name: client.translate.get(db.language, "Commands.tags.descriptionField"), value: editingTag.embedData.description.substring(0, 1024) + (editingTag.embedData.description.length > 1024 ? "..." : "") });
-        }
+          const menuEmbed = new EmbedBuilder()
+            .setColor("#A52F05")
+            .setTitle(client.translate.get(db.language, "Commands.tags.editing", { "name": editingTag.name }))
+            .setDescription(
+              `**${client.translate.get(db.language, "Commands.tags.type")}:** ${editingTag.type === "text" ? `📝 ${client.translate.get(db.language, "Commands.tags.text")}` : `📄 ${client.translate.get(db.language, "Commands.tags.embed")}`}\n` +
+              `**${client.translate.get(db.language, "Commands.tags.uses")}:** ${editingTag.uses}\n` +
+              `**${client.translate.get(db.language, "Commands.tags.created")}:** <t:${Math.floor(editingTag.createdAt / 1000)}:R>\n\n` +
+              `**${editingTag.type === "text" ? client.translate.get(db.language, "Commands.tags.content") : client.translate.get(db.language, "Commands.tags.descriptionField")}:**\n\`\`\`\n${contentPreview}\n\`\`\`\n\n` +
+              `**${client.translate.get(db.language, "Commands.tags.editOptions")}**\n` +
+              `1️⃣ ${client.translate.get(db.language, "Commands.tags.editName")}\n` +
+              `2️⃣ ${client.translate.get(db.language, "Commands.tags.editContent")}\n` +
+              `3️⃣ ${client.translate.get(db.language, "Commands.tags.toggleType")}\n` +
+              `❌ ${client.translate.get(db.language, "Commands.tags.cancel")}`
+            );
         
-        const menuEmbed = new EmbedBuilder()
-          .setColor("#A52F05")
-          .setTitle(client.translate.get(db.language, "Commands.tags.editOptions"))
-          .setDescription(client.translate.get(db.language, "Commands.tags.editOptionsDesc"))
-          .addFields(
-            { name: "1️⃣", value: client.translate.get(db.language, "Commands.tags.editName"), inline: true },
-            { name: "2️⃣", value: client.translate.get(db.language, "Commands.tags.editContent"), inline: true },
-            { name: "3️⃣", value: client.translate.get(db.language, "Commands.tags.toggleType"), inline: true },
-            { name: "❌", value: client.translate.get(db.language, "Commands.tags.cancel"), inline: true }
-          );
-        
-        const menuMsg = await message.reply({ embeds: [currentInfo, menuEmbed] });
-        await menuMsg.react("1️⃣");
-        await menuMsg.react("2️⃣");
-        await menuMsg.react("3️⃣");
-        await menuMsg.react("❌");
+          const menuMsg = await message.reply({ embeds: [menuEmbed] });
+          await menuMsg.react("1️⃣");
+          await menuMsg.react("2️⃣");
+          await menuMsg.react("3️⃣");
+          await menuMsg.react("❌");
         
         const editFilter = (reaction, user) => {
           return ["1️⃣", "2️⃣", "3️⃣", "❌"].includes(reaction.emoji.name) && user.id === message.author.id;
