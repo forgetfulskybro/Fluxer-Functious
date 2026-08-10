@@ -39,18 +39,18 @@ module.exports = {
                             `**${client.translate.get(db.language, "Commands.schedule.description")}**
 
 **${client.translate.get(db.language, "Commands.schedule.getStarted")}:**
-┕ \`${prefix}schedule content #channel\` — ${client.translate.get(db.language, "Commands.schedule.textMsg")}
-┕ \`${prefix}schedule embed #channel\` — ${client.translate.get(db.language, "Commands.schedule.richEmbed")}
-┕ \`${prefix}schedule poll <time> | <title> | <option1> | <option2>...\` — Schedule a poll
-┕ \`${prefix}schedule giveaway <time> | <winners> | <prize>\` — Schedule a giveaway
-┕ \`${prefix}schedule remind <time> <message>\` — Schedule a reminder
+┕ \`${prefix}schedule content #channel\` - ${client.translate.get(db.language, "Commands.schedule.textMsg")}
+┕ \`${prefix}schedule embed #channel\` - ${client.translate.get(db.language, "Commands.schedule.richEmbed")}
+┕ \`${prefix}schedule poll <time> | <title> | <option1> | <option2>...\` - Schedule a poll
+┕ \`${prefix}schedule giveaway <time> | <winners> | <prize>\` - Schedule a giveaway
+┕ \`${prefix}schedule remind <time> <message>\` - Schedule a reminder
 
 **${client.translate.get(db.language, "Commands.schedule.managing")}:**
-┕ \`${prefix}schedule view\` — ${client.translate.get(db.language, "Commands.schedule.listUpcome")}
-┕ \`${prefix}schedule view <num>\` — ${client.translate.get(db.language, "Commands.schedule.viewDetails")}
-┕ \`${prefix}schedule edit <num>\` — ${client.translate.get(db.language, "Commands.schedule.editExist")}
-┕ \`${prefix}schedule delete <num>\` — ${client.translate.get(db.language, "Commands.schedule.delete")}
-┕ \`${prefix}schedule stop\` — ${client.translate.get(db.language, "Commands.schedule.cancel")}`
+┕ \`${prefix}schedule view\` - ${client.translate.get(db.language, "Commands.schedule.listUpcome")}
+┕ \`${prefix}schedule view <num>\` - ${client.translate.get(db.language, "Commands.schedule.viewDetails")}
+┕ \`${prefix}schedule edit <num>\` - ${client.translate.get(db.language, "Commands.schedule.editExist")}
+┕ \`${prefix}schedule delete <num>\` - ${client.translate.get(db.language, "Commands.schedule.delete")}
+┕ \`${prefix}schedule stop\` - ${client.translate.get(db.language, "Commands.schedule.cancel")}`
                         )
                 );
 

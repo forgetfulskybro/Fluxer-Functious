@@ -47,12 +47,12 @@ All data is deleted as soon as it is no longer needed:
 ## 4. Your Right to Delete Your Data
 
 - **Timezone data**: You can remove your own User ID and timezone at any time by using Functious’ dedicated removal command (exact command name is shown in Functious’ help menu).  
-- All other data (giveaways, polls, temporary voice) is **automatically deleted** on schedule — no manual action is required.
+- All other data (giveaways, polls, temporary voice) is **automatically deleted** on schedule - no manual action is required.
 
 ## 5. Data Storage & Security
 
 Data is stored in a secure database hosted **locally on the developer’s home lab hardware**.  
-Nothing is stored externally — no cloud providers, no third-party servers, and no data ever leaves the developer’s physical equipment.  
+Nothing is stored externally - no cloud providers, no third-party servers, and no data ever leaves the developer’s physical equipment.  
 
 We use industry-standard security practices (encryption at rest, access controls, etc.), but no system is 100% secure.
 

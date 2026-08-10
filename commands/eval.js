@@ -1,6 +1,15 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const { inspect } = require("util");
 const Paginator = require("../functions/pagination");
+const { runTagSafe } = require('../interpreter/index.js');
+
+function tokenizeArgs(text) {
+  const args = [];
+  const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  let m;
+  while ((m = re.exec(text))) args.push(m[1] ?? m[2] ?? m[3]);
+  return args;
+}
 
 module.exports = {
   config: {
@@ -49,7 +58,7 @@ module.exports = {
 
         const firstLine = lines[startLine].trim();
         if (STATEMENT_KEYWORDS.test(firstLine)) return code;
-        
+
         const indent = lines[startLine].match(/^\s*/)[0];
         lines[startLine] = indent + "return " + lines[startLine].slice(indent.length);
 

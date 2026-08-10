@@ -6,6 +6,7 @@ const guilds = new Schema({
   language: { type: String, default: "en_EN" },
   joined: { type: String, default: (Date.now() / 1000) | 0 },
   dm: { type: Boolean, default: true },
+  pollPerm: { type: Boolean, default: true },
   roles: { type: Array, default: [] },
   joinRoles: { type: Array, default: [] },
   stickyRolesEnabled: { type: Boolean, default: false },

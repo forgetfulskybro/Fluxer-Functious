@@ -30,6 +30,7 @@ function guildsRouter(client, apiKey) {
       if (!guild) return res.status(404).json({ error: 'Guild not found' });
 
       const liveGuild = client.guilds?.get(guildId);
+      const fetchedEmojis = await liveGuild?.fetchEmojis();
 
       let rolesList = [];
       try {
@@ -76,6 +77,14 @@ function guildsRouter(client, apiKey) {
           };
         })
         .filter((r) => r && r.id).filter((r) => r.name !== "@everyone");
+
+      const emojis = fetchedEmojis
+        .map((e) => ({
+          id: String(e.id ?? ''),
+          name: String(e.name ?? 'unknown'),
+          animated: e.animated ?? false,
+          url: `https://fluxerusercontent.com/emojis/${e.id}.webp?animated=${e.animated}&size=240&quality=lossless`
+      }));
 
       const allPolls = await client.database.getAllPolls();
       const activePolls = allPolls
@@ -130,6 +139,8 @@ function guildsRouter(client, apiKey) {
         prefix: guild.prefix,
         language: guild.language,
         dm: guild.dm,
+        pollPerm: guild.pollPerm,
+        emojis,
         timezoneConvert: guild.timezoneConvert,
         stickyRolesEnabled: guild.stickyRolesEnabled,
         roles: guild.roles,
@@ -158,7 +169,7 @@ function guildsRouter(client, apiKey) {
       const { guildId } = req.params;
 
       const ALLOWED_FIELDS = [
-        'prefix', 'language', 'dm', 'timezoneConvert',
+        'prefix', 'language', 'dm', 'timezoneConvert', 'pollPerm',
         'stickyRolesEnabled', 'joinRoles', 'timedRoles', 'stickyRoles', 'bypassRoles', 'config',
         'parentChannel', 'childChannel', 'tempChannels', 'scheduledMessages',
         'tags',

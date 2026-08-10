@@ -54,7 +54,6 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
         targetChannel.send(finalContent).then(async m => {
           await msg?.delete().catch(() => {});
 
-          console.log(collector.rolesDone)
           const sortedReactions = collector.rolesDone
             .sort((a, b) => a.position - b.position)
             .map(entry => entry.emoji);

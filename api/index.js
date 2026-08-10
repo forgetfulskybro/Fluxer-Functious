@@ -3,6 +3,7 @@ const cors = require('cors');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 
+const reactionRolesRouter = require('./routes/reactionRoles');
 const tempChannelsRouter = require('./routes/tempchannels');
 const giveawaysRouter = require('./routes/giveaways');
 const guildsRouter = require('./routes/guilds');
@@ -31,6 +32,7 @@ function createApiServer(client) {
   app.use('/api/guilds/:guildId/polls', pollsRouter(client, apiKey));
   app.use('/api/guilds/:guildId/giveaways', giveawaysRouter(client, apiKey));
   app.use('/api/guilds/:guildId/tempchannels', tempChannelsRouter(client, apiKey));
+  app.use('/api/guilds/:guildId/reactionroles', reactionRolesRouter(client, apiKey));
   app.use('/api/users', usersRouter(client, apiKey));
 
   const server = http.createServer(app);

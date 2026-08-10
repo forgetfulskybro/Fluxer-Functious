@@ -1,4 +1,4 @@
-const { EmbedBuilder, MessageFlags } = require("@fluxerjs/core");
+const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Polls = require(`../functions/poll`)
 const dhms = require(`../functions/dhms`);
 const PollDB = require("../models/polls");
@@ -114,6 +114,34 @@ module.exports = {
         return paginator.start(message.channel);
       }
 
+      if (subcommand === "toggle") {
+        let member = message.guild.members.get(message.author.id);
+        if (!member)
+          member = await message.guild
+            .fetchMember(message.author.id)
+            .catch(() => null);
+          
+        let bypass = false;
+        const bypasses = [];
+        for (let i = 0; db.bypassRoles.length > i; i++) {
+          if (member.roles.has(db.bypassRoles[i].role)) bypasses.push(...db.bypassRoles[i].commands);
+        }
+    
+        if (bypasses.includes("all")) bypass = true;
+        else if (bypasses.includes("polls")) bypass = true;
+        
+        if (!member?.permissions.has(PermissionFlags.ManageGuild) && !client.config.owners.includes(message.author.id) && !bypass) return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor("#FF0000")
+              .setDescription(`${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [Manage Guild]\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`)]
+        });
+          
+        const toggle = db.pollPerm;
+        await client.database.updateGuild(message.guildId, { pollPerm: !toggle });
+        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.pollPerm")} **${toggle ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(`#A52F05`)] });
+      }
+
       if (subcommand === "delete") {
         const pollNumber = parseInt(args[1]);
         if (!pollNumber || isNaN(pollNumber)) {
@@ -139,6 +167,30 @@ module.exports = {
           embeds: [new EmbedBuilder()
             .setDescription(client.translate.get(db.language, "Commands.polls.deleted", { pollNumber }))
             .setColor(`#A52F05`)]
+        });
+      }
+
+      if (db.pollPerm) {
+        let member = message.guild.members.get(message.author.id);
+        if (!member)
+          member = await message.guild
+            .fetchMember(message.author.id)
+            .catch(() => null);
+        
+        let bypass = false;
+        const bypasses = [];
+        for (let i = 0; db.bypassRoles.length > i; i++) {
+          if (member.roles.has(db.bypassRoles[i].role)) bypasses.push(...db.bypassRoles[i].commands);
+        }
+  
+        if (bypasses.includes("all")) bypass = true;
+        else if (bypasses.includes("polls")) bypass = true;
+      
+        if (!member?.permissions.has(PermissionFlags.ManageGuild) && !client.config.owners.includes(message.author.id) && !bypass) return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor("#FF0000")
+              .setDescription(`${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [Manage Guild]\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`)]
         });
       }
 

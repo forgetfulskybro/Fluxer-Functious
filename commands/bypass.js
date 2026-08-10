@@ -19,6 +19,7 @@ module.exports = {
       .map((c) => c.config.name);
     permCmds.push("timezone");
     permCmds.push("all");
+    permCmds.push("polls");    
 
     const arg = args.join(" ").replace(/add|remove|edit/gi, '').split("|").map(x => x.trim()).filter(x => x);
     const role = arg[0];
