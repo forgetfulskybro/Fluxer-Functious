@@ -4,6 +4,7 @@ const { EmbedBuilder, PermissionFlags } = require('@fluxerjs/core');
 const { makeRequireApiKey } = require('../middleware');
 const Giveaways = require('../../models/giveaways');
 const dhms = require('../../functions/dhms');
+const { trackResource, actorFromReq } = require('../trackSettings');
 
 function giveawaysRouter(client, apiKey) {
   const router = Router({ mergeParams: true });
@@ -85,7 +86,7 @@ function giveawaysRouter(client, apiKey) {
       const active = (await client.database.getAllGiveaways()).filter(
         (g) => g.serverId === guildId && !g.ended
       );
-      
+
       if (active.length >= 15) {
         return res.status(400).json({ error: 'Too many active giveaways (max 15)' });
       }
@@ -133,9 +134,11 @@ function giveawaysRouter(client, apiKey) {
         .setTitle(prizeText)
         .setDescription(
           `${client.translate.get(db.language, 'Commands.giveaway.time')}: <t:${endTs}:R>\n` +
-          `${client.translate.get(db.language, 'Commands.giveaway.hosted')}: <@${hostId}>\n` +
-          `${client.translate.get(db.language, 'Commands.giveaway.winners')}: ${winnersNum}` +
-          (reqText ? `\n\n${client.translate.get(db.language, 'Commands.giveaway.reqs')}:\n${reqText.slice(0, 700)}` : '')
+            `${client.translate.get(db.language, 'Commands.giveaway.hosted')}: <@${hostId}>\n` +
+            `${client.translate.get(db.language, 'Commands.giveaway.winners')}: ${winnersNum}` +
+            (reqText
+              ? `\n\n${client.translate.get(db.language, 'Commands.giveaway.reqs')}:\n${reqText.slice(0, 700)}`
+              : '')
         )
         .setFooter({
           text: `${client.translate.get(db.language, 'Commands.giveaway.react')} ${client.config.emojis.confetti} ${client.translate.get(db.language, 'Commands.giveaway.react2')}`,
@@ -168,6 +171,24 @@ function giveawaysRouter(client, apiKey) {
       });
 
       handleNew(giveawayData);
+
+      await trackResource(client, {
+        userId: actorFromReq(req) || hostId,
+        groupId: guildId,
+        category: 'giveaways',
+        key: 'giveaway',
+        action: 'create',
+        label: 'Giveaway',
+        value: {
+          messageId: msg.id,
+          channelId: channel.id,
+          prize: prizeText,
+          winners: winnersNum,
+          durationMs,
+          requirement: reqText,
+        },
+        previous: null,
+      });
 
       return res.status(201).json({
         ok: true,
@@ -213,6 +234,22 @@ function giveawaysRouter(client, apiKey) {
         await msg?.delete().catch(() => {});
       } catch {}
 
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'giveaways',
+        key: 'giveaway',
+        action: 'delete',
+        label: 'Giveaway',
+        value: null,
+        previous: {
+          messageId: check.messageId,
+          channelId: check.channelId,
+          prize: check.prize,
+          winners: check.winners,
+        },
+      });
+
       return res.json({ ok: true });
     } catch (err) {
       console.error('[API] DELETE giveaway:', err);
@@ -229,6 +266,17 @@ function giveawaysRouter(client, apiKey) {
 
       await Giveaways.findOneAndUpdate({ messageId }, { ended: true });
       handleDelete(messageId);
+
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'giveaways',
+        key: 'giveaway',
+        action: 'update',
+        label: 'Giveaway Ended',
+        value: { messageId, ended: true },
+        previous: { messageId, ended: false, prize: check.prize },
+      });
 
       return res.json({ ok: true });
     } catch (err) {

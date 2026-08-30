@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const { EmbedBuilder, PermissionFlags } = require('@fluxerjs/core');
 const { makeRequireApiKey } = require('../middleware');
+const { trackResource, actorFromReq } = require('../trackSettings');
 
 function reactionRolesRouter(client, apiKey) {
   const router = Router({ mergeParams: true });
@@ -15,17 +16,17 @@ function reactionRolesRouter(client, apiKey) {
 
       const entry = db.roles.find((e) => e.msgId === messageId);
       if (!entry) return res.status(404).json({ error: 'Reaction role message not found' });
-      
+
       const channel = await client.channels.resolve(entry.chanId);
       if (!channel) return res.status(404).json({ error: 'Channel not found' });
-      
+
       const message = await channel.messages.fetch(messageId).catch(() => null);
       if (!message) return res.status(404).json({ error: 'Message not found' });
 
       const isContent = (message.content || '').length > 0;
-      const rawText = isContent ? message.content : (message.embeds?.[0]?.description || '');
+      const rawText = isContent ? message.content : message.embeds?.[0]?.description || '';
       const { text, useMention } = reverseRolePlaceholders(rawText, entry.roles || []);
-      
+
       return res.json({
         ok: true,
         content: text,
@@ -34,7 +35,7 @@ function reactionRolesRouter(client, apiKey) {
         entry,
       });
     } catch (err) {
-      console.log(err)
+      console.log(err);
       return res.status(500).json({ error: String(err?.message || err) });
     }
   });
@@ -42,7 +43,8 @@ function reactionRolesRouter(client, apiKey) {
   router.post('/', requireApiKey, async (req, res) => {
     try {
       const { guildId } = req.params;
-      const { type = 'content', channelId, content, roles: roleMappings, exclusive, useMention } = req.body || {};
+      const { type = 'content', channelId, content, roles: roleMappings, exclusive, useMention } =
+        req.body || {};
 
       if (!channelId || !content || !Array.isArray(roleMappings) || roleMappings.length === 0) {
         return res.status(400).json({ error: 'channelId, content and at least one role mapping required' });
@@ -67,7 +69,11 @@ function reactionRolesRouter(client, apiKey) {
 
       const me = liveGuild.members.me ?? (await liveGuild.members.fetchMe());
       const perms = me.permissionsIn(channel);
-      if (!perms.has(PermissionFlags.SendMessages) || !perms.has(PermissionFlags.AddReactions) || !perms.has(PermissionFlags.ViewChannel)) {
+      if (
+        !perms.has(PermissionFlags.SendMessages) ||
+        !perms.has(PermissionFlags.AddReactions) ||
+        !perms.has(PermissionFlags.ViewChannel)
+      ) {
         return res.status(403).json({ error: 'Bot missing Send Messages / Add Reactions / View Channel' });
       }
 
@@ -95,10 +101,30 @@ function reactionRolesRouter(client, apiKey) {
       db.roles.push(entry);
       await client.database.updateGuild(guildId, { roles: db.roles });
 
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'reactionroles',
+        key: 'roles',
+        action: 'create',
+        label: 'Reaction Role Panel',
+        value: {
+          msgId: entry.msgId,
+          chanId: entry.chanId,
+          exclusive: entry.exclusive,
+          roles: processedRoles,
+          type,
+        },
+        previous: null,
+      });
+
       return res.status(201).json({ ok: true, entry });
     } catch (err) {
       console.error('[API] POST reaction-roles:', err);
-      return res.status(500).json({ error: 'Failed to create reaction role message', detail: String(err?.message || err) });
+      return res.status(500).json({
+        error: 'Failed to create reaction role message',
+        detail: String(err?.message || err),
+      });
     }
   });
 
@@ -126,6 +152,18 @@ function reactionRolesRouter(client, apiKey) {
         const entry = { ...existing, exclusive: nextExclusive };
         db.roles[idx] = entry;
         await client.database.updateGuild(guildId, { roles: db.roles });
+
+        await trackResource(client, {
+          userId: actorFromReq(req),
+          groupId: guildId,
+          category: 'reactionroles',
+          key: 'roles',
+          action: 'update',
+          label: 'Reaction Role Exclusive',
+          value: { msgId: messageId, exclusive: nextExclusive },
+          previous: { msgId: messageId, exclusive: existing.exclusive ?? null },
+        });
+
         return res.json({ ok: true, entry });
       }
 
@@ -158,17 +196,44 @@ function reactionRolesRouter(client, apiKey) {
         ...existing,
         roles: processedRoles,
         exclusive: Object.prototype.hasOwnProperty.call(body, 'exclusive')
-          ? (exclusive ? true : null)
+          ? exclusive
+            ? true
+            : null
           : existing.exclusive ?? null,
       };
 
       db.roles[idx] = entry;
       await client.database.updateGuild(guildId, { roles: db.roles });
 
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'reactionroles',
+        key: 'roles',
+        action: 'update',
+        label: 'Reaction Role Panel',
+        value: {
+          msgId: entry.msgId,
+          chanId: entry.chanId,
+          exclusive: entry.exclusive,
+          roles: processedRoles,
+          type: msgType,
+        },
+        previous: {
+          msgId: existing.msgId,
+          chanId: existing.chanId,
+          exclusive: existing.exclusive ?? null,
+          roles: existing.roles,
+        },
+      });
+
       return res.json({ ok: true, entry });
     } catch (err) {
       console.error('[API] PATCH reaction-roles:', err);
-      return res.status(500).json({ error: 'Failed to update reaction role message', detail: String(err?.message || err) });
+      return res.status(500).json({
+        error: 'Failed to update reaction role message',
+        detail: String(err?.message || err),
+      });
     }
   });
 
@@ -192,6 +257,17 @@ function reactionRolesRouter(client, apiKey) {
       await client.database.updateGuild(guildId, { roles: updated });
 
       const newEntry = updated.find((e) => e.msgId === messageId);
+
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'reactionroles',
+        key: 'roles',
+        action: 'update',
+        label: 'Reaction Role Exclusive',
+        value: { msgId: messageId, exclusive: nextExclusive },
+        previous: { msgId: messageId, exclusive: entry.exclusive ?? null },
+      });
 
       return res.json({
         ok: true,
@@ -222,13 +298,29 @@ function reactionRolesRouter(client, apiKey) {
       const next = db.roles.filter((e) => e.msgId !== messageId);
       await client.database.updateGuild(guildId, { roles: next });
 
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'reactionroles',
+        key: 'roles',
+        action: 'delete',
+        label: 'Reaction Role Panel',
+        value: null,
+        previous: {
+          msgId: entry.msgId,
+          chanId: entry.chanId,
+          exclusive: entry.exclusive ?? null,
+          roles: entry.roles,
+        },
+      });
+
       return res.json({ ok: true });
     } catch (err) {
       console.error('[API] DELETE reaction-roles:', err);
       return res.status(500).json({ error: 'Failed to delete' });
     }
   });
-  
+
   return router;
 }
 
@@ -253,10 +345,7 @@ function reverseRolePlaceholders(text, roleMappings) {
     const placeholder = `{role:${roleName || roleId}}`;
 
     if (roleId) {
-      const mentionRe = new RegExp(
-        esc + '\\s*<@&' + escapeRegex(roleId) + '>',
-        'gi'
-      );
+      const mentionRe = new RegExp(esc + '\\s*<@&' + escapeRegex(roleId) + '>', 'gi');
       result = result.replace(mentionRe, placeholder);
     }
 
@@ -267,9 +356,7 @@ function reverseRolePlaceholders(text, roleMappings) {
 
     if (roleName) {
       const looseRe = new RegExp(esc + '\\s*\\w+', 'gi');
-      result = result.replace(looseRe, (match) =>
-        match.includes('{role:') ? match : placeholder
-      );
+      result = result.replace(looseRe, (match) => (match.includes('{role:') ? match : placeholder));
     }
   }
 

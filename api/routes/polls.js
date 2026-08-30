@@ -5,7 +5,7 @@ const PollInstance = require('../../functions/poll');
 const { EmbedBuilder } = require('@fluxerjs/core');
 const dhms = require('../../functions/dhms');
 const Polls = require('../../models/polls');
-
+const { trackResource, actorFromReq } = require('../trackSettings');
 
 function pollsRouter(client, apiKey) {
   const router = Router({ mergeParams: true });
@@ -79,7 +79,7 @@ function pollsRouter(client, apiKey) {
         return res.status(400).json({ error: 'Invalid text channel' });
       }
 
-      const hostId = ownerId || client.user?.id;
+      const hostId = actorFromReq(req);
       const names = optionList.map(String).slice(0, 10);
 
       const emojiKeys = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -89,7 +89,11 @@ function pollsRouter(client, apiKey) {
       ];
 
       const msg = await channel.send({
-        embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, 'Commands.polls.loading')}...`).setColor('#A52F05')],
+        embeds: [
+          new EmbedBuilder()
+            .setDescription(`${client.translate.get(db.language, 'Commands.polls.loading')}...`)
+            .setColor('#A52F05'),
+        ],
       });
 
       for (const reaction of reactions) {
@@ -151,20 +155,38 @@ function pollsRouter(client, apiKey) {
           }),
         }).then((r) => r.json());
 
-        await msg.edit({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription(
-                `${client.translate.get(db.language, 'Commands.giveaway.time')}: <t:${Math.floor((durationMs + Date.now()) / 1000)}:R>`
-              )
-              .setImage(`${process.env.CDN}${pollImage.url}`)
-              .setColor('#A52F05'),
-          ],
-        }).catch(() => {});
-      } catch {
-      }
+        await msg
+          .edit({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  `${client.translate.get(db.language, 'Commands.giveaway.time')}: <t:${Math.floor((durationMs + Date.now()) / 1000)}:R>`
+                )
+                .setImage(`${process.env.CDN}${pollImage.url}`)
+                .setColor('#A52F05'),
+            ],
+          })
+          .catch(() => {});
+      } catch {}
 
       handleNew(pollData);
+
+      await trackResource(client, {
+        userId: hostId,
+        groupId: guildId,
+        category: 'polls',
+        key: 'poll',
+        action: 'create',
+        label: 'Poll',
+        value: {
+          messageId: msg.id,
+          channelId: channel.id,
+          question: pollData.desc,
+          options: names,
+          durationMs,
+        },
+        previous: null,
+      });
 
       return res.status(201).json({
         ok: true,
@@ -209,6 +231,21 @@ function pollsRouter(client, apiKey) {
       } catch {}
 
       client.polls.delete(messageId);
+
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'polls',
+        key: 'poll',
+        action: 'delete',
+        label: 'Poll',
+        value: null,
+        previous: {
+          messageId: poll.messageId,
+          channelId: poll.channelId,
+          question: poll.desc,
+        },
+      });
 
       return res.json({ ok: true });
     } catch (err) {

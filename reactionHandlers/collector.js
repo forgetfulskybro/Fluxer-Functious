@@ -62,12 +62,38 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
             await m.react(reaction).catch(() => {});
           }
 
+          const oldEntry = db.roles.find((e) => e.msgId === oldMsg.id);
+
           db.roles.push({ 
             msgId: m.id, 
             chanId: targetChannel.id, 
             roles: [...collector.rolesDone] 
           });
+          
           await client.database.updateGuild(message.reaction.guildId, { roles: db.roles });
+
+          const entry = db.roles.find((e) => e.msgId === oldMsg.id);
+          await trackResource(client, {
+            userId: actorFromReq(req),
+            groupId: guildId,
+            category: 'reactionroles',
+            key: 'roles',
+            action: 'update',
+            label: 'Reaction Role Panel',
+            value: {
+              msgId: entry.msgId,
+              chanId: entry.chanId,
+              exclusive: entry.exclusive,
+              roles: entry.roles,
+              type: entry.type,
+            },
+            previous: {
+              msgId: oldEntry.msgId,
+              chanId: oldEntry.chanId,
+              exclusive: oldEntry.exclusive ?? null,
+              roles: oldEntry.roles,
+            },
+          });
 
           if (targetChannel.id !== message.channelId) {
             await reactionChan.send(`${client.translate.get(db.language, "Commands.roles.success")} <#${targetChannel.id}>`).catch(() => {});

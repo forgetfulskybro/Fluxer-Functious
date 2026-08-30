@@ -2,6 +2,7 @@ const { EmbedBuilder } = require("@fluxerjs/core");
 const Giveaway = require("../models/giveaways");
 const Polls = require("../models/polls");
 const { dependencies } = require("../package.json");
+const Pings = require("../functions/pings");
 
 module.exports = {
   config: {
@@ -13,10 +14,8 @@ module.exports = {
     aliases: ["stats", "botinfo", "bi"],
   },
   run: async (client, message, args, db) => {
-    const memory = () => {
-      const used = process.memoryUsage().heapUsed;
-      return Number((used / 1048576).toFixed(2));
-    };
+    const { gatewayPing, dbPing, pollCount, memory } = await Pings(client);
+    const giveawayCount = await Giveaway.countDocuments();
 
     const unixstamp = client.functions.get("fetchTime")(
       Math.floor(process.uptime() * 1000),
@@ -24,24 +23,6 @@ module.exports = {
       db.language,
       true
     );
-
-    const dbPing = await (async () => {
-      const before = Date.now();
-      const pollCount = await Polls.countDocuments();
-      return { ping: Date.now() - before, pollCount };
-    })();
-
-    const gatewayPing = await (async () => {
-      try {
-        const start = Date.now();
-        await client.rest.get("/gateway/bot");
-        return Date.now() - start;
-      } catch {
-        return "502";
-      }
-    })();
-
-    const giveawayCount = await Giveaway.countDocuments();
 
     const embed = new EmbedBuilder()
       .setAuthor({
@@ -55,7 +36,7 @@ module.exports = {
           value: [
             `> **${client.translate.get(db.language, "Commands.info.servers")}**: \`${client.guilds.size.toLocaleString()}\``,
             `> **${client.translate.get(db.language, "Commands.info.giveaways")}**: \`${giveawayCount.toLocaleString()}\``,
-            `> **${client.translate.get(db.language, "Commands.info.polls")}**: \`${dbPing.pollCount.toLocaleString()}\``,
+            `> **${client.translate.get(db.language, "Commands.info.polls")}**: \`${pollCount.toLocaleString()}\``,
             `> **${client.translate.get(db.language, "Commands.info.library")}**: [Fluxer.js](https://fluxer.js.org) \`${dependencies["@fluxerjs/core"]}\``,
           ].join("\n"),
           inline: true
@@ -65,8 +46,8 @@ module.exports = {
           value: [
             `> **${client.translate.get(db.language, "Commands.info.uptime")}**: \`${unixstamp}\``,
             `> **${client.translate.get(db.language, "Commands.info.ping")}**: \`${gatewayPing}ms\``,
-            `> **${client.translate.get(db.language, "Commands.info.memory")}**: \`${memory()} MB\``,
-            `> **${client.translate.get(db.language, "Commands.info.database")}**: \`${dbPing.ping}ms\``,
+            `> **${client.translate.get(db.language, "Commands.info.memory")}**: \`${memory} MB\``,
+            `> **${client.translate.get(db.language, "Commands.info.database")}**: \`${dbPing}ms\``,
           ].join("\n"),
           inline: true
         }

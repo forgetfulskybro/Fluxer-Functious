@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require('../functions/pagination');
 const { runTagSafe } = require('../interpreter/index');
+const { trackGuildUpdates } = require("../api/trackSettings");
 
 function toFluxerEmbed(data) {
   if (!data || typeof data !== "object") return null;
@@ -208,6 +209,13 @@ module.exports = {
     const executeTag = async (tag, remainingArgs = []) => {
       tag.uses = (tag.uses || 0) + 1;
       await client.database.updateGuild(message.guild.id, { tags: db.tags });
+
+      await trackGuildUpdates(client, {
+        guildId: message.guildId,
+        userId: message.author.id,
+        existing: db,
+        updates: { tags: db.tags },
+      });
 
       if (tag.type === "text") {
         return message.channel.send({ content: tag.content });
@@ -456,6 +464,13 @@ module.exports = {
           tags: [...(db.tags || []), newTag],
         });
 
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { tags: [...(db.tags || []), newTag] },
+        });
+
         return message.reply({
           embeds: [
             new EmbedBuilder()
@@ -525,6 +540,14 @@ module.exports = {
             if (reaction.emoji.name === "✅") {
               const updatedTags = db.tags.filter((_, i) => i !== tagIndex);
               await client.database.updateGuild(message.guild.id, { tags: updatedTags });
+
+              await trackGuildUpdates(client, {
+                guildId: message.guildId,
+                userId: message.author.id,
+                existing: db,
+                updates: { tags: updatedTags },
+              });
+              
               await confirmMsg.edit({
                 embeds: [
                   new EmbedBuilder()
@@ -676,6 +699,14 @@ module.exports = {
                 const updated = [...db.tags];
                 updated[editTagIndex].name = newName;
                 await client.database.updateGuild(message.guild.id, { tags: updated });
+
+                await trackGuildUpdates(client, {
+                  guildId: message.guildId,
+                  userId: message.author.id,
+                  existing: db,
+                  updates: { tags: updated },
+                });
+                
                 await menuMsg.edit({
                   embeds: [
                     new EmbedBuilder()
@@ -756,6 +787,14 @@ module.exports = {
                 }
 
                 await client.database.updateGuild(message.guild.id, { tags: updated });
+
+                await trackGuildUpdates(client, {
+                  guildId: message.guildId,
+                  userId: message.author.id,
+                  existing: db,
+                  updates: { tags: updated },
+                });
+                
                 await menuMsg.edit({
                   embeds: [
                     new EmbedBuilder()
@@ -870,6 +909,13 @@ module.exports = {
 
                 cur.type = next;
                 await client.database.updateGuild(message.guild.id, { tags: updated });
+
+                await trackGuildUpdates(client, {
+                  guildId: message.guildId,
+                  userId: message.author.id,
+                  existing: db,
+                  updates: { tags: updated },
+                });
 
                 await menuMsg.removeAllReactions().catch(() => {});
                 await menuMsg.edit({

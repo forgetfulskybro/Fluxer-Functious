@@ -1,5 +1,6 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const getMember = require("../functions/getMember");
+const { trackGuildUpdates } = require("../api/trackSettings");
 
 function isValid(tz) {
   if (!Intl || !Intl.DateTimeFormat().resolvedOptions().timeZone) {
@@ -187,6 +188,14 @@ module.exports = {
         
         const toggle = db.timezoneConvert;
         await client.database.updateGuild(message.guildId, { timezoneConvert: !toggle });
+
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { timezoneConvert: !toggle },
+        });
+        
         message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.timezone.success")} **${toggle ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(`#A52F05`)] });
         break;
       

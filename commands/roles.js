@@ -1,5 +1,6 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require("../functions/pagination");
+const { trackGuildUpdates, trackResource } = require("../api/trackSettings");
 
 const CHANNEL_MENTION_REGEX = /^<#(?<id>\d+)>/;
 const TYPE_OPTIONS = ["content", "embed"];
@@ -105,10 +106,26 @@ module.exports = {
             const foundMsg = await (await client.channels.resolve(msg.chanId))?.messages?.fetch(msg.msgId);
             foundMsg?.delete();
           } catch { };
-          await client.database.updateGuild(message.guildId, { roles: db.roles.filter(e => e.msgId !== args[1]) });
+            await client.database.updateGuild(message.guildId, { roles: db.roles.filter(e => e.msgId !== args[1]) });
 
-          clearCooldown(client, message.author.id);
-          message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.deleted")}`).setColor(`#A52F05`)] });
+            await trackResource(client, {
+              userId: actorFromReq(req),
+              groupId: guildId,
+              category: 'reactionroles',
+              key: 'roles',
+              action: 'delete',
+              label: 'Reaction Role Panel',
+              value: null,
+              previous: {
+                msgId: msg.msgId,
+                chanId: msg.chanId,
+                exclusive: msg.exclusive ?? null,
+                roles: msg.roles,
+              },
+            });
+
+            clearCooldown(client, message.author.id);
+            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.deleted")}`).setColor(`#A52F05`)] });
           break;
                 
           case "fix":
@@ -140,6 +157,13 @@ module.exports = {
             const dms = db.dm;
             await client.database.updateGuild(message.guildId, { dm: !dms });
 
+            await trackGuildUpdates(client, {
+              guildId: message.guildId,
+              userId: message.author.id,
+              existing: db,
+              updates: { dm: !dms },
+            });
+
             clearCooldown(client, message.author.id);
             message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.dms")} **${dms ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(`#A52F05`)] });
             break;
@@ -160,6 +184,17 @@ module.exports = {
 
             await client.database.updateGuild(message.guildId, { roles: updatedExclusiveRoles });
 
+            await trackResource(client, {
+              userId: actorFromReq(req),
+              groupId: guildId,
+              category: 'reactionroles',
+              key: 'roles',
+              action: 'update',
+              label: 'Reaction Role Exclusive',
+              value: { msgId: exclusiveMsg.msgId, exclusive: isExclusive ? null : true },
+              previous: { msgId: exclusiveMsg.msgId, exclusive: exclusiveMsg.exclusive ?? null },
+            });
+            
             clearCooldown(client, message.author.id);
             message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.exclusiveSuccess", { "message": `[${args[1]}](https://fluxer.app/channels/${db.id}/${exclusiveMsg.chanId}/${exclusiveMsg.msgId})`, "option": `**${isExclusive ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**` })}`).setColor(`#A52F05`)] });
             break;
@@ -300,7 +335,6 @@ Color Roles:
 
                 const reactMentionLineCreate = `\n\n${client.translate.get(db.language, "Commands.roles.reactMention")}`;
                 const setupEmbed = new EmbedBuilder()
-                    //.setVideo("https://i.imgur.com/TxuKLjb.mp4")
                     .setDescription(
                         `${client.translate.get(db.language, "Commands.roles.react", {
                             "example": `\`\`\`

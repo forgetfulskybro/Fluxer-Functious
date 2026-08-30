@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require("../functions/pagination");
 const checkScheduled = require("../functions/checkScheduledMessages");
+const { trackGuildUpdates } = require("../api/trackSettings");
 
 const CHANNEL_MENTION_REGEX = /^<#(?<id>\d+)>/;
 const SETUP_TIMEOUT = 600000;
@@ -337,6 +338,13 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
 
                 const updated = scheduled.filter((_, i) => !validIndices.includes(i + 1));
                 await client.database.updateGuild(message.guildId, { scheduledMessages: updated });
+
+                await trackGuildUpdates(client, {
+                  guildId: message.guildId,
+                  userId: message.author.id,
+                  existing: db,
+                  updates: { scheduledMessages: updated },
+                });
 
                 const deletedList = deletedIds.sort((a, b) => a - b).join(', ');
                 message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.deleteSuccess", { "number": deletedList })).setColor("#A52F05")] });

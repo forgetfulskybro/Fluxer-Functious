@@ -68,12 +68,37 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
         await oldMsg.react(reaction).catch(() => { });
       }
 
+      const oldEntry = db.roles.find((e) => e.msgId === oldMsg.id);
+
       db.roles = [
         ...db.roles.filter((e) => e.msgId !== editCollector.oldMessageId),
         { msgId: oldMsg.id, chanId: message.channelId, roles: [...editCollector.rolesDone] },
       ];
 
       await client.database.updateGuild(message.guildId, { roles: db.roles });
+      const entry = db.roles.find((e) => e.msgId === oldMsg.id);
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'reactionroles',
+        key: 'roles',
+        action: 'update',
+        label: 'Reaction Role Panel',
+        value: {
+          msgId: entry.msgId,
+          chanId: entry.chanId,
+          exclusive: entry.exclusive,
+          roles: entry.roles,
+          type: entry.type,
+        },
+        previous: {
+          msgId: oldEntry.msgId,
+          chanId: oldEntry.chanId,
+          exclusive: oldEntry.exclusive ?? null,
+          roles: oldEntry.roles,
+        },
+      });
+      
       await msg.delete().catch(() => { });
       
       return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.app/channels/${message.guild.id}/${editCollector.channelId}/${editCollector.oldMessageId})` }))] }).catch(() => { });

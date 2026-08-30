@@ -8,6 +8,7 @@
     "@fluxerjs/core": "^2.2.0",
     "@fluxerjs/voice": "^2.2.0",
     "@sentry/node": "^10.42.0",
+    "@vanta-dev/node": "^0.1.6",
     "canvas": "^3.2.1",
     "chrono-node": "^2.9.0",
     "cors": "^2.8.6",

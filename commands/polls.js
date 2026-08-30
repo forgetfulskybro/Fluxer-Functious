@@ -4,6 +4,7 @@ const dhms = require(`../functions/dhms`);
 const PollDB = require("../models/polls");
 const { handleNew, handleDelete } = require("../functions/checkPolls");
 const Paginator = require(`../functions/pagination`);
+const { trackResource } = require('../api/trackSettings');
 
 async function endPollEarly(client, poll, db) {
   try {
@@ -247,6 +248,24 @@ module.exports = {
         msg.guildId = message.guildId
         const pollData = await poll.start(msg, poll, { tooMuch, pollNumber: nextPollNumber });
         if (pollData) handleNew(pollData);
+
+        await trackResource(client, {
+          userId: message.author.id,
+          groupId: message.guildId,
+          category: 'polls',
+          key: 'poll',
+          action: 'create',
+          label: 'Poll',
+          value: {
+            messageId: msg.id,
+            channelId: message.channel.id,
+            question: pollData.desc,
+            options: names,
+            durationMs: time,
+          },
+          previous: null,
+        });
+        
         await message.delete().catch(() => { });
         });
     },

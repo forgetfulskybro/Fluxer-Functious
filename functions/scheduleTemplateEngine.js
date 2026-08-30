@@ -2,13 +2,11 @@ function tokenize(input) {
     const tokens = [];
     let i = 0;
     while (i < input.length) {
-        // No whitespace
         if (/\s/.test(input[i]) && input[i] !== '"') {
             i++;
             continue;
         }
 
-        // String literal
         if (input[i] === '"') {
             let str = '';
             i++;
@@ -26,7 +24,6 @@ function tokenize(input) {
             continue;
         }
 
-        // Numbers
         if (/\d/.test(input[i]) || (input[i] === '-' && i + 1 < input.length && /\d/.test(input[i + 1]))) {
             let num = '';
             if (input[i] === '-') { num += '-'; i++; }
@@ -46,7 +43,6 @@ function tokenize(input) {
             continue;
         }
 
-        // Keywords and identifiers
         if (/[a-zA-Z_]/.test(input[i])) {
             let word = '';
             while (i < input.length && /[a-zA-Z0-9_]/.test(input[i])) {
@@ -57,7 +53,6 @@ function tokenize(input) {
             continue;
         }
 
-        // Operators
         if (input[i] === '=' && input[i + 1] === '=') {
             tokens.push({ type: 'operator', value: '==' });
             i += 2;
@@ -79,7 +74,6 @@ function tokenize(input) {
             continue;
         }
 
-        // Single Operators
         if (input[i] === '=') { tokens.push({ type: 'operator', value: '=' }); i++; continue; }
         if (input[i] === '+') { tokens.push({ type: 'operator', value: '+' }); i++; continue; }
         if (input[i] === '-') { tokens.push({ type: 'operator', value: '-' }); i++; continue; }
@@ -89,7 +83,6 @@ function tokenize(input) {
         if (input[i] === '<') { tokens.push({ type: 'operator', value: '<' }); i++; continue; }
         if (input[i] === '!') { tokens.push({ type: 'operator', value: '!' }); i++; continue; }
 
-        // Brackets and punctuation
         if (input[i] === '(') { tokens.push({ type: 'lparen', value: '(' }); i++; continue; }
         if (input[i] === ')') { tokens.push({ type: 'rparen', value: ')' }); i++; continue; }
         if (input[i] === '[') { tokens.push({ type: 'lbracket', value: '[' }); i++; continue; }

@@ -3,6 +3,7 @@ const Giveaways = require(`../models/giveaways`)
 const dhms = require(`../functions/dhms`);
 const { handleNew, handleDelete } = require(`../functions/checkGiveaways`);
 const regex = new RegExp(/^channel:\s*(?:<#(\d+)>|#?([\w-]+)|(\d+))$/i);
+const { trackResource } = require('../api/trackSettings');
 
 module.exports = {
     config: {
@@ -199,6 +200,24 @@ module.exports = {
           pingWinners,
           allowMultipleWins,
           imageUrl,
+        });
+
+        await trackResource(client, {
+          groupId: message.guildId,
+          userId: message.author.id,
+          category: 'giveaways',
+          key: 'giveaway',
+          action: 'create',
+          label: 'Giveaway',
+          value: {
+            messageId: msg.id,
+            channelId: channel.id,
+            prize,
+            winners,
+            durationMs: dhms(time),
+            requirement,
+          },
+          previous: null,
         });
 
         handleNew(giveawayData);

@@ -1,4 +1,5 @@
 const { EmbedBuilder, PermissionFlags, resolvePermissionsToBitfield } = require("@fluxerjs/core");
+const { trackResource } = require("../api/trackSettings");
 const emoji = require('node-emoji');
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -305,6 +306,13 @@ module.exports = {
         childChannel: deleteOptions.main ? null : db.childChannel,
         tempChannels: deleteOptions.temps ? [] : db.tempChannels,
         config: (deleteOptions.manage && db.config?.manage) ? { ...db.config, manage: null, manageMessage: null } : db.config,
+      });
+
+      await trackGuildUpdates(client, {
+        guildId: message.guildId,
+        userId: message.author.id,
+        existing: db,
+        updates: { timedRoles: updatedTimedRoles },
       });
       
       try {

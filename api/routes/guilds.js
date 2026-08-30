@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { makeRequireApiKey } = require('../middleware');
+const { trackGuildUpdates, actorFromReq } = require('../trackSettings');
 
 function guildsRouter(client, apiKey) {
   const router = Router();
@@ -76,14 +77,14 @@ function guildsRouter(client, apiKey) {
             permissions: String(role._permissions ?? role.permissions ?? ''),
           };
         })
-        .filter((r) => r && r.id).filter((r) => r.name !== "@everyone");
+        .filter((r) => r && r.id)
+        .filter((r) => r.name !== '@everyone');
 
-      const emojis = fetchedEmojis
-        .map((e) => ({
-          id: String(e.id ?? ''),
-          name: String(e.name ?? 'unknown'),
-          animated: e.animated ?? false,
-          url: `https://fluxerusercontent.com/emojis/${e.id}.webp?animated=${e.animated}&size=240&quality=lossless`
+      const emojis = (fetchedEmojis ?? []).map((e) => ({
+        id: String(e.id ?? ''),
+        name: String(e.name ?? 'unknown'),
+        animated: e.animated ?? false,
+        url: `https://fluxerusercontent.com/emojis/${e.id}.webp?animated=${e.animated}&size=240&quality=lossless`,
       }));
 
       const allPolls = await client.database.getAllPolls();
@@ -169,10 +170,23 @@ function guildsRouter(client, apiKey) {
       const { guildId } = req.params;
 
       const ALLOWED_FIELDS = [
-        'prefix', 'language', 'dm', 'timezoneConvert', 'pollPerm',
-        'stickyRolesEnabled', 'joinRoles', 'timedRoles', 'stickyRoles', 'bypassRoles', 'config',
-        'parentChannel', 'childChannel', 'tempChannels', 'scheduledMessages',
+        'prefix',
+        'language',
+        'dm',
+        'timezoneConvert',
+        'pollPerm',
+        'stickyRolesEnabled',
+        'joinRoles',
+        'timedRoles',
+        'stickyRoles',
+        'bypassRoles',
+        'config',
+        'parentChannel',
+        'childChannel',
+        'tempChannels',
+        'scheduledMessages',
         'tags',
+        'roles',
       ];
 
       const updates = {};
@@ -188,6 +202,13 @@ function guildsRouter(client, apiKey) {
       if (!existing) return res.status(404).json({ error: 'Guild not found' });
 
       await client.database.updateGuild(guildId, updates, false);
+      await trackGuildUpdates(client, {
+        guildId,
+        userId: actorFromReq(req),
+        existing,
+        updates,
+      });
+
       return res.json({ ok: true });
     } catch (err) {
       console.error('[API] PATCH /api/guilds/:guildId:', err);

@@ -2,6 +2,7 @@ const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const getRoles = require('../functions/getRoles');
 const dhms = require('../functions/dhms');
 const fetchTime = require('../functions/fetchTime');
+const { trackGuildUpdates } = require('../api/trackSettings');
 
 module.exports = {
   config: {
@@ -41,11 +42,18 @@ module.exports = {
       break;
 
     case "sticky":
-    const sticky = !db.stickyRolesEnabled;
-    await client.database.updateGuild(message.guildId, { stickyRolesEnabled: sticky });
+      const sticky = !db.stickyRolesEnabled;
+      await client.database.updateGuild(message.guildId, { stickyRolesEnabled: sticky });
 
-    setTimeout(() => client.used.delete(`${message.author.id}-autoroles`), 6000)
-    message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.sticky")} **${sticky ? client.translate.get(db.language, "Commands.roles.on") : client.translate.get(db.language, "Commands.roles.off")}**`).setColor(`#A52F05`)] });
+      await trackGuildUpdates(client, {
+        guildId: message.guildId,
+        userId: message.author.id,
+        existing: db,
+        updates: { stickyRolesEnabled: sticky },
+      });
+
+      setTimeout(() => client.used.delete(`${message.author.id}-autoroles`), 6000)
+      message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.sticky")} **${sticky ? client.translate.get(db.language, "Commands.roles.on") : client.translate.get(db.language, "Commands.roles.off")}**`).setColor(`#A52F05`)] });
       break;
 
     case "join":
@@ -71,6 +79,14 @@ module.exports = {
         if (newRoles.length === db.joinRoles.length && errored.length > 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.roleErrorsAdd")} ${errored.map((r) => `<@&${r}>`)}`).setColor(`#FF0000`)] });
 
         await client.database.updateGuild(message.guild.id, { joinRoles: newRoles });
+
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { joinRoles: newRoles },
+        });
+        
         return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeAdd")} ${roleIds.map((r) => r.id).filter((r) => !errored.includes(r)).map((r) => `<@&${r}>`)}${newRoles.length !== db.joinRoles.length && errored.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsAdd")} ${errored.map((r) => `<@&${r}>`)}` : ''}`).setColor(`#A52F05`)] });
       } else if (args[1] === "remove") {
         if (!options[0]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.noOptionsRemove")}: \`${db.prefix}autoroles join remove Member, Color Roles\``).setColor(`#FF0000`)] });
@@ -88,6 +104,13 @@ module.exports = {
 
         message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeRemove")} ${roleIds.map((r) => r.id).filter((r) => !errored.includes(r)).map((r) => `<@&${r}>`)}${toRemove.length !== db.joinRoles.length && errored.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsRemove")} ${errored.map((r) => `<@&${r}>`)}` : ''}`).setColor(`#A52F05`)] });
         await client.database.updateGuild(message.guild.id, { joinRoles: toRemove });
+
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { joinRoles: toRemove },
+        });
       } else {
         message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.noOptionsAdd")}: \`${db.prefix}autoroles join add Member, Color Roles\``).setColor(`#FF0000`)] });
       }
@@ -126,6 +149,13 @@ module.exports = {
         const updatedTimedRoles = (db.timedRoles || []).concat(uniqueNewRoles);
         await client.database.updateGuild(message.guild.id, { timedRoles: updatedTimedRoles });
 
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { timedRoles: updatedTimedRoles },
+        });
+
         return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeAdd")} ${uniqueNewRoles.map((r) => `<@&${r.id}> (${fetchTime(duration, client, db.language, true)})`).join(', ')}${duplicateRoles.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsAdd")} ${duplicateRoles.map((r) => `<@&${r.id}>`).join(', ')}` : ''}`).setColor(`#A52F05`)] });
       } else if (args[1] === "remove") {
         const roleOptions = args.slice(2).join(' ').split(',').map(x => x.trim()).filter(x => x);
@@ -145,6 +175,13 @@ module.exports = {
 
         const remainingTimedRoles = (db.timedRoles || []).filter(tr => !targetRoleIds.includes(tr.id));
         await client.database.updateGuild(message.guild.id, { timedRoles: remainingTimedRoles });
+
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { timedRoles: remainingTimedRoles },
+        });
 
         return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeRemove")} ${toRemove.map((tr) => `<@&${tr.id}> (${fetchTime(tr.time, client, db.language, true)})`).join(', ')}${notFoundRoles.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.roleErrorsRemove")} ${notFoundRoles.map((r) => `<@&${r.id}>`).join(', ')}` : ''}`).setColor(`#A52F05`)] });
       } else {

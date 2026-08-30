@@ -1,4 +1,5 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
+const { trackGuildUpdates } = require("../api/trackSettings");
 
 module.exports = {
   config: {
@@ -14,7 +15,7 @@ module.exports = {
   },
   run: async (client, message, args, db) => {
     const embed = new EmbedBuilder().setColor(`#A52F05`).setDescription(
-      `${client.translate.get(db.language, "Commands.prefix.prefix")}: \`${db.prefix}\`\n\n${client.translate.get(db.language, "Commands.prefix.change")} \`${db.prefix}prefix change <${client.translate.get(db.language, "Commands.prefix.new")}>\``,
+      `${client.translate.get(db.language, "Commands.prefix.prefix")}: \`${db.prefix}\`\n\n${client.translate.get(db.language, "Commands.prefix.change")}\n\`${db.prefix}prefix change <${client.translate.get(db.language, "Commands.prefix.new")}>\` | \`${db.prefix}prefix set <${client.translate.get(db.language, "Commands.prefix.new")}>\``,
     );
     
     const acceptable = ["set", "change"]
@@ -26,6 +27,14 @@ module.exports = {
       return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.prefix.tooMany")).setColor(`#FF0000`)] });
 
     await client.database.updateGuild(message.guild.id, { prefix: args[1] });
+
+    await trackGuildUpdates(client, {
+      guildId: message.guild.id,
+      userId: message.author.id,
+      existing: db,
+      updates: { prefix: args[1] },
+    });
+    
     return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.prefix.success")} \`${args[1]}\``).setColor(`#A52F05`)] });
   },
 };

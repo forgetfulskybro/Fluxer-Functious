@@ -3,9 +3,11 @@ const getVoiceStates = require('./functions/getVoiceStates');
 const TranslationHandler = require("./handlers/translation");
 const { Collection } = require("@discordjs/collection");
 const DatabaseHandler = require("./handlers/database");
+const VantaHandler = require("./handlers/vanta");
 const color = require("./functions/colorCodes");
 const createApiServer = require("./api/index");
 const { Client } = require("@fluxerjs/core");
+const Pings = require("./functions/pings");
 const Sentry = require("@sentry/node");
 
 const client = new Client({ 
@@ -28,6 +30,8 @@ const client = new Client({
 function connectedToFluxer() {
   if (!client.isReady()) {
     console.log(color("%", "%4[Error_Handling] :: Fluxer didn't connect after 15 seconds, restarting...%c"));
+    client.vanta.monitorStop
+    client.vanta.shutdown()
     process.exit(1);
   }
 }
@@ -36,11 +40,22 @@ if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSam
 
 client.config = require("./config");
 client.translate = new TranslationHandler();
+client.vanta = new VantaHandler({ apiKey: process.env.VANTA, source: "bot", debug: true });
 client.database = new DatabaseHandler(process.env.MONGODB);
 client.database.connectToDatabase();
 client.database.cacheSweeper(client);
 client.database.guildSweeper(client);
 client.sentry = Sentry;
+
+client.vanta.init();
+client.vanta.startHeartbeat("bot", {
+  intervalMs: 60_000,
+  graceMs: 30_000,
+});
+
+setInterval(async () => {
+  await Pings(client);
+}, 60_000);
 
 ["observedVoiceUsers", "observedVoiceBots", "reactions", "paginate", "timeout", "polls", "used", "messageCollector", "messageEdit", "reloadSelection", "manageVC", "scheduleCollector"].forEach(x => client[x] = new Map());
 ["aliases", "commands", "event", "functions", "reactionHandlers"].forEach(x => client[x] = new Collection());

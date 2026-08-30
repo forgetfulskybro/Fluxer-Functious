@@ -187,6 +187,21 @@ module.exports = async (client, message) => {
   setTimeout(() => client.used.delete(usedKey), cooldown);
 
   try {
+    await client.vanta.identify({
+      userId: message.author.id,
+      name: message.author.username,
+      discriminator: message.author.discriminator
+    });
+
+    await client.vanta.track({
+      event: "command.used",
+      userId: message.author.id,
+      groupId: message.guildId,
+      data: {
+        command: cmd,
+      }
+    })
+    
     return await commandfile.run(
       client,
       message,

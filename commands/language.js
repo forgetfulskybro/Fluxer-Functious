@@ -1,4 +1,5 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
+const { trackGuildUpdates } = require("../api/trackSettings");
 module.exports = {
   config: {
     name: "language",
@@ -27,6 +28,14 @@ module.exports = {
     }
 
     await client.database.updateGuild(message.guildId, { language: args[0] });
+
+    await trackGuildUpdates(client, {
+      guildId: message.guildId,
+      userId: message.author.id,
+      existing: db,
+      updates: { language: args[0] },
+    }); 
+    
     const successEmbed = new EmbedBuilder()
       .setDescription(`${client.translate.get(args[0], "Commands.language.success")} **${args[0]}**`)
       .setColor("#A52F05");

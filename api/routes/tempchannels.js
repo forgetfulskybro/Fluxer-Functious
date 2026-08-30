@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const { EmbedBuilder, resolvePermissionsToBitfield } = require('@fluxerjs/core');
 const { makeRequireApiKey } = require('../middleware');
+const { trackResource, actorFromReq } = require('../trackSettings');
 
 function tempChannelsRouter(client, apiKey) {
   const router = Router({ mergeParams: true });
@@ -23,6 +24,12 @@ function tempChannelsRouter(client, apiKey) {
 
       const db = await client.database.getGuild(guildId, false);
       if (!db) return res.status(404).json({ error: 'Guild not found' });
+
+      const previous = {
+        parentChannel: db.parentChannel ?? null,
+        childChannel: db.childChannel ?? null,
+        config: db.config ?? null,
+      };
 
       if (reset || db.parentChannel || db.childChannel) {
         await disableTempChannels(client, guildId, db);
@@ -48,8 +55,6 @@ function tempChannelsRouter(client, apiKey) {
           bitrate: 64000,
         });
       }
-
-      console.log(category)
 
       let manageChannelId = null;
       let manageMessageId = null;
@@ -108,19 +113,40 @@ function tempChannelsRouter(client, apiKey) {
       const newConfig = {
         ...(db.config ?? {}),
         ...(channelName ? { channelName: String(channelName).slice(0, 26) } : {}),
-        ...(channelLimit != null ? { channelLimit: Math.min(99, Math.max(0, Number(channelLimit) || 0)) } : {}),
+        ...(channelLimit != null
+          ? { channelLimit: Math.min(99, Math.max(0, Number(channelLimit) || 0)) }
+          : {}),
         counting: !!counting,
         customParent: customCategoryId || null,
         manage: manageChannelId,
         manageMessage: manageMessageId,
       };
 
-      await client.database.updateGuild(guildId, {
-        parentChannel: category.id,
-        childChannel: voiceChannel.id,
-        tempChannels: [],
-        config: newConfig,
-      }, false);
+      await client.database.updateGuild(
+        guildId,
+        {
+          parentChannel: category.id,
+          childChannel: voiceChannel.id,
+          tempChannels: [],
+          config: newConfig,
+        },
+        false
+      );
+
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'tempchannels',
+        key: 'tempchannels',
+        action: previous.parentChannel ? 'update' : 'create',
+        label: previous.parentChannel ? 'Temp Channels Reconfigured' : 'Temp Channels Setup',
+        value: {
+          parentChannel: category.id,
+          childChannel: voiceChannel.id,
+          config: newConfig,
+        },
+        previous,
+      });
 
       return res.json({
         ok: true,
@@ -130,7 +156,10 @@ function tempChannelsRouter(client, apiKey) {
       });
     } catch (err) {
       console.error('[API] POST tempchannels/setup:', err);
-      return res.status(500).json({ error: 'Failed to setup temp channels', detail: String(err?.message || err) });
+      return res.status(500).json({
+        error: 'Failed to setup temp channels',
+        detail: String(err?.message || err),
+      });
     }
   });
 
@@ -140,11 +169,32 @@ function tempChannelsRouter(client, apiKey) {
       const db = await client.database.getGuild(guildId, false);
       if (!db) return res.status(404).json({ error: 'Guild not found' });
 
+      const previous = {
+        parentChannel: db.parentChannel ?? null,
+        childChannel: db.childChannel ?? null,
+        config: db.config ?? null,
+      };
+
       await disableTempChannels(client, guildId, db);
+
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'tempchannels',
+        key: 'tempchannels',
+        action: 'delete',
+        label: 'Temp Channels Reset',
+        value: null,
+        previous,
+      });
+
       return res.json({ ok: true });
     } catch (err) {
       console.error('[API] POST tempchannels/reset:', err);
-      return res.status(500).json({ error: 'Failed to reset temp channels', detail: String(err?.message || err) });
+      return res.status(500).json({
+        error: 'Failed to reset temp channels',
+        detail: String(err?.message || err),
+      });
     }
   });
 
@@ -154,7 +204,7 @@ function tempChannelsRouter(client, apiKey) {
 async function disableTempChannels(client, guildId, db) {
   if (Array.isArray(db.tempChannels)) {
     for (const entry of db.tempChannels) {
-      const channelId = typeof entry === 'string' ? entry : (entry?.channelId ?? entry?.id);
+      const channelId = typeof entry === 'string' ? entry : entry?.channelId ?? entry?.id;
       if (!channelId) continue;
       try {
         const ch = await client.channels.resolve(channelId);
@@ -184,17 +234,21 @@ async function disableTempChannels(client, guildId, db) {
     } catch {}
   }
 
-  await client.database.updateGuild(guildId, {
-    parentChannel: null,
-    childChannel: null,
-    tempChannels: [],
-    config: {
-      ...(db.config ?? {}),
-      customParent: null,
-      manage: null,
-      manageMessage: null,
+  await client.database.updateGuild(
+    guildId,
+    {
+      parentChannel: null,
+      childChannel: null,
+      tempChannels: [],
+      config: {
+        ...(db.config ?? {}),
+        customParent: null,
+        manage: null,
+        manageMessage: null,
+      },
     },
-  }, false);
+    false
+  );
 }
 
 module.exports = tempChannelsRouter;

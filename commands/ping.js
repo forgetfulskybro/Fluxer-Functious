@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
-const Polls = require("../models/polls");
+const Pings = require("../functions/pings");
+
 module.exports = {
   config: {
     name: "ping",
@@ -10,23 +11,7 @@ module.exports = {
     aliases: ["p"],
   },
   run: async (client, message, args, db) => {
-    async function Database() {
-      let beforeCall = Date.now();
-      await Polls.countDocuments();
-      return Date.now() - beforeCall;
-    }
-
-    async function botPing() {
-      try {
-        const start = Date.now();
-        await client.rest.get("/gateway/bot");
-        return Date.now() - start;
-      } catch {
-        return "502 bad Gateway";
-      }
-    }
-
-    const [gatewayPing, dbPing] = await Promise.all([botPing(), Database()]);
+    const { gatewayPing, dbPing } = await Pings(client);    
     const gatewayStr = !isNaN(gatewayPing) ? `${gatewayPing}ms` : "502 bad Gateway";
 
     const start = Date.now();
@@ -53,5 +38,13 @@ module.exports = {
           ),
       ],
     });
+
+    await client.vanta.measure({
+      name: "ping.round-trip",
+      value: Date.now() - start,
+      unit: "ms",
+      tags: { type: "roundtrip" }
+    });
+    
   },
 };
