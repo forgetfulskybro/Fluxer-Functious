@@ -1,5 +1,5 @@
 const { EmbedBuilder, PermissionFlags, resolvePermissionsToBitfield } = require("@fluxerjs/core");
-const { trackResource } = require("../api/trackSettings");
+const { trackResource, trackGuildUpdates } = require("../api/trackSettings");
 const emoji = require('node-emoji');
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
