@@ -26,7 +26,7 @@ module.exports = {
             `**Deleting**\n\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\`\n\n` +
             `**Rerolling**\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.usage")}\``
           )
-          .setColor(`#A52F05`)]
+          .setColor(db.theme)]
       });
     }
 
@@ -73,7 +73,7 @@ module.exports = {
       }
 
       const embed = new EmbedBuilder()
-        .setColor("#A52F05")
+        .setColor(db.theme)
         .setTitle(check.prize)
         .setDescription(`${client.translate.get(check.language, "Commands.reroll.giveaway")}\n\n${client.translate.get(check.language, "Commands.reroll.ended")}: <t:${Math.floor((check.endDate) / 1000)}:R>\n${client.translate.get(check.language, "Commands.giveaway.hosted")}: <@${check.owner}>\n${client.translate.get(check.language, "Commands.reroll.partici")}: ${check.users.length}\n${client.translate.get(check.language, "Commands.reroll.winner")}: ${check.pickedWinners.map(w => `<@${w.id}>`).join(", ")}${check.requirement ? `\n${client.translate.get(check.language, "Commands.reroll.reqs")}: ${check.requirement}` : ``}`)
 
@@ -160,7 +160,7 @@ module.exports = {
       if (!options[2]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validPrize")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
 
       const embed = new EmbedBuilder()
-        .setColor("#A52F05")
+        .setColor(db.theme)
         .setTitle(prize)
         .setDescription(
           `${client.translate.get(db.language, "Commands.giveaway.time")}: <t:${Math.floor((dhms(time) + Date.now()) / 1000)}:R>\n` +

@@ -46,7 +46,7 @@ function buildEmbed(ed) {
     if (ed.author?.name) embed.setAuthor({ name: ed.author.name, iconURL: ed.author.iconURL || undefined, url: ed.author.url || undefined });
     if (ed.url) embed.setURL(ed.url);
     if (ed.color) embed.setColor(ed.color);
-    else embed.setColor("#A52F05");
+    else embed.setColor(db.theme);
     if (ed.thumbnail) embed.setThumbnail(ed.thumbnail);
     if (ed.useTimestamp) embed.setTimestamp();
     return embed;

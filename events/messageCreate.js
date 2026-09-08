@@ -44,7 +44,7 @@ module.exports = async (client, message) => {
 
   if (isMention && !afterPrefix.trim()) {
     const mention = new EmbedBuilder()
-      .setColor("#A52F05")
+      .setColor(db.theme)
       .setTitle(client.user.username)
       .setDescription(`${client.translate.get(db.language, "Events.messageCreate.prefix")} \`${db.prefix}\`\n${client.translate.get(db.language, "Events.messageCreate.prefix2")} \`${db.prefix}help\``);
 
@@ -171,7 +171,7 @@ module.exports = async (client, message) => {
     );
 
     const embed = new EmbedBuilder()
-      .setColor("#A52F05")
+      .setColor(db.theme)
       .setDescription(
         `<@${message.author.id}>, ${client.translate.get(db.language, "Events.messageCreate.wait", { "time": `\`${uremaining}\``, "cmd": `\`${cmd}\`` })}`,
       );

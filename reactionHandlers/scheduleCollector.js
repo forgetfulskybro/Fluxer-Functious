@@ -27,7 +27,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
 
         try {
             await reactionMsg.removeAllReactions().catch(() => {});
-            await reactionMsg.edit({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.schedule.stopSuccess"))] }).catch(() => {});
+            await reactionMsg.edit({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.schedule.stopSuccess"))] }).catch(() => {});
         } catch {}
 
         return;
@@ -58,7 +58,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
                 }
 
                 const argsEmbed = new EmbedBuilder()
-                    .setColor("#A52F05")
+                    .setColor(db.theme)
                     .setDescription(
                         `**Current Arguments:**\n\`\`\`\n${currentArgsDisplay}\n\`\`\`\n\n**Send new arguments:**\n${argsHint}\n\n**To cancel:** React with ${client.config.emojis.cross}`
                     );
@@ -68,10 +68,10 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
                 collector.editMode = "content";
                 if (collector.type === "content") {
                     const promptEmbed = new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setDescription(client.translate.get(db.language, "Commands.schedule.editMsgContent"));
                     const contentEmbed = new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setDescription(
                             `**${client.translate.get(db.language, "Commands.schedule.msgContent")}:**\n\n${collector.content || client.translate.get(db.language, "Commands.schedule.noContent")}`
                         );
@@ -79,7 +79,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
                 } else {
                     collector.currentStage = 0;
                     const infoEmbed = new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setDescription(client.translate.get(db.language, "Commands.schedule.editMsgEmbed"));
                     await reactionMsg.edit({ embeds: [infoEmbed] });
                     await ScheduleCollector.updateEmbedPreview(client, collector, db);
@@ -91,7 +91,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
             collector.editMode = "time";
             collector.waitingForTime = true;
             const timeEmbed = new EmbedBuilder()
-                .setColor("#A52F05")
+                .setColor(db.theme)
                 .setDescription(client.translate.get(db.language, "Commands.schedule.editSendTime", { time: `<t:${collector.timestamp}:f> (<t:${collector.timestamp}:R>)`, exampleTime: "(e.g. `2:30pm`, `in 30 minutes`, `6:00am`)" }));
             await reactionMsg.edit({ embeds: [timeEmbed] });
         } else if (emojiId === "3️⃣") {
@@ -101,7 +101,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
             collector.editMode = "webhook";
             if (collector.webhook?.name) {
                 const webhookEmbed = new EmbedBuilder()
-                    .setColor("#A52F05")
+                    .setColor(db.theme)
                     .setDescription(client.translate.get(db.language, "Commands.schedule.editWebhookSettings", { name: collector.webhook.name, avatar: collector.webhook.avatarURL || client.translate.get(db.language, "Commands.schedule.default") }));
                 await reactionMsg.edit({ embeds: [webhookEmbed] });
                 collector.waitingForWebhook = true;

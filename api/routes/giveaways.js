@@ -130,7 +130,7 @@ function giveawaysRouter(client, apiKey) {
       const hostId = ownerId || client.user?.id;
 
       const embed = new EmbedBuilder()
-        .setColor('#A52F05')
+        .setColor(db.theme)
         .setTitle(prizeText)
         .setDescription(
           `${client.translate.get(db.language, 'Commands.giveaway.time')}: <t:${endTs}:R>\n` +

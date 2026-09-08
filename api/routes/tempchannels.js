@@ -51,7 +51,7 @@ function tempChannelsRouter(client, apiKey) {
         voiceChannel = await liveGuild.createChannel({
           type: 2,
           name: client.translate.get(db.language, 'Commands.tempchannels.joinCreate'),
-          parent_id: category.id,
+          parentId: category.id,
           bitrate: 64000,
         });
       }
@@ -63,13 +63,13 @@ function tempChannelsRouter(client, apiKey) {
         const manageChannel = await liveGuild.createChannel({
           type: 0,
           name: client.translate.get(db.language, 'Commands.tempchannels.manageCreate'),
-          parent_id: category.id,
+          parentId: category.id,
         });
 
         try {
           const everyone = liveGuild.roles?.find?.((r) => r.name === '@everyone');
           if (everyone) {
-            await manageChannel.editPermission(everyone.id, {
+            await manageChannel.permissionOverwrites.edit(everyone.id, {
               type: 0,
               deny: resolvePermissionsToBitfield(['SendMessages', 'AddReactions']),
             });
@@ -84,7 +84,7 @@ function tempChannelsRouter(client, apiKey) {
         };
 
         const manageEmbed = new EmbedBuilder()
-          .setColor('#A52F05')
+          .setColor(db.theme)
           .setTitle(client.translate.get(db.language, 'Commands.tempchannels.manageTitle'))
           .setImage(CDNLang[db.language] ?? CDNLang.en_EN)
           .setFooter({ text: client.translate.get(db.language, 'Commands.tempchannels.manageFooter') });

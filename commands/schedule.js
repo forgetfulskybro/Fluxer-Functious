@@ -34,7 +34,7 @@ module.exports = {
 
                 pages.add(
                     new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setTitle(client.translate.get(db.language, "Commands.schedule.schedCmd"))
                         .setDescription(
                             `**${client.translate.get(db.language, "Commands.schedule.description")}**
@@ -57,21 +57,21 @@ module.exports = {
 
                 pages.add(
                     new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setTitle(client.translate.get(db.language, "Commands.schedule.dynamicTemp"))
                         .setDescription(client.translate.get(db.language, "Commands.schedule.dynamicDesc"))
                 );
 
                 pages.add(
                     new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setTitle(client.translate.get(db.language, "Commands.schedule.webRecur"))
                         .setDescription(client.translate.get(db.language, "Commands.schedule.webRecurDesc"))
                 );
 
                 pages.add(
                     new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setTitle(client.translate.get(db.language, "Commands.schedule.embedTips"))
                         .setDescription(client.translate.get(db.language, "Commands.schedule.embedTipsDesc", { "prefix": db.prefix }))
                 );
@@ -94,7 +94,7 @@ module.exports = {
                     const msg = await chan?.messages?.fetch(session.botMessage);
                     if (msg) {
                         await msg.removeAllReactions().catch(() => {});
-                        await msg.edit({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.schedule.stopSuccess"))] });
+                        await msg.edit({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.schedule.stopSuccess"))] });
                     }
                 } catch {}
 
@@ -126,7 +126,7 @@ module.exports = {
                     }
 
                     const infoEmbed = new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setDescription(
                             `**#${index} ${client.translate.get(db.language, "Commands.schedule.viewMsg")}**
 
@@ -141,13 +141,13 @@ ${msgData.recurring && msgData.recurring !== "none" ? `**${client.translate.get(
 
                     if (msgData.type === "content") {
                         const contentEmbed = new EmbedBuilder()
-                            .setColor("#A52F05")
+                            .setColor(db.theme)
                             .setDescription(msgData.content || client.translate.get(db.language, "Commands.schedule.noContent"));
                         embedsToSend.push(contentEmbed);
                     } else if (msgData.type === "embed") {
                         const ed = msgData.embedData || {};
                         const contentEmbed = new EmbedBuilder()
-                            .setColor(ed.color || "#A52F05");
+                            .setColor(ed.color || db.theme);
                         if (ed.title) contentEmbed.setTitle(ed.title);
                         if (ed.description) contentEmbed.setDescription(ed.description);
                         if (ed.footer?.text) contentEmbed.setFooter({ text: ed.footer.text, iconURL: ed.footer.iconURL || undefined });
@@ -159,7 +159,7 @@ ${msgData.recurring && msgData.recurring !== "none" ? `**${client.translate.get(
                         embedsToSend.push(contentEmbed);
                     } else if (msgData.type === "command") {
                         const commandEmbed = new EmbedBuilder()
-                            .setColor("#A52F05")
+                            .setColor(db.theme)
                             .setDescription(`**Command:** ${msgData.commandName}\n**Arguments:** ${msgData.commandArgs.join(" | ")}`);
                         embedsToSend.push(commandEmbed);
                     }
@@ -192,7 +192,7 @@ ${msgData.recurring && msgData.recurring !== "none" ? `**${client.translate.get(
                 chunks.forEach(chunk => {
                     pages.add(
                         new EmbedBuilder()
-                            .setColor("#A52F05")
+                            .setColor(db.theme)
                             .setDescription(`${chunk.join("\n\n")}\n\n${legend}`)
                     );
                 });
@@ -225,7 +225,7 @@ ${msgData.recurring && msgData.recurring !== "none" ? `**${client.translate.get(
                 }
 
                 const menuEmbed = new EmbedBuilder()
-                    .setColor("#A52F05")
+                    .setColor(db.theme)
                     .setTitle(`${client.translate.get(db.language, "Commands.schedule.editSchedMsg")} #${index}`)
                     .setDescription(
                         `**${client.translate.get(db.language, "Commands.schedule.editWhat")}**
@@ -347,7 +347,7 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
                 });
 
                 const deletedList = deletedIds.sort((a, b) => a - b).join(', ');
-                message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.deleteSuccess", { "number": deletedList })).setColor("#A52F05")] });
+                message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.deleteSuccess", { "number": deletedList })).setColor(db.theme)] });
                 break;
             }
 
@@ -398,7 +398,7 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
 
                 if (messageType === "content") {
                     setupEmbed = new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setDescription(client.translate.get(db.language, "Commands.schedule.contentMsg"));
                 } else {
                     embedData = {
@@ -414,13 +414,13 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
                     };
 
                     setupEmbed = new EmbedBuilder()
-                        .setColor("#A52F05")
+                        .setColor(db.theme)
                         .setDescription(client.translate.get(db.language, "Commands.schedule.embedStage"));
                 }
 
                 const setupMsg = messageType === "content"
                     ? await message.channel.send({ embeds: [setupEmbed] })
-                    : await message.channel.send({ embeds: [setupEmbed, new EmbedBuilder().setColor("#A52F05")] });
+                    : await message.channel.send({ embeds: [setupEmbed, new EmbedBuilder().setColor(db.theme)] });
 
                 if (messageType === "embed") {
                     await setupMsg.react(client.config.emojis.check);
@@ -542,7 +542,7 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
                 }
 
                 const setupEmbed = new EmbedBuilder()
-                    .setColor("#A52F05")
+                    .setColor(db.theme)
                     .setDescription(client.translate.get(db.language, "Functions.schedule.whenSent", { exampleTime: "(e.g. `2:30pm`, `in 30 minutes`, `6:00am`)", prefix: db.prefix }));
 
                 const setupMsg = await message.channel.send({ embeds: [setupEmbed] });

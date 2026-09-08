@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
+const { trackResource } = require('../api/trackSettings');
 const explainCooldown = new Map();
 
 module.exports = async (client, message, userId, editCollector, reactionChan, reactionMsg, emojiId, event = "add") => {
@@ -61,7 +62,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
       await oldMsg.edit(
         editCollector.type === "content"
           ? { content: msg.content }
-          : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(msg.embeds[0]?.description || "")] },
+          : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(msg.embeds[0]?.description || "")] },
       );
 
       for (const reaction of reactions) {
@@ -101,7 +102,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
       
       await msg.delete().catch(() => { });
       
-      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.app/channels/${message.guild.id}/${editCollector.channelId}/${editCollector.oldMessageId})` }))] }).catch(() => { });
+      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.app/channels/${message.guild.id}/${editCollector.channelId}/${editCollector.oldMessageId})` }))] }).catch(() => { });
     } catch (error) {
       reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`An error occured: ${error.message}`)] }).catch(() => { });
       console.error(error);
@@ -119,7 +120,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
     await reactionMsg?.delete({ silent: true }).catch(() => { });
 
     return reactionChan?.send({
-      embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))],
+      embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))],
     });
   }
 
@@ -147,7 +148,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
     const editContent =
       editCollector.type === "content"
         ? { content: newMsg.content.replace(replaceText, withText) }
-        : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(newMsg.embeds[0]?.description?.replace(replaceText, withText) || "")] };
+        : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(newMsg.embeds[0]?.description?.replace(replaceText, withText) || "")] };
 
     return newMsg.edit(editContent).catch(() => { });
   }
@@ -164,7 +165,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
     await reactionMsg?.edit(
       editCollector.type === "content"
         ? { content: reactionMsg.content.replace(replaceText, withText) }
-        : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(reactionMsg.embeds[0]?.description?.replace(replaceText, withText) || "")] },
+        : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(reactionMsg.embeds[0]?.description?.replace(replaceText, withText) || "")] },
     ).catch(() => { });
 
     editCollector.roles.shift();

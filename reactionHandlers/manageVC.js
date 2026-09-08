@@ -124,12 +124,12 @@ module.exports = async (client, message, userId, emojiId) => {
         let isPrivate = !connected?.private;
         connected.private = isPrivate;
         
-        await channel.editPermission(userId, {
+        await channel.permissionOverwrites.edit(userId, {
           type: 1,
           allow: resolvePermissionsToBitfield(["Connect"]),
         });
         
-        await channel.editPermission(everyone.id, {
+        await channel.permissionOverwrites.edit(everyone.id, {
           type: 0,
           [isPrivate ? 'deny' : 'allow']: resolvePermissionsToBitfield(["Connect"]),
         });

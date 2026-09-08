@@ -59,6 +59,15 @@
     }
   },
   "Commands": {
+  "theme": {
+    "description": "Change the color for the bot's avatar, banner, and embeds for the server.",
+    "help": "Theme Command Help",
+    "helpDesc": "Change the bot's avatar, banner, and embed color for this guild.\n\n• Use `{default}` to restore the original avatar, banner, and color.\n\n**Supported formats**\n• Hex: `#FF4500`, `FF4500`, `#F45`\n• Named colors: `red`, `coral`, `rebeccapurple`, etc.\n• RGB / RGBA: `rgb(255, 69, 0)`, `rgba(255, 69, 0, 0.8)`\n• HSL / HSLA: `hsl(16, 100%, 50%)`\n• HSV / HSVA: `hsv(16, 100%, 100%)`\n\n**Usage**\n`{prefix}theme <color>` – apply a new theme\n`{prefix}theme default` – reset to default",
+    "invalidColor": "Invalid color. Please provide a valid hex, named color, rgb/hsl/hsv value, or `{default}`.\nExample: `{prefix}theme #FF4500` or `theme coral`\nUse `{prefix}theme help` for more info.",
+    "update": "Update theme...",
+    "updateDesc": "• Changing bot profile picture\n• Changing bot banner picture\n• Saving embed color",
+    "success": "The bot's avatar, banner, and embed color for this server has been changed to `{normalizedHex}`."
+  },
     "tags": {
       "description": "Create and manage tags for quick message sending.",
       "help": "Viewing Tag System Help",

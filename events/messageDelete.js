@@ -1,6 +1,7 @@
 const PollDB = require("../models/polls");
 const Giveaways = require("../models/giveaways");
 const GuildDB = require("../models/guilds");
+const { trackResource } = require('../api/trackSettings');
 
 module.exports = async (client, msg) => {
   const authorId = msg.author?.id;
@@ -31,6 +32,23 @@ module.exports = async (client, msg) => {
       }).catch(() => null);
 
       if (guild) {
+        const roles = guild.roles.find((r) => r.msgId === msgId);
+        await trackResource(client, {
+          userId: "Unknown (Manually deleted)",
+          groupId: msg.guildId,
+          category: 'reactionroles',
+          key: 'roles',
+          action: 'delete',
+          label: 'Reaction Role Panel',
+          value: null,
+          previous: {
+            msgId: msgId,
+            chanId: roles.chanId,
+            exclusive: roles.exclusive ?? null,
+            roles: roles.roles,
+          },
+        });
+        
         guild.roles = guild.roles.filter((r) => r.msgId !== msgId);
         await guild.save().catch(() => null);
       }

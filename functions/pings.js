@@ -7,17 +7,18 @@ async function Pings(client) {
     return { ping: Date.now() - beforeCall, pollCount };
   }
   
-  async function botPing() {
-    try {
-      const start = Date.now();
-      await client.rest.get("/gateway/bot");
-      return Date.now() - start;
-    } catch {
-      return 0;
-    }
-  }
-  
-  const [gatewayPing, dbPing] = await Promise.all([botPing(), Database()]);
+  // async function botPing() {
+  //   try {
+  //     const start = Date.now();
+  //     await client.rest.get("/gateway/bot");
+  //     return Date.now() - start;
+  //   } catch {
+  //     return 0;
+  //   }
+  // }
+
+  const gatewayPing = client.ws.ping;
+  const [dbPing] = await Promise.all([Database()]);
 
   const memory = () => {
     const used = process.memoryUsage().heapUsed;

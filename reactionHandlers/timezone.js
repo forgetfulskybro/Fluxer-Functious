@@ -37,7 +37,7 @@ module.exports = async (client, message, userId) => {
       .send({
         embeds: [
           new EmbedBuilder()
-            .setColor("#A52F05")
+            .setColor(db.theme)
             .setAuthor({ name: displayName, iconURL: avatar })
             .setDescription(convert.message),
         ],

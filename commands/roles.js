@@ -69,7 +69,7 @@ module.exports = {
           case "help":
           default:
             const embed = new EmbedBuilder()
-              .setColor(`#A52F05`)
+              .setColor(db.theme)
               .setTitle(client.translate.get(db.language, "Commands.roles.view"))
               .setDescription(`**${client.translate.get(db.language, "Commands.roles.explain")}**\n${client.translate.get(db.language, "Commands.roles.explain2", { "prefix": db.prefix })}\n\n**${client.translate.get(db.language, "Commands.roles.create")}**\n\`${db.prefix}roles ${client.translate.get(db.language, "Commands.roles.createExample", { "type": "content | embed" })}\`\n\n**${client.translate.get(db.language, "Commands.roles.editing")}**\n\`${db.prefix}roles edit [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.viewing")}**\n\`${db.prefix}roles view\`\n\n**${client.translate.get(db.language, "Commands.roles.deleting")}**\n\`${db.prefix}roles delete [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.reactionFix")}**\n${client.translate.get(db.language, "Commands.roles.reactionFixExplain")}\n\`${db.prefix}roles fix [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.dm")}**\n\`${db.prefix}roles dm\`\n\n**${client.translate.get(db.language, "Commands.roles.exclusiveTitle")}**\n${client.translate.get(db.language, "Commands.roles.exclusiveExplain")}\n\`${db.prefix}roles exclusive [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**Role Mentions**\nAdd \`{mention}\` to your message to use role mentions (<@&ID>) instead of role names when emojis are added. The \`{mention}\` text will be removed from the final message.`)
 
@@ -80,7 +80,7 @@ module.exports = {
           case "stop":
             if (!client.messageCollector.get(message.author.id)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notStarted")}`).setColor(`#FF0000`)] });
             client.messageCollector.delete(message.author.id);
-            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.stopped")}`).setColor(`#A52F05`)] });
+            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.stopped")}`).setColor(db.theme)] });
              break;
              
           case "view":
@@ -90,7 +90,7 @@ module.exports = {
             data = db.roles.map((msg, i) => `**ID**: ${msg.msgId}\n**${client.translate.get(db.language, "Commands.roles.roles")}**: ${msg.roles.length}${msg.exclusive ? `| **${client.translate.get(db.language, "Commands.roles.exclusiveView")}**: ${client.translate.get(db.language, "Commands.roles.on")}` : ''}\n[${client.translate.get(db.language, "Commands.roles.jump")}](https://fluxer.app/channels/${message.guildId}/${msg.chanId}/${msg.msgId})`);
             data = Array.from({ length: Math.ceil(data.length / 3) }, (a, r) => data.slice(r * 3, r * 3 + 3));
             Math.ceil(data.length / 3);
-            data = data.map(e => pages.add(new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.view")}\n\n${e.slice(0, 3).join("\n\n")}`).setColor("#A52F05")))
+            data = data.map(e => pages.add(new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.view")}\n\n${e.slice(0, 3).join("\n\n")}`).setColor(db.theme)))
             
             clearCooldown(client, message.author.id);
             pages.start(message.channel);
@@ -125,7 +125,7 @@ module.exports = {
             });
 
             clearCooldown(client, message.author.id);
-            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.deleted")}`).setColor(`#A52F05`)] });
+            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.deleted")}`).setColor(db.theme)] });
           break;
                 
           case "fix":
@@ -149,7 +149,7 @@ module.exports = {
             }
             
             clearCooldown(client, message.author.id);
-            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.reactionFixSuccess", { "message": `[${args[1]}](https://fluxer.app/channels/${db.id}/${reactMsg.chanId}/${reactMsg.msgId})` })}`).setColor(`#A52F05`)] });
+            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.reactionFixSuccess", { "message": `[${args[1]}](https://fluxer.app/channels/${db.id}/${reactMsg.chanId}/${reactMsg.msgId})` })}`).setColor(db.theme)] });
             break;
           
           case "dm":
@@ -165,7 +165,7 @@ module.exports = {
             });
 
             clearCooldown(client, message.author.id);
-            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.dms")} **${dms ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(`#A52F05`)] });
+            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.dms")} **${dms ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(db.theme)] });
             break;
 
           case "exclusive":
@@ -196,7 +196,7 @@ module.exports = {
             });
             
             clearCooldown(client, message.author.id);
-            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.exclusiveSuccess", { "message": `[${args[1]}](https://fluxer.app/channels/${db.id}/${exclusiveMsg.chanId}/${exclusiveMsg.msgId})`, "option": `**${isExclusive ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**` })}`).setColor(`#A52F05`)] });
+            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.exclusiveSuccess", { "message": `[${args[1]}](https://fluxer.app/channels/${db.id}/${exclusiveMsg.chanId}/${exclusiveMsg.msgId})`, "option": `**${isExclusive ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**` })}`).setColor(db.theme)] });
             break;
 
             case "edit": {
@@ -239,7 +239,7 @@ Color Roles:
 {role:Red}
 {role:Purple}
 \`\`\``,
-                })}${reactMentionLine}\n\n\`\`\`txt\n${startText}\n\`\`\``).setColor(`#A52F05`)
+                })}${reactMentionLine}\n\n\`\`\`txt\n${startText}\n\`\`\``).setColor(db.theme)
 
                 const sendChannel = isDifferentChannel ? targetChannel : message.channel;
                 if (isDifferentChannel) {
@@ -349,7 +349,7 @@ Color Roles:
 `,
                         })}${reactMentionLineCreate}`,
                     )
-                    .setColor(`#A52F05`);
+                    .setColor(db.theme);
                 
                 await message.delete().catch(() => { });
 

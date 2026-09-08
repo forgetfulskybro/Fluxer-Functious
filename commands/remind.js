@@ -6,8 +6,7 @@ const chrono = require("chrono-node");
 
 const EMBED_COLORS = {
   ERROR: "#FF0000",
-  SUCCESS: "#A52F05",
-  INFO: "#A52F05",
+  DEFAULT: "#A52F05",
 };
 
 const CONFIG = {
@@ -55,7 +54,7 @@ function cleanReminderMessage(text) {
     .join(" ");
 }
 
-function createEmbed(color = EMBED_COLORS.INFO, title = null, description = null) {
+function createEmbed(color, title = null, description = null) {
   const embed = new EmbedBuilder().setColor(color);
   if (title) embed.setTitle(title);
   if (description) embed.setDescription(description);
@@ -94,12 +93,12 @@ function errorEmbed(prefix, type, client, language, extra = "") {
   return createEmbed(EMBED_COLORS.ERROR, null, messages[type]);
 }
 
-function successEmbed(message) {
-  return createEmbed(EMBED_COLORS.SUCCESS, null, message);
+function successEmbed(message, themeColor) {
+  return createEmbed(themeColor, null, message);
 }
 
-function infoEmbed(title, description) {
-  return createEmbed(EMBED_COLORS.INFO, title, description);
+function infoEmbed(title, description, themeColor) {
+  return createEmbed(themeColor, title, description);
 }
 
 function parseRelativeTime(txt) {
@@ -229,21 +228,22 @@ async function deleteReminder(userId, index, client) {
   return { success: true, deletedReminder: reminderToDelete, remainingCount: reminders.length - 1 };
 }
 
-async function handleHelp(message, prefix, client, language) {
+async function handleHelp(message, prefix, client, language, themeColor) {
   const examples = getExamples(prefix, client, language);
   const embed = infoEmbed(
     "Remind Help",
-    `**${client.translate.get(language, "Commands.remind.setReminder")}:**\n\`${prefix}remind <time> <message>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.basic}\n\n**${client.translate.get(language, "Commands.remind.setDMReminder")}:**\n\`${prefix}remind dm <time> <message>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.dm}\n*${client.translate.get(language, "Commands.remind.dmExplain")}*\n\n**${client.translate.get(language, "Commands.remind.view")}:**\n\`${prefix}remind list\`\n\n**${client.translate.get(language, "Commands.remind.delete")}:**\n\`${prefix}remind delete <index>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.delete}\n\n**${client.translate.get(language, "Commands.remind.naturalLang")}:**\n${examples.timeFormats}\n\n**${client.translate.get(language, "Commands.remind.shortForm")}:**\n${examples.shortFormats}\n${client.translate.get(language, "Commands.remind.exampleTime")}`
+    `**${client.translate.get(language, "Commands.remind.setReminder")}:**\n\`${prefix}remind <time> <message>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.basic}\n\n**${client.translate.get(language, "Commands.remind.setDMReminder")}:**\n\`${prefix}remind dm <time> <message>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.dm}\n*${client.translate.get(language, "Commands.remind.dmExplain")}*\n\n**${client.translate.get(language, "Commands.remind.view")}:**\n\`${prefix}remind list\`\n\n**${client.translate.get(language, "Commands.remind.delete")}:**\n\`${prefix}remind delete <index>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.delete}\n\n**${client.translate.get(language, "Commands.remind.naturalLang")}:**\n${examples.timeFormats}\n\n**${client.translate.get(language, "Commands.remind.shortForm")}:**\n${examples.shortFormats}\n${client.translate.get(language, "Commands.remind.exampleTime")}`,
+    themeColor
   );
   return message.channel.send({ embeds: [embed] });
 }
 
-async function handleList(message, client, language) {
+async function handleList(message, client, language, themeColor) {
   const { reminders } = await getSortedReminders(message.author.id, client);
 
   if (reminders.length === 0) {
     return message.channel.send({
-      embeds: [infoEmbed(client.translate.get(language, "Commands.remind.reminders"), client.translate.get(language, "Commands.remind.noReminders"))],
+      embeds: [infoEmbed(client.translate.get(language, "Commands.remind.reminders"), client.translate.get(language, "Commands.remind.noReminders"), themeColor)],
     });
   }
 
@@ -258,11 +258,11 @@ async function handleList(message, client, language) {
     .join("\n") + `\n\n📢 = ${client.translate.get(language, "Commands.remind.gReminder")} | 📩 = ${client.translate.get(language, "Commands.remind.dReminder")}`;
 
   return message.channel.send({
-    embeds: [infoEmbed(client.translate.get(language, "Commands.remind.reminders"), description)],
+    embeds: [infoEmbed(client.translate.get(language, "Commands.remind.reminders"), description, themeColor)],
   });
 }
 
-async function handleDelete(message, args, prefix, client, language) {
+async function handleDelete(message, args, prefix, client, language, themeColor) {
   if (!args[1] || isNaN(args[1])) {
     return message.channel.send({
       embeds: [errorEmbed(prefix, "deleteUsage", client, language)],
@@ -296,11 +296,11 @@ async function handleDelete(message, args, prefix, client, language) {
   }
 
   return message.channel.send({
-    embeds: [successEmbed(description)],
+    embeds: [successEmbed(description, themeColor)],
   });
 }
 
-async function handleCreate(message, args, prefix, isDM, client, language) {
+async function handleCreate(message, args, prefix, isDM, client, language, themeColor) {
   let inputText = isDM ? args.slice(1).join(" ") : args.join(" ");
 
   if (!inputText.trim()) {
@@ -374,7 +374,7 @@ async function handleCreate(message, args, prefix, isDM, client, language) {
   if (isDM) {
     try {
       await message.author.send({
-        embeds: [successEmbed(client.translate.get(language, "Commands.remind.dmReminder"))],
+        embeds: [successEmbed(client.translate.get(language, "Commands.remind.dmReminder"), themeColor)],
       });
       await message.delete().catch(() => {});
     } catch (err) {
@@ -425,9 +425,8 @@ async function handleCreate(message, args, prefix, isDM, client, language) {
     const displayMsg = truncate(cleanedMessage, CONFIG.DISPLAY_LENGTH);
 
     await message.channel.send({
-      embeds: [successEmbed(`${client.translate.get(language, "Commands.remind.success")} ${timeStr} (${dateStr}): \`${displayMsg}\``)],
+      embeds: [successEmbed(`${client.translate.get(language, "Commands.remind.success")} ${timeStr} (${dateStr}): \`${displayMsg}\``, themeColor)],
     });
-
   }
 }
 
@@ -442,10 +441,11 @@ module.exports = {
   },
   run: async (client, message, args, db) => {
     const prefix = db.prefix;
+    const themeColor = db.theme || EMBED_COLORS.DEFAULT;
 
     if (!args.length) {
       return message.channel.send({
-        embeds: [errorEmbed(prefix, "noArgs", language)],
+        embeds: [errorEmbed(prefix, "noArgs", client, db.language)],
       });
     }
 
@@ -454,16 +454,16 @@ module.exports = {
     switch (subcommand) {
       case "help":
       case "h":
-        return handleHelp(message, prefix, client, db.language);
+        return handleHelp(message, prefix, client, db.language, themeColor);
 
       case "list":
-        return handleList(message, client, db.language);
+        return handleList(message, client, db.language, themeColor);
 
       case "delete":
-        return handleDelete(message, args, prefix, client, db.language);
+        return handleDelete(message, args, prefix, client, db.language, themeColor);
 
       case "dm":
-        return handleCreate(message, args, prefix, true, client, db.language);
+        return handleCreate(message, args, prefix, true, client, db.language, themeColor);
 
       default:
         if (args.length === 1 && /^\d+$/.test(args[0])) {
@@ -471,7 +471,7 @@ module.exports = {
             embeds: [errorEmbed(prefix, "numberOnly", client, db.language)],
           });
         }
-        return handleCreate(message, args, prefix, false, client, db.language);
+        return handleCreate(message, args, prefix, false, client, db.language, themeColor);
     }
   },
 };

@@ -3,7 +3,7 @@ const getRoles = require('./getRoles');
 async function Collector(client, message, db) {
   if (message.content === `${db.prefix}roles stop`) {
     client.messageEdit.delete(message.author.id);
-    return message.reply({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.stopped"))] })
+    return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.roles.stopped"))] })
   }
   
   const regex = /{role:(?: |)(.*?)}/;
@@ -39,7 +39,7 @@ async function Collector(client, message, db) {
   message.delete().catch(() => { });
   collector.roles = roleIds;
   collector.useMention = hadMentionMarker;
-  return message.channel.send(collector.type === "content" ? { content: cleanedContent } : { embeds: [new EmbedBuilder().setDescription(cleanedContent).setColor("#A52F05")] }).then(async (msg) => {
+  return message.channel.send(collector.type === "content" ? { content: cleanedContent } : { embeds: [new EmbedBuilder().setDescription(cleanedContent).setColor(db.theme)] }).then(async (msg) => {
       collector.messageId = msg.id;
   });
 }

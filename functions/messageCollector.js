@@ -3,7 +3,7 @@ const getRoles = require('./getRoles');
 async function Collector(client, message, db) {
   if (message.content.toLowerCase() === `${db.prefix}roles stop`) {
     client.messageCollector.delete(message.author.id);
-    return message.reply({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.roles.stopped"))] })
+    return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.roles.stopped"))] })
   }
   
   const regex = /{role:\s*(.*?)\s*}/i;
@@ -41,7 +41,7 @@ async function Collector(client, message, db) {
   message.delete().catch(() => { });
   collector.roles = roleIds;
   collector.useMention = useMention;
-  return message.channel.send(collector.type === "content" ? { content: finalContent } : { embeds: [new EmbedBuilder().setDescription(finalContent).setColor("#A52F05")] }).then(async (msg) => {
+  return message.channel.send(collector.type === "content" ? { content: finalContent } : { embeds: [new EmbedBuilder().setDescription(finalContent).setColor(db.theme)] }).then(async (msg) => {
     collector.messageId = msg.id;
   });
 }

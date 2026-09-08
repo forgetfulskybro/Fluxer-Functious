@@ -19,7 +19,7 @@ module.exports = {
 
     if (!firstArg) {
       const usageEmbed = new EmbedBuilder()
-        .setColor("#A52F05")
+        .setColor(db.theme)
         .setTitle("Reload Usage")
         .setDescription(
           `**Auto-detect:** \`${db.prefix}reload <filename>\`\n**Specify type:** \`${db.prefix}reload <type> <filename>\`\n**Multiple files:** \`${db.prefix}reload <filename1>, <filename2>, ...\`\n\n**Types:** \`command\`, \`event\`, \`function\`, \`reactionHandler\`, \`languages\``
@@ -41,7 +41,7 @@ module.exports = {
 
     if (names.length === 0 && type !== "languages") {
       const usageEmbed = new EmbedBuilder()
-        .setColor("#A52F05")
+        .setColor(db.theme)
         .setTitle("Reload Usage")
         .setDescription(
           `❌ Please provide at least one file name.\n\n**Auto-detect:** \`${db.prefix}reload <filename>\`\n**Specify type:** \`${db.prefix}reload <type> <filename>\`\n**Multiple files:** \`${db.prefix}reload <filename1>, <filename2>, ...\``

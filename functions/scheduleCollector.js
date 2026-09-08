@@ -79,7 +79,7 @@ async function updateEmbedPreview(client, session, db) {
         }
 
         const infoEmbed = new EmbedBuilder()
-            .setColor("#A52F05")
+            .setColor(db.theme)
             .setDescription(desc);
 
         const preview = new EmbedBuilder();
@@ -211,7 +211,7 @@ async function askWebhook(client, session) {
     await clearBotMessageReactions(client, session);
     const db = await client.database.getGuild(session.guildId);
     const webhookEmbed = new EmbedBuilder()
-        .setColor("#A52F05")
+        .setColor(db.theme)
         .setDescription(client.translate.get(db.language, "Functions.schedule.askWebhook"));
 
     try {
@@ -228,7 +228,7 @@ async function askWebhookName(client, session) {
     await clearBotMessageReactions(client, session);
     const db = await client.database.getGuild(session.guildId);
     const nameEmbed = new EmbedBuilder()
-        .setColor("#A52F05")
+        .setColor(db.theme)
         .setDescription(client.translate.get(db.language, "Functions.schedule.webhookName"));
 
     try {
@@ -246,7 +246,7 @@ async function askWebhookAvatar(client, session) {
     await clearBotMessageReactions(client, session);
     const db = await client.database.getGuild(session.guildId);
     const avatarEmbed = new EmbedBuilder()
-        .setColor("#A52F05")
+        .setColor(db.theme)
         .setDescription(client.translate.get(db.language, "Functions.schedule.webhookURL"));
 
     try {
@@ -264,7 +264,7 @@ async function askRecurring(client, session) {
     await clearBotMessageReactions(client, session);
     const db = await client.database.getGuild(session.guildId);
     const recurringEmbed = new EmbedBuilder()
-        .setColor("#A52F05")
+        .setColor(db.theme)
         .setDescription(client.translate.get(db.language, "Functions.schedule.repeatOften"));
 
     try {
@@ -288,7 +288,7 @@ async function showEditMenu(client, session, guildId) {
     const isCommand = msgData.type === "command";
 
   const menuEmbed = new EmbedBuilder()
-    .setColor("#A52F05")
+    .setColor(db.theme)
     .setTitle(`${client.translate.get(db.language, "Commands.schedule.editSchedMsg")} #${session.editingIndex}`)
     .setDescription(
       `**${client.translate.get(db.language, "Commands.schedule.editWhat")}**
@@ -391,7 +391,7 @@ async function ScheduleCollector(client, message, db) {
             const botMsg = await chan?.messages?.fetch(session.botMessage).catch(() => null);
             if (botMsg) {
                 await botMsg.removeAllReactions().catch(() => {});
-                await botMsg.edit({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.schedule.stopSuccess"))] });
+                await botMsg.edit({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.schedule.stopSuccess"))] });
             }
         } catch {}
         return;
@@ -516,7 +516,7 @@ async function ScheduleCollector(client, message, db) {
                 const botMsg = await chan?.messages?.fetch(session.botMessage).catch(() => null);
                 if (botMsg) {
                     await botMsg.removeAllReactions().catch(() => {});
-                    await botMsg.edit({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Commands.schedule.stopSuccess"))] });
+                    await botMsg.edit({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.schedule.stopSuccess"))] });
                 }
             } catch {}
             return;
@@ -618,7 +618,7 @@ async function ScheduleCollector(client, message, db) {
                 responseText += `\n${client.translate.get(db.language, "Commands.schedule.repeats")}: ${session.recurring}`;
             }
 
-            message.channel.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(responseText)] });
+            message.channel.send({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(responseText)] });
 
             const chan = await client.channels.resolve(session.channelId);
             const botMsg = await chan?.messages?.fetch(session.botMessage).catch(() => null);
@@ -631,7 +631,7 @@ async function ScheduleCollector(client, message, db) {
         session.waitingForTime = true;
 
         const timeEmbed = new EmbedBuilder()
-            .setColor("#A52F05")
+            .setColor(db.theme)
             .setDescription(client.translate.get(db.language, "Functions.schedule.whenSent", { exampleTime: "(e.g. \`2:30pm\`, \`in 30 minutes\`, \`6:00am\`)", prefix: db.prefix }));
 
         try {
@@ -766,7 +766,7 @@ async function ScheduleCollector(client, message, db) {
             responseText += `\n${client.translate.get(db.language, "Commands.schedule.repeats")}: ${session.recurring}`;
         }
 
-        message.channel.send({ embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(responseText)] });
+        message.channel.send({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(responseText)] });
 
         const chan = await client.channels.resolve(session.channelId);
         const botMsg = await chan?.messages?.fetch(session.botMessage).catch(() => null);

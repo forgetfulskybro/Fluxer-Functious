@@ -25,7 +25,7 @@ module.exports = {
     default: "help";
     case "help":
       const embed = new EmbedBuilder()
-        .setColor(`#A52F05`)
+        .setColor(db.theme)
         .setTitle(client.translate.get(db.language, "Commands.autoroles.help"))
         .setDescription(`${client.translate.get(db.language, "Commands.autoroles.explanation")}\n\n${client.translate.get(db.language, "Commands.autoroles.view")}\n\`${db.prefix}autoroles view\`\n\n${client.translate.get(db.language, "Commands.autoroles.stickyRoles")}\n\`${db.prefix}autoroles sticky\`\n\n${client.translate.get(db.language, "Commands.autoroles.joinRoles")}\n\`${db.prefix}autoroles join add [${client.translate.get(db.language, "Commands.autoroles.roleNames")}, e.g. Member, Bot Updates]\`\n\`${db.prefix}autoroles join remove [${client.translate.get(db.language, "Commands.autoroles.roleNames")}, e.g. Member, Bot Updates]\`\n\n${client.translate.get(db.language, "Commands.autoroles.timedRoles")}\n\`${db.prefix}autoroles timed add [${client.translate.get(db.language, "Commands.autoroles.roleNames")}, e.g. Member, Color Roles] {time:25m}\`\n\`${db.prefix}autoroles timed remove [${client.translate.get(db.language, "Commands.autoroles.roleNames")}, e.g. Member, Color Roles]\``)
 
@@ -34,7 +34,7 @@ module.exports = {
 
     case "view":
     const view = new EmbedBuilder()
-      .setColor(`#A52F05`)
+      .setColor(db.theme)
       .setTitle(client.translate.get(db.language, "Commands.autoroles.viewTitle"))
       .setDescription(`**${client.translate.get(db.language, "Commands.autoroles.stickyTitle")}**: ${db.stickyRolesEnabled ? client.translate.get(db.language, "Commands.roles.on") : client.translate.get(db.language, "Commands.roles.off")}\n**${client.translate.get(db.language, "Commands.autoroles.joinTitle")}**: ${db.joinRoles?.length > 0 ? `\n${db.joinRoles.map((r) => `<@&${r}>`).join(', ')}` : client.translate.get(db.language, "Events.messageReactionAdd.none")}\n**${client.translate.get(db.language, "Commands.autoroles.timedTitle")}**: ${db.timedRoles?.length > 0 ? `\n${db.timedRoles.map((r) => `<@&${r.id}> (${fetchTime(r.time, client, db.language, true)})`).join(', ')}` : client.translate.get(db.language, "Events.messageReactionAdd.none")}`)
 
@@ -53,7 +53,7 @@ module.exports = {
       });
 
       setTimeout(() => client.used.delete(`${message.author.id}-autoroles`), 6000)
-      message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.sticky")} **${sticky ? client.translate.get(db.language, "Commands.roles.on") : client.translate.get(db.language, "Commands.roles.off")}**`).setColor(`#A52F05`)] });
+      message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.sticky")} **${sticky ? client.translate.get(db.language, "Commands.roles.on") : client.translate.get(db.language, "Commands.roles.off")}**`).setColor(db.theme)] });
       break;
 
     case "join":
@@ -87,7 +87,7 @@ module.exports = {
           updates: { joinRoles: newRoles },
         });
         
-        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeAdd")} ${roleIds.map((r) => r.id).filter((r) => !errored.includes(r)).map((r) => `<@&${r}>`)}${newRoles.length !== db.joinRoles.length && errored.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsAdd")} ${errored.map((r) => `<@&${r}>`)}` : ''}`).setColor(`#A52F05`)] });
+        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeAdd")} ${roleIds.map((r) => r.id).filter((r) => !errored.includes(r)).map((r) => `<@&${r}>`)}${newRoles.length !== db.joinRoles.length && errored.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsAdd")} ${errored.map((r) => `<@&${r}>`)}` : ''}`).setColor(db.theme)] });
       } else if (args[1] === "remove") {
         if (!options[0]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.noOptionsRemove")}: \`${db.prefix}autoroles join remove Member, Color Roles\``).setColor(`#FF0000`)] });
         const roleIds = await getRoles(options, message, client, db, false, false, false);
@@ -102,7 +102,7 @@ module.exports = {
         const toRemove = db.joinRoles.filter((r) => !roleIds.map((r) => r.id).includes(r));
         if (toRemove.length === db.joinRoles.length && errored.length > 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.roleErrorsRemove")} ${errored.map((r) => `<@&${r}>`)}`).setColor(`#FF0000`)] });
 
-        message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeRemove")} ${roleIds.map((r) => r.id).filter((r) => !errored.includes(r)).map((r) => `<@&${r}>`)}${toRemove.length !== db.joinRoles.length && errored.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsRemove")} ${errored.map((r) => `<@&${r}>`)}` : ''}`).setColor(`#A52F05`)] });
+        message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeRemove")} ${roleIds.map((r) => r.id).filter((r) => !errored.includes(r)).map((r) => `<@&${r}>`)}${toRemove.length !== db.joinRoles.length && errored.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsRemove")} ${errored.map((r) => `<@&${r}>`)}` : ''}`).setColor(db.theme)] });
         await client.database.updateGuild(message.guild.id, { joinRoles: toRemove });
 
         await trackGuildUpdates(client, {
@@ -156,7 +156,7 @@ module.exports = {
           updates: { timedRoles: updatedTimedRoles },
         });
 
-        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeAdd")} ${uniqueNewRoles.map((r) => `<@&${r.id}> (${fetchTime(duration, client, db.language, true)})`).join(', ')}${duplicateRoles.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsAdd")} ${duplicateRoles.map((r) => `<@&${r.id}>`).join(', ')}` : ''}`).setColor(`#A52F05`)] });
+        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeAdd")} ${uniqueNewRoles.map((r) => `<@&${r.id}> (${fetchTime(duration, client, db.language, true)})`).join(', ')}${duplicateRoles.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.someRoleErrorsAdd")} ${duplicateRoles.map((r) => `<@&${r.id}>`).join(', ')}` : ''}`).setColor(db.theme)] });
       } else if (args[1] === "remove") {
         const roleOptions = args.slice(2).join(' ').split(',').map(x => x.trim()).filter(x => x);
         if (!roleOptions[0]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.noOptionsRemove")}: \`${db.prefix}autoroles timed remove Member, Color Roles\``).setColor(`#FF0000`)] });
@@ -183,7 +183,7 @@ module.exports = {
           updates: { timedRoles: remainingTimedRoles },
         });
 
-        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeRemove")} ${toRemove.map((tr) => `<@&${tr.id}> (${fetchTime(tr.time, client, db.language, true)})`).join(', ')}${notFoundRoles.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.roleErrorsRemove")} ${notFoundRoles.map((r) => `<@&${r.id}>`).join(', ')}` : ''}`).setColor(`#A52F05`)] });
+        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.completeRemove")} ${toRemove.map((tr) => `<@&${tr.id}> (${fetchTime(tr.time, client, db.language, true)})`).join(', ')}${notFoundRoles.length > 0 ? `\n\n${client.translate.get(db.language, "Commands.autoroles.roleErrorsRemove")} ${notFoundRoles.map((r) => `<@&${r.id}>`).join(', ')}` : ''}`).setColor(db.theme)] });
       } else {
         message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.autoroles.noOptionsAdd")}: \`${db.prefix}autoroles timed add Member, Color Roles {time:10m}\``).setColor(`#FF0000`)] });
       }

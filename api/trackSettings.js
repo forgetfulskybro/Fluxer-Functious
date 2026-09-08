@@ -2,6 +2,7 @@ const FIELD_META = {
   prefix: { category: 'configuration', label: 'Command Prefix' },
   language: { category: 'configuration', label: 'Language' },
   dm: { category: 'configuration', label: 'DM on Join' },
+  theme: { category: 'configuration', label: 'Theme' },
   timezoneConvert: { category: 'configuration', label: 'Timezone Convert' },
   pollPerm: { category: 'polls', label: 'Poll Permission' },
   stickyRolesEnabled: { category: 'roles', label: 'Sticky Roles' },

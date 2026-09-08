@@ -20,7 +20,7 @@ module.exports = {
             }
 
             const embed = new EmbedBuilder()
-                .setColor('#A52F05')
+                .setColor(db.theme)
                 .setTitle(`${client.translate.get(db.language, 'Commands.help.embeds.first.cmdName')}: ${command.config.name}`)
                 .setDescription(
                     client.translate.get(db.language, `Commands.${command.config.name}.description`)
@@ -66,7 +66,7 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setDescription(`${client.translate.get(db.language, 'Commands.help.embeds.second.start')}\n${client.commands.filter(c => c.config.available && c.config.available !== "Owner").map(c => `\`${c.config.name}\``).join(", ")}${client.commands.filter(c => c.config.available === false).size > 0 ? `\n\n${client.translate.get(db.language, 'Commands.help.embeds.second.middle')}\n${client.commands.filter(c => c.config.available === false).map(c => `\`${c.config.name}\``).join(", ")}` : ""}\n\n${client.translate.get(db.language, 'Commands.help.embeds.second.end')}\n\`${db.prefix}help [${client.translate.get(db.language, 'Commands.help.embeds.second.end2')}]\``)
-            .setColor(`#A52F05`);
+            .setColor(db.theme);
 
         message.channel.send({ embeds: [embed] })
     },

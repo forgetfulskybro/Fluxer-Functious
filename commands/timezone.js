@@ -60,7 +60,7 @@ module.exports = {
     switch (args[0]) {
       default: "help";
       case "help":
-        message.reply({ embeds: [new EmbedBuilder().setColor(`#A52F05`).setTitle(client.translate.get(db.language, "Commands.timezone.viewingHelp")).setDescription(`${client.translate.get(db.language, "Commands.timezone.explanation")}\n\n**${client.translate.get(db.language, "Commands.timezone.exampleMsg")}**: ${client.translate.get(db.language, "Commands.timezone.formatText", { "time": "19:00" })}\n**${client.translate.get(db.language, "Commands.timezone.timestampMsg")}**: ${time}\n\n${client.translate.get(db.language, "Commands.timezone.toggle")}\n\`${db.prefix}timezone toggle\`\n\n${client.translate.get(db.language, "Commands.timezone.userTimezone")} [${client.translate.get(db.language, "Commands.timezone.timeZonePicker")}](https://zones.arilyn.cc/)\n\`${db.prefix}timezone set [${client.translate.get(db.language, "Commands.timezone.timezone")}, e.g. America/New_York]\`\n\n${client.translate.get(db.language, "Commands.timezone.userTimezoneRemove")}\n\`${db.prefix}timezone remove\`\n\n${client.translate.get(db.language, "Commands.timezone.viewCmd")}\n\`${db.prefix}timezone view [${client.translate.get(db.language, "Commands.timezone.optionalUser")}]\``)] })
+        message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setTitle(client.translate.get(db.language, "Commands.timezone.viewingHelp")).setDescription(`${client.translate.get(db.language, "Commands.timezone.explanation")}\n\n**${client.translate.get(db.language, "Commands.timezone.exampleMsg")}**: ${client.translate.get(db.language, "Commands.timezone.formatText", { "time": "19:00" })}\n**${client.translate.get(db.language, "Commands.timezone.timestampMsg")}**: ${time}\n\n${client.translate.get(db.language, "Commands.timezone.toggle")}\n\`${db.prefix}timezone toggle\`\n\n${client.translate.get(db.language, "Commands.timezone.userTimezone")} [${client.translate.get(db.language, "Commands.timezone.timeZonePicker")}](https://zones.arilyn.cc/)\n\`${db.prefix}timezone set [${client.translate.get(db.language, "Commands.timezone.timezone")}, e.g. America/New_York]\`\n\n${client.translate.get(db.language, "Commands.timezone.userTimezoneRemove")}\n\`${db.prefix}timezone remove\`\n\n${client.translate.get(db.language, "Commands.timezone.viewCmd")}\n\`${db.prefix}timezone view [${client.translate.get(db.language, "Commands.timezone.optionalUser")}]\``)] })
         break;
 
       case "view":
@@ -98,7 +98,7 @@ module.exports = {
             }
             
             const embed = new EmbedBuilder()
-              .setColor("#A52F05")
+              .setColor(db.theme)
               .setTitle(`${client.translate.get(db.language, "Commands.timezone.infoTimezone")}: ${timezone}`)
               .addFields(
                 { name: client.translate.get(db.language, "Commands.timezone.timezoneField"), value: `\`${timezone}\``, inline: true },
@@ -151,7 +151,7 @@ module.exports = {
           const currentTime = getCurrentTimeInTimezone(timezone);
           
           const embed = new EmbedBuilder()
-            .setColor("#A52F05")
+            .setColor(db.theme)
             .setTitle(client.translate.get(db.language, "Commands.timezone.timezoneInfo", { "user": targetMember?.displayName || targetMember?.user?.username || "User" }))
             .addFields(
               { name: client.translate.get(db.language, "Commands.timezone.timezoneField"), value: `\`${timezone}\``, inline: true },
@@ -196,7 +196,7 @@ module.exports = {
           updates: { timezoneConvert: !toggle },
         });
         
-        message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.timezone.success")} **${toggle ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(`#A52F05`)] });
+        message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.timezone.success")} **${toggle ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(db.theme)] });
         break;
       
       case "set":
@@ -227,7 +227,7 @@ module.exports = {
           true
         );
         
-        message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.timezone.successSet", { "timezone": `\`${args[1]}\`` })).setColor(`#A52F05`)] });
+        message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.timezone.successSet", { "timezone": `\`${args[1]}\`` })).setColor(db.theme)] });
         break;
       
       case "remove":
@@ -245,7 +245,7 @@ module.exports = {
           true
         );
         
-        message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.timezone.successRemove")).setColor(`#A52F05`)] });
+        message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.timezone.successRemove")).setColor(db.theme)] });
         break;
     }
     },

@@ -81,7 +81,7 @@ function reactionRolesRouter(client, apiKey) {
 
       const payload =
         type === 'embed'
-          ? { embeds: [new EmbedBuilder().setColor('#A52F05').setDescription(finalText.slice(0, 4040))] }
+          ? { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(finalText.slice(0, 4040))] }
           : { content: finalText.slice(0, 1960) };
 
       const msg = await channel.send(payload);
@@ -182,7 +182,7 @@ function reactionRolesRouter(client, apiKey) {
 
       const payload =
         msgType === 'embed'
-          ? { embeds: [new EmbedBuilder().setColor('#A52F05').setDescription(finalText.slice(0, 4040))], content: null }
+          ? { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(finalText.slice(0, 4040))], content: null }
           : { content: finalText.slice(0, 1960), embeds: [] };
 
       await msg.edit(payload);

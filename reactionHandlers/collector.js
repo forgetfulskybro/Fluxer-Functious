@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
+const { trackResource } = require('../api/trackSettings');
 const explainCooldown = new Map();
 
 module.exports = async (client, message, userId, collector, reactionChan, reactionMsg, emojiId, event = "add") => {
@@ -49,7 +50,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
 
         const finalContent = collector.type === "content"
           ? { content: msg.content || "" }
-          : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(msg.embeds?.[0]?.description || "")] };
+          : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(msg.embeds?.[0]?.description || "")] };
 
         targetChannel.send(finalContent).then(async m => {
           await msg?.delete().catch(() => {});
@@ -62,8 +63,6 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
             await m.react(reaction).catch(() => {});
           }
 
-          const oldEntry = db.roles.find((e) => e.msgId === oldMsg.id);
-
           db.roles.push({ 
             msgId: m.id, 
             chanId: targetChannel.id, 
@@ -71,28 +70,21 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
           });
           
           await client.database.updateGuild(message.reaction.guildId, { roles: db.roles });
-
-          const entry = db.roles.find((e) => e.msgId === oldMsg.id);
           await trackResource(client, {
-            userId: actorFromReq(req),
-            groupId: guildId,
+            userId: userId,
+            groupId: message.reaction.guildId,
             category: 'reactionroles',
             key: 'roles',
-            action: 'update',
+            action: 'create',
             label: 'Reaction Role Panel',
             value: {
-              msgId: entry.msgId,
-              chanId: entry.chanId,
-              exclusive: entry.exclusive,
-              roles: entry.roles,
-              type: entry.type,
+              msgId: m.msgId,
+              chanId: targetChannel.id,
+              exclusive: null,
+              roles: [...collector.rolesDone],
+              type: collector.type,
             },
-            previous: {
-              msgId: oldEntry.msgId,
-              chanId: oldEntry.chanId,
-              exclusive: oldEntry.exclusive ?? null,
-              roles: oldEntry.roles,
-            },
+            previous: null,
           });
 
           if (targetChannel.id !== message.channelId) {
@@ -117,7 +109,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
         
     reactionMsg?.delete({ silent: true }).catch(() => {});
     return reactionChan?.send({ 
-      embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))] 
+      embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))] 
     });
   }
 
@@ -143,7 +135,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
       return newMsg.edit(
         collector.type === "content"
           ? { content: newMsg.content.replace(`${emojiEntry.emoji} ${roleDisplay}`, `{role:${emojiEntry.name}}`) }
-          : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(newMsg.embeds[0].description.replace(`${emojiEntry.emoji} ${roleDisplay}`, `{role:${emojiEntry.name}}`))] }
+          : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(newMsg.embeds[0].description.replace(`${emojiEntry.emoji} ${roleDisplay}`, `{role:${emojiEntry.name}}`))] }
       ).catch(() => {});
     }
     return;
@@ -169,7 +161,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
     reactionMsg?.edit(
       collector.type === "content"
         ? { content: reactionMsg.content.replace(`{role:${collector.regex[0]}}`, `${emote} ${roleDisplay}`) }
-        : { embeds: [new EmbedBuilder().setColor("#A52F05").setDescription(reactionMsg.embeds[0].description.replace(`{role:${collector.regex[0]}}`, `${emote} ${roleDisplay}`))] }
+        : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(reactionMsg.embeds[0].description.replace(`{role:${collector.regex[0]}}`, `${emote} ${roleDisplay}`))] }
     );
 
     collector.roles.shift();

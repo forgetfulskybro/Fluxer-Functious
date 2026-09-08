@@ -17,7 +17,7 @@ module.exports = {
     const start = Date.now();
     const reply = await message.reply({ embeds: [
       new EmbedBuilder()
-        .setColor("#A52F05")
+        .setColor(db.theme)
         .setTitle("Flux Pong")
         .addFields(
           { name: "**Gateway**", value: `\`${gatewayStr}\``, inline: true },
@@ -29,7 +29,7 @@ module.exports = {
     await reply.edit({
       embeds: [
         new EmbedBuilder()
-          .setColor("#A52F05")
+          .setColor(db.theme)
           .setTitle("Flux Pong")
           .addFields(
             { name: "**Gateway**", value: `\`${gatewayStr}\``, inline: true },

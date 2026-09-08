@@ -5,8 +5,8 @@
   },
   "dependencies": {
     "@discordjs/collection": "^2.1.1",
-    "@fluxerjs/core": "^2.2.0",
-    "@fluxerjs/voice": "^2.2.0",
+    "@fluxerjs/core": "^3.0.0",
+    "@fluxerjs/voice": "^3.0.0",
     "@sentry/node": "^10.42.0",
     "@vanta-dev/node": "^0.1.6",
     "canvas": "^3.2.1",

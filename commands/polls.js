@@ -48,7 +48,7 @@ async function endPollEarly(client, poll, db) {
             `${client.translate.get(poll.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map((e) => e).join("\n")}` : ""}`,
           )
           .setImage(`${process.env.CDN}${pollImage.url}`)
-          .setColor(`#A52F05`),
+          .setColor(db.theme),
       ],
     });
 
@@ -88,7 +88,7 @@ module.exports = {
         const embeds = chunks.map((chunk, pageIndex) => {
           const embed = new EmbedBuilder()
             .setTitle(client.translate.get(db.language, "Commands.polls.polls"))
-            .setColor(`#A52F05`);
+            .setColor(db.theme);
 
           chunk.forEach((poll, index) => {
             embed.addFields({
@@ -140,7 +140,7 @@ module.exports = {
           
         const toggle = db.pollPerm;
         await client.database.updateGuild(message.guildId, { pollPerm: !toggle });
-        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.pollPerm")} **${toggle ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(`#A52F05`)] });
+        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.pollPerm")} **${toggle ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(db.theme)] });
       }
 
       if (subcommand === "delete") {
@@ -167,7 +167,7 @@ module.exports = {
         return message.reply({
           embeds: [new EmbedBuilder()
             .setDescription(client.translate.get(db.language, "Commands.polls.deleted", { pollNumber }))
-            .setColor(`#A52F05`)]
+            .setColor(db.theme)]
         });
       }
 
@@ -239,7 +239,7 @@ module.exports = {
       });
       
       await message.channel.send({
-        embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.loading")}...`).setColor(`#A52F05`)],
+        embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.loading")}...`).setColor(db.theme)],
       }).then(async (msg) => {
         for (const reaction of reactions) {
           await msg.react(reaction).catch(() => {});

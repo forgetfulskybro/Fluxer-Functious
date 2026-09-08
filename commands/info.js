@@ -1,6 +1,5 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
 const Giveaway = require("../models/giveaways");
-const Polls = require("../models/polls");
 const { dependencies } = require("../package.json");
 const Pings = require("../functions/pings");
 
@@ -18,21 +17,18 @@ module.exports = {
     const giveawayCount = await Giveaway.countDocuments();
 
     const unixstamp = client.functions.get("fetchTime")(
-      Math.floor(process.uptime() * 1000),
+      Math.floor(client.uptime),
       client,
       db.language,
       true
     );
 
     const embed = new EmbedBuilder()
-      .setAuthor({
-        name: `${client.user.username} • ${client.translate.get(db.language, "Commands.info.start")}`,
-        iconURL: client.user.displayAvatarURL({ dynamic: true, size: 256 })
-      })
-      .setColor("#A52F05")
+      .setAuthor({ name: client.translate.get(db.language, "Commands.info.start") })
+      .setColor(db.theme)
       .addFields(
         {
-          name: `📊 **${client.translate.get(db.language, "Commands.info.stats")}**`,
+          name: `**${client.translate.get(db.language, "Commands.info.stats")}**`,
           value: [
             `> **${client.translate.get(db.language, "Commands.info.servers")}**: \`${client.guilds.size.toLocaleString()}\``,
             `> **${client.translate.get(db.language, "Commands.info.giveaways")}**: \`${giveawayCount.toLocaleString()}\``,
@@ -42,7 +38,7 @@ module.exports = {
           inline: true
         },
         {
-          name: `⚙️ **${client.translate.get(db.language, "Commands.info.system")}**`,
+          name: `**${client.translate.get(db.language, "Commands.info.system")}**`,
           value: [
             `> **${client.translate.get(db.language, "Commands.info.uptime")}**: \`${unixstamp}\``,
             `> **${client.translate.get(db.language, "Commands.info.ping")}**: \`${gatewayPing}ms\``,
@@ -53,7 +49,7 @@ module.exports = {
         }
       )
       .addFields({
-        name: `🔗 **${client.translate.get(db.language, "Commands.info.links")}**`,
+        name: `**${client.translate.get(db.language, "Commands.info.links")}**`,
         value: [
           `[${client.translate.get(db.language, "Commands.info.links4")}](https://functious.vercel.app)`,
           `[${client.translate.get(db.language, "Commands.info.links2")}](https://web.fluxer.app/oauth2/authorize?client_id=1475548817821799084&scope=bot&permissions=13510799704222800)`,

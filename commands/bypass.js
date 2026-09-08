@@ -61,7 +61,7 @@ module.exports = {
               .setDescription(
                 `${client.translate.get(db.language, "Commands.bypass.explanation")}\n**${client.translate.get(db.language, "Commands.bypass.lockCommands")}**:\n\`${permCmds.join(", ")}\`\n\n**${client.translate.get(db.language, "Commands.bypass.adding")}**\n\`${db.prefix}bypass add [${client.translate.get(db.language, "Commands.bypass.rolename")}] | [${client.translate.get(db.language, "Commands.bypass.lockCommands")}, e.g. roles, giveaway]\`\n\n**${client.translate.get(db.language, "Commands.bypass.editing")}**\n\`${db.prefix}bypass edit [${client.translate.get(db.language, "Commands.bypass.rolename")}] | [${client.translate.get(db.language, "Commands.bypass.lockCommands")}, e.g. roles, giveaway]\`\n\n**${client.translate.get(db.language, "Commands.bypass.removing")}**\n\`${db.prefix}bypass remove [${client.translate.get(db.language, "Commands.bypass.rolename")}]\`\n\n**${client.translate.get(db.language, "Commands.bypass.viewing")}**\n\`${db.prefix}bypass view\`\n\n**${client.translate.get(db.language, "Commands.bypass.example")}**: \`${db.prefix}bypass add Moderator | giveaway, autoroles\``,
               )
-              .setColor(`#A52F05`),
+              .setColor(db.theme),
           ],
         });
         break;
@@ -100,7 +100,7 @@ module.exports = {
             embeds: [
               new EmbedBuilder()
                 .setDescription(`${client.translate.get(db.language, "Commands.bypass.successAll")} <@&${roleIds[0].id}>`)
-                .setColor(`#A52F05`),
+                .setColor(db.theme),
             ]
           });
           
@@ -110,7 +110,7 @@ module.exports = {
             embeds: [
               new EmbedBuilder()
                 .setDescription(`${client.translate.get(db.language, "Commands.bypass.success", { "role": `<@&${roleIds[0].id}>` })}:\n\`${cmds.join(", ")}\``)
-                .setColor(`#A52F05`),
+                .setColor(db.theme),
             ]
           });
           
@@ -141,7 +141,7 @@ module.exports = {
           embeds: [
             new EmbedBuilder()
               .setDescription(client.translate.get(db.language, "Commands.bypass.removeSuccess", { "role": `<@&${roleIds[0].id}>`}))
-              .setColor(`#A52F05`),
+              .setColor(db.theme),
           ]
         });
         
@@ -186,7 +186,7 @@ module.exports = {
           embeds: [
             new EmbedBuilder()
               .setDescription(`${client.translate.get(db.language, "Commands.bypass.editSuccess", { "role": `<@&${roleIds[0].id}>` })}:\n\n**${client.translate.get(db.language, "Commands.bypass.old")}**\n\`${bypassedRole.commands.join(", ")}\`\n\n**${client.translate.get(db.language, "Commands.bypass.new")}**\n\`${type.join(", ")}\``)
-              .setColor(`#A52F05`),
+              .setColor(db.theme),
           ]
         });
         
@@ -224,7 +224,7 @@ module.exports = {
                 }).join("\n\n")
               )
               .setFooter({ text: `${db.bypassRoles.length} bypass role${db.bypassRoles.length !== 1 ? "s" : ""}` })
-              .setColor(`#A52F05`),
+              .setColor(db.theme),
           ]
         });
         break;

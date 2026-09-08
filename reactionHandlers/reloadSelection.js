@@ -14,7 +14,7 @@ const HANDLERS = {
     if (pull.config?.aliases) {
       pull.config.aliases.forEach(a => client.aliases.set(a, name));
     }
-    return `✅ Reloaded command: **${name}**.js`;
+    return `Reloaded command: **${name}**.js`;
   },
   event: (client, name) => {
     const filePath = `../events/${name}.js`;
@@ -36,7 +36,7 @@ const HANDLERS = {
     const pull = require(filePath);
     client.functions.delete(name);
     client.functions.set(name, pull);
-    return `✅ Reloaded function: **${name}**.js`;
+    return `Reloaded function: **${name}**.js`;
   },
   reactionHandler: (client, name) => {
     const filePath = `../reactionHandlers/${name}.js`;
@@ -44,7 +44,7 @@ const HANDLERS = {
     const pull = require(filePath);
     client.reactionHandlers.delete(name);
     client.reactionHandlers.set(name, pull);
-    return `✅ Reloaded reaction handler: **${name}**.js`;
+    return `Reloaded reaction handler: **${name}**.js`;
   }
 };
 
@@ -56,7 +56,7 @@ function showFinalResults(message, results, allNames) {
   let description = '';
 
   if (successResults.length > 0) {
-    description += `✅ **Reloaded (${successResults.length}):**\n`;
+    description += `**Reloaded (${successResults.length}):**\n`;
     successResults.forEach(r => {
       description += `• **${r.name}**.js (${r.type}})\n`;
     });
@@ -64,7 +64,7 @@ function showFinalResults(message, results, allNames) {
   }
 
   if (errorResults.length > 0) {
-    description += `❌ **Errors (${errorResults.length}):**\n`;
+    description += `**Errors (${errorResults.length}):**\n`;
     errorResults.forEach(r => {
       description += `• **${r.name}**.js${r.type ? ` (${r.type})` : ''} - ${r.error}\n`;
     });
@@ -72,7 +72,7 @@ function showFinalResults(message, results, allNames) {
   }
 
   if (notFoundResults.length > 0) {
-    description += `⚠️ **Not Found (${notFoundResults.length}):**\n`;
+    description += `**Not Found (${notFoundResults.length}):**\n`;
     notFoundResults.forEach(r => {
       description += `• **${r.name}**.js\n`;
     });

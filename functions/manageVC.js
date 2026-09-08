@@ -2,8 +2,6 @@ const { EmbedBuilder, resolvePermissionsToBitfield } = require('@fluxerjs/core')
 const errorHandler = require("../functions/errorHandler");
 const getMember = require('../functions/getMember');
 
-const COLOR = "#A52F05";
-
 async function processError(client, error, message) {
   client.manageVC.delete(message.author.id);
   return await errorHandler({
@@ -26,7 +24,7 @@ async function manageVC(client, message) {
   if (content.toLowerCase() === `cancel`) {
     clearTimeout(client.observedVoiceUsers.get(message.author.id).timeout);
     client.manageVC.delete(message.author.id);
-    return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.stopped"))] })
+    return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.stopped"))] })
   }
   
   switch (MVC.type) {
@@ -35,7 +33,7 @@ async function manageVC(client, message) {
       
       try {
         result = new EmbedBuilder()
-          .setColor(COLOR)
+          .setColor(db.theme)
           .setTitle(client.translate.get(db.language, "Functions.manageVC.rename"))
           .setDescription(client.translate.get(db.language, "Functions.manageVC.renameDesc", { "channelName": channel.name, "content": content }))
       
@@ -49,7 +47,7 @@ async function manageVC(client, message) {
       break;
     
     case "userLimit":
-      if (isNaN(content)) return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidLimit"))] })
+      if (isNaN(content)) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidLimit"))] })
       if (Number(content) > 99) content = "99";
       if (Number(content) < 0) content = 0;
       
@@ -57,7 +55,7 @@ async function manageVC(client, message) {
       const oldLimitText = channel.userLimit === 0 ? client.translate.get(db.language, "Functions.manageVC.unlimited") : client.translate.get(db.language, "Functions.manageVC.usersMax", { "number": channel.userLimit });
       
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(client.translate.get(db.language, "Functions.manageVC.limitUpdate"))
         .setDescription(client.translate.get(db.language, "Functions.manageVC.limitUpdateDesc", { "oldText": oldLimitText, "newText": limitText }))
       
@@ -74,7 +72,7 @@ async function manageVC(client, message) {
     case "blockUser":
       guild = await client.guilds.get(MVC.guildId);
       member = await getMember(guild, content)
-      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
+      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
       
       if (client.observedVoiceUsers.get(member.id)) {
         const tempChannel = await guild.createChannel({
@@ -87,12 +85,12 @@ async function manageVC(client, message) {
       }
       
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(client.translate.get(db.language, "Functions.manageVC.blockUser"))
         .setDescription(client.translate.get(db.language, "Functions.manageVC.blockUserDesc", { "username": member.user.username, "userMention": `<@${member.user.id}>` }))
       
       try {
-        await channel.editPermission(member.id, {
+        await channel.permissionOverwrites.edit(member.id, {
           type: 1,
           deny: resolvePermissionsToBitfield(["Connect"])
         });
@@ -105,15 +103,15 @@ async function manageVC(client, message) {
     case "unblockUser":
       guild = await client.guilds.get(MVC.guildId);
       member = await getMember(guild, content)
-      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
+      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
 
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(client.translate.get(db.language, "Functions.manageVC.userAccess"))
         .setDescription(client.translate.get(db.language, "Functions.manageVC.userAccessDesc", { "username": member.user.username, "userMention": `<@${member.user.id}>` }));
 
       try {
-        await channel.editPermission(member.id, {
+        await channel.permissionOverwrites.edit(member.id, {
           type: 1,
           allow: resolvePermissionsToBitfield(["Connect"])
         });
@@ -153,11 +151,11 @@ async function manageVC(client, message) {
 
       const region = regionMap[regionInput];
       if (!region) {
-        return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidRegion"))] });
+        return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidRegion"))] });
       }
 
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(client.translate.get(db.language, "Functions.manageVC.regionUpdate"))
         .setDescription(client.translate.get(db.language, "Functions.manageVC.regionUpdateDesc", { "newRegion": region }));
 
@@ -174,11 +172,11 @@ async function manageVC(client, message) {
     case "transferOwner":
       guild = await client.guilds.get(MVC.guildId);
       member = await getMember(guild, content);
-      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
-      if (member.user.bot) return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.noBots"))] });
+      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
+      if (member.user.bot) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.noBots"))] });
 
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(client.translate.get(db.language, "Functions.manageVC.ownerTransferred"))
         .setDescription(client.translate.get(db.language, "Functions.manageVC.ownerTransferredDesc", { "username": member.user.username, "userMention": `<@${member.user.id}>` }));
 
@@ -189,7 +187,7 @@ async function manageVC(client, message) {
           )
         });
 
-        await channel.editPermission(member.id, {
+        await channel.permissionOverwrites.edit(member.id, {
           type: 1,
           allow: resolvePermissionsToBitfield(["Connect"])
         });
@@ -201,7 +199,7 @@ async function manageVC(client, message) {
 
     case "closeChannel":
       if (content.toLowerCase() !== 'confirm') {
-        return message.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(client.translate.get(db.language, "Functions.manageVC.closeConfirm"))] });
+        return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.closeConfirm"))] });
       }
 
       try {
@@ -214,7 +212,7 @@ async function manageVC(client, message) {
         await channel.delete();
 
         result = new EmbedBuilder()
-          .setColor(COLOR)
+          .setColor(db.theme)
           .setTitle(client.translate.get(db.language, "Functions.manageVC.channelClosed"))
           .setDescription(client.translate.get(db.language, "Functions.manageVC.channelClosedDesc"));
       } catch (err) {

@@ -223,7 +223,7 @@ module.exports = {
 
       if (tag.type === "embed") {
         const embed = new EmbedBuilder()
-          .setColor(tag.embedData?.color || "#A52F05")
+          .setColor(tag.embedData?.color || db.theme)
           .setDescription(tag.embedData?.description || "");
         return message.channel.send({ embeds: [embed] });
       }
@@ -259,7 +259,7 @@ module.exports = {
           return message.reply({
             embeds: [
               new EmbedBuilder()
-                .setColor("#A52F05")
+                .setColor(db.theme)
                 .setDescription(t("noOutput")),
             ],
           });
@@ -301,7 +301,7 @@ module.exports = {
 
       case "help": {
         const embed = new EmbedBuilder()
-          .setColor("#A52F05")
+          .setColor(db.theme)
           .setTitle(t("helpTitle"))
           .setDescription(
             [
@@ -453,7 +453,7 @@ module.exports = {
           content: tagType === "text" || tagType === "script" ? content : null,
           embedData:
             tagType === "embed"
-              ? { description: content, color: "#A52F05" }
+              ? { description: content, color: db.theme }
               : null,
           createdBy: message.author.id,
           createdAt: Date.now(),
@@ -475,7 +475,7 @@ module.exports = {
           embeds: [
             new EmbedBuilder()
               .setDescription(t("createdSuccess", { name: tagName, type: tagType }))
-              .setColor("#A52F05"),
+              .setColor(db.theme),
           ],
         });
       }
@@ -511,7 +511,7 @@ module.exports = {
         const removedTag = db.tags[tagIndex];
 
         const confirmEmbed = new EmbedBuilder()
-          .setColor("#A52F05")
+          .setColor(db.theme)
           .setDescription(t("confirmDelete", { name: removedTag.name }))
           .addFields(
             {
@@ -552,7 +552,7 @@ module.exports = {
                 embeds: [
                   new EmbedBuilder()
                     .setDescription(t("deletedSuccess", { name: removedTag.name }))
-                    .setColor("#A52F05"),
+                    .setColor(db.theme),
                 ],
               });
             } else {
@@ -560,7 +560,7 @@ module.exports = {
                 embeds: [
                   new EmbedBuilder()
                     .setDescription(t("deleteCancelled"))
-                    .setColor("#A52F05"),
+                    .setColor(db.theme),
                 ],
               });
             }
@@ -615,7 +615,7 @@ module.exports = {
               ((editingTag.embedData?.description || "").length > 350 ? "…" : "");
 
         const menuEmbed = new EmbedBuilder()
-          .setColor("#A52F05")
+          .setColor(db.theme)
           .setTitle(t("editing", { name: editingTag.name }))
           .setDescription(
             [
@@ -658,7 +658,7 @@ module.exports = {
               await menuMsg.edit({
                 embeds: [
                   new EmbedBuilder()
-                    .setColor("#A52F05")
+                    .setColor(db.theme)
                     .setDescription(t("replyNewName")),
                 ],
               });
@@ -711,7 +711,7 @@ module.exports = {
                   embeds: [
                     new EmbedBuilder()
                       .setDescription(t("nameChanged", { name: newName }))
-                      .setColor("#A52F05"),
+                      .setColor(db.theme),
                   ],
                 });
               });
@@ -736,7 +736,7 @@ module.exports = {
               await menuMsg.edit({
                 embeds: [
                   new EmbedBuilder()
-                    .setColor("#A52F05")
+                    .setColor(db.theme)
                     .setTitle(t("editContentTitle", { name: editingTag.name }))
                     .setDescription(
                       [
@@ -799,7 +799,7 @@ module.exports = {
                   embeds: [
                     new EmbedBuilder()
                       .setDescription(t("contentUpdated"))
-                      .setColor("#A52F05"),
+                      .setColor(db.theme),
                   ],
                 });
               });
@@ -809,7 +809,7 @@ module.exports = {
               await menuMsg.removeAllReactions().catch(() => {});
 
               const typeEmbed = new EmbedBuilder()
-                .setColor("#A52F05")
+                .setColor(db.theme)
                 .setTitle(t("changeTypeTitle", { name: editingTag.name }))
                 .setDescription(
                   [
@@ -853,7 +853,7 @@ module.exports = {
                     embeds: [
                       new EmbedBuilder()
                         .setDescription(t("typeChangeCancelled"))
-                        .setColor("#A52F05"),
+                        .setColor(db.theme),
                     ],
                   });
                   return;
@@ -876,7 +876,7 @@ module.exports = {
                             ? t("typeAlready", { type: next })
                             : t("invalidSelection")
                         )
-                        .setColor("#A52F05"),
+                        .setColor(db.theme),
                     ],
                   });
                   return;
@@ -888,7 +888,7 @@ module.exports = {
                 if (cur.type === "text" && next === "embed") {
                   cur.embedData = {
                     description: cur.content || "",
-                    color: "#A52F05",
+                    color: db.theme,
                   };
                   cur.content = null;
                 } else if (cur.type === "text" && next === "script") {
@@ -902,7 +902,7 @@ module.exports = {
                 } else if (cur.type === "script" && next === "embed") {
                   cur.embedData = {
                     description: cur.content || "",
-                    color: "#A52F05",
+                    color: db.theme,
                   };
                   cur.content = null;
                 }
@@ -927,7 +927,7 @@ module.exports = {
                           type: typeLabel(client, db, next),
                         })
                       )
-                      .setColor("#A52F05"),
+                      .setColor(db.theme),
                   ],
                 });
               });
@@ -945,7 +945,7 @@ module.exports = {
                 embeds: [
                   new EmbedBuilder()
                     .setDescription(t("editCancelled"))
-                    .setColor("#A52F05"),
+                    .setColor(db.theme),
                 ],
               });
             }
@@ -990,7 +990,7 @@ module.exports = {
         }
 
         const viewEmbed = new EmbedBuilder()
-          .setColor("#A52F05")
+          .setColor(db.theme)
           .setTitle(t("tagInfo", { name: viewTag.name }))
           .addFields(
             {
@@ -1053,7 +1053,7 @@ module.exports = {
         for (let i = 0; i < db.tags.length; i += tagsPerPage) {
           const pageTags = db.tags.slice(i, i + tagsPerPage);
           const pageEmbed = new EmbedBuilder()
-            .setColor("#A52F05")
+            .setColor(db.theme)
             .setTitle(t("tagsList"))
             .setDescription(
               pageTags

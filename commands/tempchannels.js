@@ -1,13 +1,11 @@
 const { EmbedBuilder, PermissionFlags, resolvePermissionsToBitfield } = require("@fluxerjs/core");
-const { trackResource, trackGuildUpdates } = require("../api/trackSettings");
+const { trackGuildUpdates } = require("../api/trackSettings");
 const emoji = require('node-emoji');
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const EMBED_COLORS = {
   ERROR: '#FF0000',
-  SUCCESS: '#A52F05',
-  INFO: '#A52F05'
 };
 
 const VALID_FIELDS = ['name', 'limit', 'counting', 'category', 'manage'];
@@ -25,7 +23,7 @@ module.exports = {
     aliases: ["tc", "tempchannel"],
   },
   run: async (client, message, args, db) => {
-    function createEmbed(color = EMBED_COLORS.INFO, title = null, description = null) {
+    function createEmbed(color = db.theme, title = null, description = null) {
       const embed = new EmbedBuilder().setColor(color);
       if (title) embed.setTitle(title);
       if (description) embed.setDescription(description);
@@ -223,10 +221,10 @@ module.exports = {
         const channel = await msg.guild.createChannel({
           type: 0,
           name: client.translate.get(db.language, "Commands.tempchannels.manageCreate"),
-          parent_id: category ? category.id : db.config?.customParent ? db.config?.customParent : db.parentChannel,
+          parentId: category ? category.id : db.config?.customParent ? db.config?.customParent : db.parentChannel,
         });
         
-        await channel.editPermission(msg.guild.roles.find((r) => r.name === "@everyone").id, {
+        await channel.permissionOverwrites.edit(msg.guild.roles.find((r) => r.name === "@everyone").id, {
           type: 0,
           deny: resolvePermissionsToBitfield(["SendMessages", "AddReactions"])
         });
@@ -246,7 +244,7 @@ module.exports = {
         }
         
         const embed = new EmbedBuilder()
-          .setColor(EMBED_COLORS.INFO)
+          .setColor(db.theme)
           .setTitle(client.translate.get(db.language, "Commands.tempchannels.manageTitle"))
           .setImage(CDNLang[db.language])
           .setFooter({ text: client.translate.get(db.language, "Commands.tempchannels.manageFooter") });
@@ -301,18 +299,20 @@ module.exports = {
         await updateLoadingMessage(loadingMsg, loadingEmbed, steps, null, manageEnabled, true, willCreate, usingCustomCategory);
       }
       
-      await client.database.updateGuild(message.guildId, {
+      const disableUpdates = {
         parentChannel: deleteOptions.category ? null : db.parentChannel,
         childChannel: deleteOptions.main ? null : db.childChannel,
         tempChannels: deleteOptions.temps ? [] : db.tempChannels,
         config: (deleteOptions.manage && db.config?.manage) ? { ...db.config, manage: null, manageMessage: null } : db.config,
-      });
+      };
+
+      await client.database.updateGuild(message.guildId, disableUpdates);
 
       await trackGuildUpdates(client, {
         guildId: message.guildId,
         userId: message.author.id,
         existing: db,
-        updates: { timedRoles: updatedTimedRoles },
+        updates: disableUpdates,
       });
       
       try {
@@ -420,7 +420,7 @@ module.exports = {
         const voiceChannel = await message.guild.createChannel({
           type: 2,
           name: client.translate.get(db.language, "Commands.tempchannels.joinCreate"),
-          parent_id: category.id,
+          parentId: category.id,
           bitrate: 64000,
         });
         steps.voice = 'done';
@@ -445,7 +445,7 @@ module.exports = {
     }
     
     const embed = createEmbed(
-      EMBED_COLORS.INFO,
+      db.theme,
       client.translate.get(db.language, "Commands.tempchannels.helpUsage"),
       `${client.translate.get(db.language, "Commands.tempchannels.setup")}\n\`${db.prefix}tc set default\`\n\n${client.translate.get(db.language, "Commands.tempchannels.resetSetup", { "default": "default", "config": "config" })}\n\`${db.prefix}tc set [${client.translate.get(db.language, "Commands.tempchannels.option")}, e.g. default | config] {reset}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.configuration")}\n\`${db.prefix}tc set config {name:${client.translate.get(db.language, "Commands.tempchannels.myChannel")}} {limit:5} {counting} {category:Temp Channels} {manage}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.editConfig")}\n\`${db.prefix}tc edit {name:New Name} {limit:10} {counting}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.deleteConfig")}\n\`${db.prefix}tc delete {counting} {limit} {name} {category} {manage}\`\n\n${client.translate.get(db.language, "Commands.tempchannels.viewConfig")}\n\`${db.prefix}tc view\`\n\n**${client.translate.get(db.language, "Commands.tempchannels.optional")}**\n- \`{name:...}\`: ${client.translate.get(db.language, "Commands.tempchannels.nameDefine")}\n- \`{limit:...}\`: ${client.translate.get(db.language, "Commands.tempchannels.limitDefine")}\n- \`{counting}\`: ${client.translate.get(db.language, "Commands.tempchannels.countingDefine")}\n- \`{category:...}\`: ${client.translate.get(db.language, "Commands.tempchannels.categoryDefine")}\n- \`{reset}\`: ${client.translate.get(db.language, "Commands.tempchannels.resetDefine")}\n- \`{manage}\`: ${client.translate.get(db.language, "Commands.tempchannels.manageDefine")}\n\n**${client.translate.get(db.language, "Commands.tempchannels.examples")}**\n\`${db.prefix}tc set default\`\n\`${db.prefix}tc set config {name:Private Room} {limit:2} {counting} {manage}\`\n\`${db.prefix}tc edit {name:Updated Room} {limit:3} {manage}\`\n\`${db.prefix}tc delete {counting} {limit}\`\n\`${db.prefix}tc set config {reset}\`\n\`${db.prefix}tc view\``
     );
@@ -460,7 +460,7 @@ module.exports = {
       case "view":
         const manageStatus = db.config?.manage ? `${client.translate.get(db.language, "Commands.tempchannels.on")} (<#${db.config.manage}>)` : client.translate.get(db.language, "Commands.tempchannels.off");
         message.reply({ embeds: [createEmbed(
-          EMBED_COLORS.INFO,
+          db.theme,
           client.translate.get(db.language, "Commands.tempchannels.tempConfig"),
           `**${client.translate.get(db.language, "Commands.tempchannels.category")}**: ${db.config?.customParent ? `<#${db.config.customParent}>` : (db.parentChannel ? `<#${db.parentChannel}>` : client.translate.get(db.language, "Commands.tempchannels.notSet"))}\n**${client.translate.get(db.language, "Commands.tempchannels.mainChannel")}**: ${db.childChannel ? `<#${db.childChannel}>` : client.translate.get(db.language, "Commands.tempchannels.notSet")}\n\n**${client.translate.get(db.language, "Commands.tempchannels.channelName")}**: ${db.config?.channelName ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.userLimit")}**: ${db.config?.limit ?? client.translate.get(db.language, "Commands.tempchannels.notSet")}\n**${client.translate.get(db.language, "Commands.tempchannels.countingToggle")}**: ${db.config?.counting ? client.translate.get(db.language, "Commands.tempchannels.on") : client.translate.get(db.language, "Commands.tempchannels.off")}\n**${client.translate.get(db.language, "Commands.tempchannels.manage")}**: ${manageStatus}`
         )] });
@@ -480,7 +480,7 @@ module.exports = {
 
               if (!checkNotSetupForSet(db, client, message, "set default", reset)) return;
 
-              const loadingEmbed = createEmbed(EMBED_COLORS.INFO, client.translate.get(db.language, "Commands.tempchannels.resetting"), "");
+              const loadingEmbed = createEmbed(db.theme, client.translate.get(db.language, "Commands.tempchannels.resetting"), "");
               const loadingMsg = await message.reply({ embeds: [loadingEmbed] });
 
               if (reset) await disableTemps({ temps: true, main: true, category: true, manage: true }, loadingMsg, loadingEmbed, false, true, false);
@@ -491,16 +491,25 @@ module.exports = {
               }
               const { category, voiceChannel } = vc;
               
-              await client.database.updateGuild(message.guildId, {
+              const defaultUpdates = {
                 parentChannel: category.id,
                 childChannel: voiceChannel.id,
                 config: {
                   ...(db.config ?? {}),
                   customParent: null,
                 },
+              };
+
+              await client.database.updateGuild(message.guildId, defaultUpdates);
+
+              await trackGuildUpdates(client, {
+                guildId: message.guildId,
+                userId: message.author.id,
+                existing: db,
+                updates: defaultUpdates,
               });
               
-              const successEmbed = createEmbed(EMBED_COLORS.SUCCESS, null, client.translate.get(db.language, "Commands.tempchannels.successSetup", { voiceChannel: `<#${voiceChannel.id}>` }));
+              const successEmbed = createEmbed(db.theme, null, client.translate.get(db.language, "Commands.tempchannels.successSetup", { voiceChannel: `<#${voiceChannel.id}>` }));
               await loadingMsg.edit({ embeds: [successEmbed] });
             }
             break;
@@ -561,7 +570,7 @@ module.exports = {
 
               if (!checkNotSetupForSet(db, client, message, "set config", reset)) return;
 
-              const loadingEmbed = createEmbed(EMBED_COLORS.INFO, client.translate.get(db.language, "Commands.tempchannels.resetting"), "");
+              const loadingEmbed = createEmbed(db.theme, client.translate.get(db.language, "Commands.tempchannels.resetting"), "");
               const loadingMsg = await message.reply({ embeds: [loadingEmbed] });
 
               const willCreate = !!(channelName || channelLimit || counting || targetCategoryId || manage);
@@ -574,7 +583,7 @@ module.exports = {
                     const errorEmbed = createEmbed(EMBED_COLORS.ERROR, null, client.translate.get(db.language, "Commands.tempchannels.noReset"));
                     return await loadingMsg.edit({ embeds: [errorEmbed] });
                   }
-                  const successEmbed = createEmbed(EMBED_COLORS.SUCCESS, null, client.translate.get(db.language, "Commands.tempchannels.successReset"));
+                  const successEmbed = createEmbed(db.theme, null, client.translate.get(db.language, "Commands.tempchannels.successReset"));
                   return await loadingMsg.edit({ embeds: [successEmbed] });
                 }
               }
@@ -586,7 +595,7 @@ module.exports = {
               }
               ({ category, voiceChannel, manageChannel, manageMessage } = vc);
 
-              await client.database.updateGuild(message.guildId, {
+              const configUpdates = {
                 config: {
                   ...(channelName ? { channelName } : {}),
                   ...(channelLimit ? { channelLimit } : {}),
@@ -597,9 +606,18 @@ module.exports = {
                 },
                 parentChannel: category.id,
                 childChannel: voiceChannel.id,
+              };
+
+              await client.database.updateGuild(message.guildId, configUpdates);
+
+              await trackGuildUpdates(client, {
+                guildId: message.guildId,
+                userId: message.author.id,
+                existing: db,
+                updates: configUpdates,
               });
               
-              const successEmbed = createEmbed(EMBED_COLORS.SUCCESS, null, client.translate.get(db.language, "Commands.tempchannels.successSetup", { "voiceChannel": `<#${voiceChannel.id}>` }));
+              const successEmbed = createEmbed(db.theme, null, client.translate.get(db.language, "Commands.tempchannels.successSetup", { "voiceChannel": `<#${voiceChannel.id}>` }));
               await loadingMsg.edit({ embeds: [successEmbed] });
             }
             break;
@@ -651,7 +669,7 @@ module.exports = {
               updates.manage = null;
               updates.manageMessage = null;
             } else {
-              loadingEmbed = createEmbed(EMBED_COLORS.INFO, client.translate.get(db.language, "Commands.tempchannels.resetting"), client.translate.get(db.language, "Commands.tempchannels.loadingManageChannel"));
+              loadingEmbed = createEmbed(db.theme, client.translate.get(db.language, "Commands.tempchannels.resetting"), client.translate.get(db.language, "Commands.tempchannels.loadingManageChannel"));
               loadingMsg = await message.reply({ embeds: [loadingEmbed] });
 
               const category = await client.channels.resolve(db.parentChannel);
@@ -686,11 +704,20 @@ module.exports = {
             });
           }
 
-          await client.database.updateGuild(message.guildId, {
+          const editUpdates = {
             config: {
               ...currentConfig,
               ...updates,
             },
+          };
+
+          await client.database.updateGuild(message.guildId, editUpdates);
+
+          await trackGuildUpdates(client, {
+            guildId: message.guildId,
+            userId: message.author.id,
+            existing: db,
+            updates: editUpdates,
           });
 
           const changedFields = Object.keys(updates).map(key => {
@@ -703,7 +730,7 @@ module.exports = {
             return `${key}: ${updates[key]}`;
           }).join('\n');
 
-          const successEmbed = createEmbed(EMBED_COLORS.SUCCESS, null,
+          const successEmbed = createEmbed(db.theme, null,
             `${client.translate.get(db.language, "Commands.tempchannels.successEdit")}:\n\n${changedFields}`
           );
 
@@ -761,11 +788,20 @@ module.exports = {
             }
           });
 
-          await client.database.updateGuild(message.guildId, {
+          const deleteUpdates = {
             config: {
               ...currentConfig,
               ...updates,
             },
+          };
+
+          await client.database.updateGuild(message.guildId, deleteUpdates);
+
+          await trackGuildUpdates(client, {
+            guildId: message.guildId,
+            userId: message.author.id,
+            existing: db,
+            updates: deleteUpdates,
           });
 
           const deletedFields = fieldsToDelete.map(field => {
@@ -779,7 +815,7 @@ module.exports = {
 
           message.reply({
             embeds: [
-              createEmbed(EMBED_COLORS.SUCCESS, null,
+              createEmbed(db.theme, null,
                 `${client.translate.get(db.language, "Commands.tempchannels.successDelete")}: ${deletedFields}`
               ),
             ],

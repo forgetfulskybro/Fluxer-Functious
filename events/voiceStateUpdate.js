@@ -98,13 +98,13 @@ module.exports = async (client, oldState, newState) => {
         voiceChannel = await guild.createChannel({
           type: 2,
           name: `${channelName}`,
-          parent_id: parentChannelId,
-          user_limit: db.config?.channelLimit ? db.config.channelLimit : 0,
+          parentId: parentChannelId,
+          userLimit: db.config?.channelLimit ? db.config.channelLimit : 0,
           bitrate: 64000,
         });
 
         // if (db?.config?.manage) {
-        //   await voiceChannel.editPermission(userId, {
+        //   await voiceChannel.permissionOverwrites.edit(userId, {
         //     type: 1,
         //     allow: resolvePermissionsToBitfield([
         //       "Connect",
