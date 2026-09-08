@@ -10,6 +10,7 @@ const guildsRouter = require('./routes/guilds');
 const oauthRouter = require('./routes/oauth');
 const pollsRouter = require('./routes/polls');
 const usersRouter = require('./routes/users');
+const themeRouter = require('./routes/theme');
 
 function createApiServer(client) {
   const app = express();
@@ -34,6 +35,7 @@ function createApiServer(client) {
   app.use('/api/guilds/:guildId/tempchannels', tempChannelsRouter(client, apiKey));
   app.use('/api/guilds/:guildId/reactionroles', reactionRolesRouter(client, apiKey));
   app.use('/api/users', usersRouter(client, apiKey));
+  app.use('/api/guilds/:guildId/theme', themeRouter(client, apiKey));
 
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server, path: '/health/ws' });
