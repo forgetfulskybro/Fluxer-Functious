@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
-const { trackResource } = require('../api/trackSettings');
+const { trackResource, actorFromReq } = require('../api/trackSettings');
 const explainCooldown = new Map();
 
 module.exports = async (client, message, userId, editCollector, reactionChan, reactionMsg, emojiId, event = "add") => {

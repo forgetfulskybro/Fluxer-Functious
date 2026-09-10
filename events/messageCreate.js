@@ -186,22 +186,21 @@ module.exports = async (client, message) => {
   client.used.set(usedKey, cooldown);
   setTimeout(() => client.used.delete(usedKey), cooldown);
 
-  try {
-    await client.vanta.identify({
+  Promise.allSettled([
+    client.vanta.identify({
       userId: message.author.id,
       name: message.author.username,
-      discriminator: message.author.discriminator
-    });
-
-    await client.vanta.track({
+      discriminator: message.author.discriminator,
+    }),
+    client.vanta.track({
       event: "command.used",
       userId: message.author.id,
       groupId: message.guildId,
-      data: {
-        command: cmd,
-      }
-    })
-    
+      data: { command: cmd },
+    }),
+  ]);
+
+  try {
     return await commandfile.run(
       client,
       message,
@@ -213,7 +212,7 @@ module.exports = async (client, message) => {
       db,
     );
   } catch (error) {
-    console.error(error)
+    console.error(error);
     await errorHandler({
       type: "command",
       message,

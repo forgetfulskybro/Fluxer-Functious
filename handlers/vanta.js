@@ -23,6 +23,9 @@ module.exports = class VantaHandler {
         const config = {
           apiKey: this.apiKey,
           source: this.source,
+          onDeliveryError: (err, events) => {
+            this._handleDeliveryError(err, events);
+          },
         };
         if (this.apiUrl) config.apiUrl = this.apiUrl;
 
@@ -376,8 +379,52 @@ module.exports = class VantaHandler {
   }
   
   _handleError(method, err) {
+    try {
+      const { RateLimitError, AuthenticationError, VantaError } = require("@vanta-dev/node");
+
+      if (err instanceof RateLimitError) {
+        console.log(color("%", `%3[Vanta]%7 :: ${method} rate-limited — retry after ${err.retryAfter}s`));
+        return;
+      }
+
+      if (err instanceof AuthenticationError) {
+        console.log(color("%", `%4[Vanta]%7 :: ${method} authentication failed — check VANTA_API_KEY`));
+        return;
+      }
+
+      if (err instanceof VantaError) {
+        console.log(color("%", `%4[Vanta]%7 :: ${method} failed [${err.statusCode ?? "??"} ${err.code ?? "unknown"}]: ${err.message}`));
+        return;
+      }
+    } catch {}
+
     const msg = err?.message || String(err);
     console.log(color("%", `%4[Vanta]%7 :: ${method} failed: ${msg}`));
-    console.log(err.stack);
+    if (err?.stack) console.log(err.stack);
+  }
+
+  _handleDeliveryError(err, events) {
+    const count = Array.isArray(events) ? events.length : "?";
+    try {
+      const { RateLimitError, AuthenticationError, VantaError } = require("@vanta-dev/node");
+
+      if (err instanceof RateLimitError) {
+        console.log(color("%", `%3[Vanta]%7 :: delivery rate-limited (${count} event(s)) — retry after ${err.retryAfter}s`));
+        return;
+      }
+
+      if (err instanceof AuthenticationError) {
+        console.log(color("%", `%4[Vanta]%7 :: delivery authentication failed (${count} event(s)) — check VANTA_API_KEY`));
+        return;
+      }
+
+      if (err instanceof VantaError) {
+        console.log(color("%", `%4[Vanta]%7 :: delivery failed (${count} event(s)) [${err.statusCode ?? "??"} ${err.code ?? "unknown"}]: ${err.message}`));
+        return;
+      }
+    } catch {}
+
+    const msg = err?.message || String(err);
+    console.log(color("%", `%4[Vanta]%7 :: delivery failed (${count} event(s)): ${msg}`));
   }
 };

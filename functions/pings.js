@@ -27,26 +27,11 @@ async function Pings(client) {
 
   const memoryUsage = memory();
   
-  await client.vanta.measure({
-    name: "ping.gateway",
-    value: gatewayPing,
-    unit: "ms",
-    tags: { type: "gateway" }
-  });
-  
-  await client.vanta.measure({
-    name: "ping.db",
-    value: dbPing.ping,
-    unit: "ms",
-    tags: { type: "database" }
-  });
-
-  await client.vanta.measure({
-    name: "ping.memory",
-    value: memoryUsage,
-    unit: "MB",
-    tags: { type: "memory" }
-  });
+  await Promise.allSettled([
+    client.vanta.measure({ name: "ping.gateway", value: gatewayPing, unit: "ms", tags: { type: "gateway" } }),
+    client.vanta.measure({ name: "ping.db",      value: dbPing.ping,  unit: "ms", tags: { type: "database" } }),
+    client.vanta.measure({ name: "ping.memory",  value: memoryUsage,  unit: "MB", tags: { type: "memory" } }),
+  ]);
 
   return { gatewayPing, dbPing: dbPing.ping, pollCount: dbPing.pollCount, memory: memoryUsage };
 }
