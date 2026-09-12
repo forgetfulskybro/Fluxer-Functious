@@ -3,11 +3,13 @@ class TranslationHandler {
     constructor(languages) {
 
         this.availableLanguages = languages ?? [
-            'en_EN',
-            'es_ES',
-            'ar_AR',
-            'pt_BR',
-            //'sk_SK',
+          'en_EN',
+          'es_ES',
+          'fr_FR',
+          'pl_PL',
+          'ar_AR',
+          'pt_BR',
+          //'sk_SK',
         ];
 
         this.translations = {};
