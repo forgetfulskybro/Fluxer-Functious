@@ -6,6 +6,7 @@ const paginationHandler = require("../reactionHandlers/pagination");
 const collectorHandler = require("../reactionHandlers/collector");
 const giveawayHandler = require("../reactionHandlers/giveaway");
 const timezoneHandler = require("../reactionHandlers/timezone");
+const mediaRatingHandler = require("../reactionHandlers/mediaRating");
 const manageVC = require("../reactionHandlers/manageVC");
 const pollHandler = require("../reactionHandlers/poll");
 const parseTime = require("../functions/parseTime");
@@ -92,6 +93,12 @@ module.exports = async (client, reaction) => {
   const db = await Giveaways.findOne({ messageId: reaction.messageId }).catch(() => null);
   if (db) {
     return giveawayHandler(client, reaction, userId, db, emojiId, "add");
+  }
+
+  const guildDb = await client.database.getGuild(reaction.channel.guildId, false);
+  if (guildDb) {
+    const mc = guildDb.mediaChannels.find((m) => m.channelId === reaction.channelId);
+    if (mc) return mediaRatingHandler(client, reaction, userId, mc, reactionMsg, emojiId, "add");
   }
 
   return roleReactionHandler(client, reaction, userId, emojiId, "add");

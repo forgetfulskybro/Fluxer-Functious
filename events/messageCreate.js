@@ -1,5 +1,6 @@
 const ScheduleCollector = require("../functions/scheduleCollector");
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
+const checkMediaChannel = require("../functions/checkMediaChannel");
 const Collector = require("../functions/messageCollector");
 const EditCollector = require("../functions/messageEdit");
 const errorHandler = require("../functions/errorHandler");
@@ -7,7 +8,7 @@ const parseTime = require("../functions/parseTime");
 const manageVC = require("../functions/manageVC");
 
 module.exports = async (client, message) => {
-  if (!message?.channel || !message.content || message.author.bot) return;
+  if (!message?.channel || (!message.content && !message.attachments?.size) || message.author.bot) return;
   const MVC = client.manageVC.get(message.author.id);
   if (message.channel.type === 1 && MVC) return await manageVC(client, message)
   if (message.channel.type === 1) return;
@@ -18,6 +19,8 @@ module.exports = async (client, message) => {
   let member = message.guild.members.get(message.author.id) ?? await message.guild.fetchMember(message.author.id);
   const isMention = new RegExp(`^(<@!?${client.user.id}>)`).test(message.content);
   const db = await client.database.getGuild(message.guildId, true);
+
+  if (await checkMediaChannel(client, message, db)) return;
 
   if (client.messageCollector.has(message.author.id) && client.messageCollector.get(message.author.id).channelId === message.channelId && !client.messageCollector.get(message.author.id).messageId)
     return await Collector(client, message, db);

@@ -15,6 +15,11 @@ module.exports = async (client) => {
     client.cluster.triggerReady();
   }
 
+  client.user.setPresence({
+    status: 'online',
+    customStatus: { text: 'Looking for f!help' },
+  });
+
   setTimeout(async () => { await checkVoiceStates(client) }, 4500);
   startTimedRolesCron(client);
   startReminderCron(client);

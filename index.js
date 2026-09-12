@@ -12,17 +12,9 @@ const Sentry = require("@sentry/node");
 
 const client = new Client({ 
   defaultReplyPing: false,
-  intents: 0,
   cache: {
     guilds: 0,
     channels: 0,
-  },
-  presence: {
-    custom_status: {
-      emoji_id: "",
-      emoji_name: "",
-      text: "Looking for f!help"
-    }
   },
   waitForGuilds: true
 });

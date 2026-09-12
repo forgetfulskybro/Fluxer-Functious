@@ -151,6 +151,7 @@ function guildsRouter(client, apiKey) {
         timedRoles: guild.timedRoles,
         tags: guild.tags,
         scheduledMessages: guild.scheduledMessages,
+        mediaChannels: guild.mediaChannels ?? [],
         userTimezones: guild.userTimezones,
         parentChannel: guild.parentChannel,
         childChannel: guild.childChannel,
@@ -187,6 +188,7 @@ function guildsRouter(client, apiKey) {
         'scheduledMessages',
         'tags',
         'roles',
+        'mediaChannels',
       ];
 
       const updates = {};

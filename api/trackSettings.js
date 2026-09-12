@@ -17,6 +17,9 @@ const FIELD_META = {
   scheduledMessages: { category: 'scheduling', label: 'Scheduled Messages' },
   tags: { category: 'tags', label: 'Tags' },
   roles: { category: 'reactionroles', label: 'Reaction Roles' },
+  mediaChannels: { category: 'mediachannels', label: 'Media Channels' },
+  giveaway: { category: 'giveaways', label: 'Giveaway' },
+  poll: { category: 'polls', label: 'Poll' },
 };
 
 const COLLECTION_META = {

@@ -60,7 +60,6 @@ module.exports = {
         ].join(" • "),
         inline: false
       })
-      .setTimestamp();
 
     message.reply({ embeds: [embed], mentions: false });
   },
