@@ -383,12 +383,12 @@ module.exports = class VantaHandler {
       const { RateLimitError, AuthenticationError, VantaError } = require("@vanta-dev/node");
 
       if (err instanceof RateLimitError) {
-        console.log(color("%", `%3[Vanta]%7 :: ${method} rate-limited — retry after ${err.retryAfter}s`));
+        console.log(color("%", `%3[Vanta]%7 :: ${method} rate-limited - retry after ${err.retryAfter}s`));
         return;
       }
 
       if (err instanceof AuthenticationError) {
-        console.log(color("%", `%4[Vanta]%7 :: ${method} authentication failed — check VANTA_API_KEY`));
+        console.log(color("%", `%4[Vanta]%7 :: ${method} authentication failed - check VANTA_API_KEY`));
         return;
       }
 
@@ -409,12 +409,12 @@ module.exports = class VantaHandler {
       const { RateLimitError, AuthenticationError, VantaError } = require("@vanta-dev/node");
 
       if (err instanceof RateLimitError) {
-        console.log(color("%", `%3[Vanta]%7 :: delivery rate-limited (${count} event(s)) — retry after ${err.retryAfter}s`));
+        console.log(color("%", `%3[Vanta]%7 :: delivery rate-limited (${count} event(s)) - retry after ${err.retryAfter}s`));
         return;
       }
 
       if (err instanceof AuthenticationError) {
-        console.log(color("%", `%4[Vanta]%7 :: delivery authentication failed (${count} event(s)) — check VANTA_API_KEY`));
+        console.log(color("%", `%4[Vanta]%7 :: delivery authentication failed (${count} event(s)) - check VANTA_API_KEY`));
         return;
       }
 

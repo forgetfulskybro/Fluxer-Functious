@@ -17,16 +17,16 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
       if (botMessage) {
         explanation = await botMessage.reply({
           content: client.translate.get(db.language, "Commands.roles.reactWrong"),
-        }).catch(() => {});
+        }).catch(() => { });
       } else {
-        explanation = await reactionChan.send({ 
+        explanation = await reactionChan.send({
           content: client.translate.get(db.language, "Commands.roles.reactWrong"),
-        }).catch(() => {});
+        }).catch(() => { });
       }
       
       if (explanation) {
         setTimeout(() => {
-          explanation.delete().catch(() => {});
+          explanation.delete().catch(() => { });
           explainCooldown.delete(cooldownKey);
         }, 5000);
       }
@@ -42,8 +42,8 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
         const oldMsg = await reactionChan?.messages?.fetch(collector?.oldMessageId).catch(() => null);
         const msg = await reactionChan?.messages?.fetch(collector?.messageId).catch(() => null);
 
-        await oldMsg?.delete().catch(() => {});
-        await reactionMsg?.delete().catch(() => {});
+        await oldMsg?.delete().catch(() => { });
+        await reactionMsg?.delete().catch(() => { });
 
         const targetChannelId = collector.targetChannelId || reactionMsg.channelId;
         const targetChannel = await client.channels.resolve(targetChannelId).catch(() => null);
@@ -53,20 +53,20 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
           : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(msg.embeds?.[0]?.description || "")] };
 
         targetChannel.send(finalContent).then(async m => {
-          await msg?.delete().catch(() => {});
+          await msg?.delete().catch(() => { });
 
           const sortedReactions = collector.rolesDone
             .sort((a, b) => a.position - b.position)
             .map(entry => entry.emoji);
 
           for (const reaction of sortedReactions) {
-            await m.react(reaction).catch(() => {});
+            await m.react(reaction).catch(() => { });
           }
 
-          db.roles.push({ 
-            msgId: m.id, 
-            chanId: targetChannel.id, 
-            roles: [...collector.rolesDone] 
+          db.roles.push({
+            msgId: m.id,
+            chanId: targetChannel.id,
+            roles: [...collector.rolesDone]
           });
           
           await client.database.updateGuild(message.reaction.guildId, { roles: db.roles });
@@ -88,7 +88,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
           });
 
           if (targetChannel.id !== message.channelId) {
-            await reactionChan.send(`${client.translate.get(db.language, "Commands.roles.success")} <#${targetChannel.id}>`).catch(() => {});
+            await reactionChan.send(`${client.translate.get(db.language, "Commands.roles.success")} <#${targetChannel.id}>`).catch(() => { });
           }
         }).catch(err => {
           console.error("[Collector] Error sending final message:", err);
@@ -107,9 +107,9 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
     const db = await client.database.getGuild(message.reaction.guildId);
     client.messageCollector.delete(userId);
         
-    reactionMsg?.delete({ silent: true }).catch(() => {});
-    return reactionChan?.send({ 
-      embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))] 
+    reactionMsg?.delete({ silent: true }).catch(() => { });
+    return reactionChan?.send({
+      embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Events.messageReactionAdd.deleteCollector"))]
     });
   }
 
@@ -119,35 +119,49 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
     ? `<${rawEmoji.animated ? "a" : ""}:${rawEmoji.name}:${rawEmoji.id}>`
     : (rawEmoji?.name || emojiId);
   const emojiKey = isCustom ? rawEmoji.id : emote;
-
+  
   if (event === "remove" && message.messageId === collector.messageId) {
     const emojiEntry = collector.rolesDone.find(e => e.emojiKey === emojiKey);
     if (emojiEntry) {
       collector.rolesDone = collector.rolesDone.filter(object => object.emojiKey !== emojiKey);
       collector.roles.unshift({ id: emojiEntry.role, name: emojiEntry.name, oldPosition: emojiEntry.position });
       collector.regex.unshift(emojiEntry.name);
-
+  
+      const db = await client.database.getGuild(message.reaction.guildId);
       const roleDisplay = collector.useMention ? `<@&${emojiEntry.role}>` : emojiEntry.name;
-
-      const newMsg = await (await client.channels.resolve(message.channelId))?.messages?.fetch(message.messageId).catch(() => null);
+  
+      const newMsg = await (await client.channels.resolve(message.channelId))
+        ?.messages?.fetch(message.messageId)
+        .catch(() => null);
       if (!newMsg) return;
-
+  
       return newMsg.edit(
         collector.type === "content"
           ? { content: newMsg.content.replace(`${emojiEntry.emoji} ${roleDisplay}`, `{role:${emojiEntry.name}}`) }
-          : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(newMsg.embeds[0].description.replace(`${emojiEntry.emoji} ${roleDisplay}`, `{role:${emojiEntry.name}}`))] }
-      ).catch(() => {});
+          : {
+            embeds: [
+              new EmbedBuilder()
+                .setColor(db.theme)
+                .setDescription(
+                  newMsg.embeds[0].description.replace(
+                    `${emojiEntry.emoji} ${roleDisplay}`,
+                    `{role:${emojiEntry.name}}`
+                  )
+                ),
+            ],
+          }
+      ).catch(() => { });
     }
     return;
   }
-
+  
   if (collector.roles.length === 0) return;
+  
   if (message.messageId === collector.messageId) {
     const assignedRole = collector.roles[0];
-
     if (!assignedRole?.oldPosition) collector.rolePosition = collector.rolePosition + 1;
-    const position = assignedRole?.oldPosition ? assignedRole.oldPosition : collector.rolePosition;
-
+    const position = assignedRole?.oldPosition ?? collector.rolePosition;
+  
     collector.rolesDone.push({
       emoji: emote,
       emojiKey,
@@ -155,15 +169,39 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
       name: assignedRole.name,
       position,
     });
-
+  
+    const db = await client.database.getGuild(message.reaction.guildId);
     const roleDisplay = collector.useMention ? `<@&${assignedRole.id}>` : assignedRole.name;
-
-    reactionMsg?.edit(
+  
+    const freshMsg = await (await client.channels.resolve(message.channelId))
+      ?.messages?.fetch(collector.messageId)
+      .catch(() => null);
+  
+    if (!freshMsg) return;
+  
+    const newContentOrEmbed =
       collector.type === "content"
-        ? { content: reactionMsg.content.replace(`{role:${collector.regex[0]}}`, `${emote} ${roleDisplay}`) }
-        : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(reactionMsg.embeds[0].description.replace(`{role:${collector.regex[0]}}`, `${emote} ${roleDisplay}`))] }
-    );
-
+        ? {
+          content: freshMsg.content.replace(
+            `{role:${collector.regex[0]}}`,
+            `${emote} ${roleDisplay}`
+          ),
+        }
+        : {
+          embeds: [
+            new EmbedBuilder()
+              .setColor(db.theme)
+              .setDescription(
+                freshMsg.embeds[0].description.replace(
+                  `{role:${collector.regex[0]}}`,
+                  `${emote} ${roleDisplay}`
+                )
+              ),
+          ],
+        };
+  
+    await freshMsg.edit(newContentOrEmbed).catch(() => { });
+  
     collector.roles.shift();
     collector.regex.shift();
   }

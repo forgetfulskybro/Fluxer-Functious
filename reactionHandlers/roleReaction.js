@@ -1,8 +1,6 @@
 module.exports = async (client, message, userId, emojiId, event = "add") => {
   const exclusiveRoles = [];
-  const emote = message.emoji?.id
-    ? `<:${emojiId}:${message.emoji.id}>`
-    : emojiId;
+  const emote = message.emoji?.id ? `<:${message.emoji.name}:${message.emoji.id}>` : (message.emoji?.name || emojiId);
 
   const db2 = await client.database.getGuild(message.reaction.guildId, true);
   if (!db2) return;
@@ -10,8 +8,13 @@ module.exports = async (client, message, userId, emojiId, event = "add") => {
   const msgRoles = db2.roles.find((e) => e.msgId === message.messageId);
   if (!msgRoles) return;
 
-  const role = msgRoles.roles.find((e) => e.emoji === emote);
-  if (!role) return;
+  let role = msgRoles.roles.find((e) => e.emoji === emote);
+  if (!role) {
+    let animRole = msgRoles.roles.find((e) => e.emoji === `<a:${message.emoji.name}:${message.emoji.id}>`);
+    if (animRole) role = animRole;
+  } else {
+    return;
+  }
 
   if (client.reactions.get(userId)) return;
 
