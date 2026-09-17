@@ -1,6 +1,6 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require("../functions/pagination");
-const { trackGuildUpdates, trackResource } = require("../api/trackSettings");
+const { trackGuildUpdates, trackResource  } = require("../api/trackSettings");
 
 const CHANNEL_MENTION_REGEX = /^<#(?<id>\d+)>/;
 const TYPE_OPTIONS = ["content", "embed"];
@@ -109,7 +109,7 @@ module.exports = {
             await client.database.updateGuild(message.guildId, { roles: db.roles.filter(e => e.msgId !== args[1]) });
 
             await trackResource(client, {
-              userId: actorFromReq(req),
+              userId: message.author.id,
               groupId: guildId,
               category: 'reactionroles',
               key: 'roles',
@@ -185,7 +185,7 @@ module.exports = {
             await client.database.updateGuild(message.guildId, { roles: updatedExclusiveRoles });
 
             await trackResource(client, {
-              userId: actorFromReq(req),
+              userId: message.author.id,
               groupId: guildId,
               category: 'reactionroles',
               key: 'roles',
