@@ -87,7 +87,9 @@ class TranslationHandler {
 
         if (data) {
             try {
-                return c.replace(/{(\w+)}/g, (match, key) => data[key] ?? match);
+                return c
+                    .replace(/{(\w+)}/g, (match, key) => data[key] ?? match)
+                    .replace(/<(?:[@#&!]*)(\w+)>/g, (match, key) => data[key] ?? match);
             } catch (e) {
                 return `Unknown translation: ${language} | ${path}`;
             }

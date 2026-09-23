@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
-const { processTemplate } = require("./scheduleTemplateEngine");
+const { runTagSafe } = require("../interpreter/index");
 const chrono = require("chrono-node");
 const checkScheduled = require("./checkScheduledMessages");
 
@@ -86,11 +86,37 @@ async function updateEmbedPreview(client, session, db) {
         const ed = session.embedData || {};
 
         const previewContext = {
-            user: `<@${session.user.id}>`,
-            username: session.user.username,
-            server: session.guild?.name || "Server",
-            members: session.guild?.members?.size || 0,
-            channel: `<#${session.channelId}>`,
+            args: [],
+            user: {
+                id: session.user?.id ?? '0',
+                username: session.user?.username ?? 'User',
+                discriminator: '0',
+                tag: `${session.user?.username ?? 'User'}#0`,
+                display_name: session.user?.username ?? 'User',
+                global_name: session.user?.username ?? 'User',
+                avatar: null,
+                avatar_url: null,
+                banner: null,
+                bot: false,
+                system: false,
+                created_at: null,
+            },
+            channel: {
+                id: session.channelId,
+                name: 'preview',
+                type: 0,
+                guild_id: session.guildId ?? '',
+                position: 0,
+                topic: null,
+                nsfw: false,
+                mention: `<#${session.channelId}>`,
+                rate_limit: 0,
+                created_at: null,
+            },
+            message: { id: null, content: null, author_id: session.user?.id ?? '0', channel_id: session.channelId, guild_id: session.guildId ?? '', created_at: new Date().toISOString(), edited_timestamp: null, mentions: [], mention_roles: [], mention_everyone: false, attachments: [], pinned: false, tts: false, webhook_id: null, type: 0, flags: 0, url: null },
+            guild: session.guild ? { id: session.guild.id, name: session.guild.name, icon: session.guild.icon ?? null, icon_url: null, banner: null, banner_url: null, description: null, owner_id: null, features: [], premium_tier: 0, member_count: session.guild.members?.size ?? 0, preferred_locale: 'en-US', created_at: null } : null,
+            server: session.guild?.name ?? 'Server',
+            members: session.guild?.members?.size ?? 0,
             time: new Date().toLocaleString(),
             timestamp: Math.floor(Date.now() / 1000),
             count: 1,
@@ -99,9 +125,9 @@ async function updateEmbedPreview(client, session, db) {
         const safeProcess = (text) => {
             if (!text || typeof text !== 'string') return "";
             try {
-                return processTemplate(text, { ...previewContext }) || text;
-            } catch (e) {
-                console.error("Template processing error:", e);
+                const result = runTagSafe(text, previewContext);
+                return (result.ok && result.result.text) ? result.result.text : text;
+            } catch {
                 return text;
             }
         };

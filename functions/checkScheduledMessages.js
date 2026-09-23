@@ -1,6 +1,6 @@
 const cron = require("node-cron");
 const { EmbedBuilder, Webhook } = require("@fluxerjs/core");
-const { processTemplate, gatherContext } = require("./scheduleTemplateEngine");
+const { runTagSafe } = require("../interpreter/index");
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
 let refreshCronJob = null;
@@ -9,7 +9,83 @@ let clientRef = null;
 const scheduledQueue = new Map();
 let windowEndTime = 0;
 
-async function sendViaWebhook(client, channel, msgData, processedContent, processedEmbedData) {
+function buildScheduleContext(client, guild, channel, msgData) {
+    const member = guild?.members?.get(msgData.createdBy) ?? null;
+    const username = member?.displayName || member?.user?.username || msgData.createdBy;
+    return {
+        args: [],
+        user: {
+            id: msgData.createdBy,
+            username,
+            discriminator: '0',
+            tag: `${username}#0`,
+            display_name: username,
+            global_name: username,
+            avatar: null,
+            avatar_url: null,
+            banner: null,
+            bot: false,
+            system: false,
+            created_at: null,
+        },
+        channel: {
+            id: channel?.id ?? msgData.channelId,
+            name: channel?.name ?? 'unknown',
+            type: channel?.type ?? 0,
+            guild_id: guild?.id ?? '',
+            position: 0,
+            topic: null,
+            nsfw: false,
+            mention: `<#${channel?.id ?? msgData.channelId}>`,
+            rate_limit: 0,
+            created_at: null,
+        },
+        message: {
+            id: null,
+            content: null,
+            author_id: msgData.createdBy,
+            channel_id: channel?.id ?? msgData.channelId,
+            guild_id: guild?.id ?? '',
+            created_at: new Date().toISOString(),
+            edited_timestamp: null,
+            mentions: [],
+            mention_roles: [],
+            mention_everyone: false,
+            attachments: [],
+            pinned: false,
+            tts: false,
+            webhook_id: null,
+            type: 0,
+            flags: 0,
+            url: null,
+        },
+        guild: guild ? {
+            id: guild.id,
+            name: guild.name,
+            icon: guild.icon ?? null,
+            icon_url: null,
+            banner: null,
+            banner_url: null,
+            description: null,
+            owner_id: guild.ownerId ?? null,
+            features: [],
+            premium_tier: 0,
+            member_count: guild.members?.size ?? 0,
+            preferred_locale: 'en-US',
+            created_at: null,
+        } : null,
+        server: guild?.name ?? 'Unknown Server',
+        members: guild?.members?.size ?? 0,
+        channel: `<#${channel?.id ?? msgData.channelId}>`,
+        user: `<@${msgData.createdBy}>`,
+        username,
+        time: new Date().toLocaleString(),
+        timestamp: Math.floor(Date.now() / 1000),
+        count: msgData.sendCount || 0,
+    };
+}
+
+async function sendViaWebhook(client, channel, msgData, processedContent, processedEmbedData, guildId) {
     const webhookConfig = msgData.webhook;
     if (!webhookConfig || !webhookConfig.name) return null;
 
@@ -25,7 +101,7 @@ async function sendViaWebhook(client, channel, msgData, processedContent, proces
         if (msgData.type === "content") {
             await wh.send({ content: processedContent, ...sendOptions });
         } else if (msgData.type === "embed") {
-            const embed = buildEmbed(processedEmbedData);
+            const embed = buildEmbed(processedEmbedData, guildId, client);
             await wh.send({ embeds: [embed], ...sendOptions });
         }
 
@@ -36,20 +112,22 @@ async function sendViaWebhook(client, channel, msgData, processedContent, proces
     }
 }
 
-function buildEmbed(ed) {
-    if (!ed) return null;
-    const embed = new EmbedBuilder();
-    if (ed.title) embed.setTitle(ed.title);
-    if (ed.description) embed.setDescription(ed.description);
-    if (ed.footer?.text) embed.setFooter({ text: ed.footer.text, iconURL: ed.footer.iconURL || undefined });
-    if (ed.image) embed.setImage(ed.image);
-    if (ed.author?.name) embed.setAuthor({ name: ed.author.name, iconURL: ed.author.iconURL || undefined, url: ed.author.url || undefined });
-    if (ed.url) embed.setURL(ed.url);
-    if (ed.color) embed.setColor(ed.color);
-    else embed.setColor(db.theme);
-    if (ed.thumbnail) embed.setThumbnail(ed.thumbnail);
-    if (ed.useTimestamp) embed.setTimestamp();
-    return embed;
+function buildEmbed(ed, guildId, client) {
+  if (!ed) return null;
+
+  const db = client.database.getGuild(guildId, false);
+  const embed = new EmbedBuilder();
+  if (ed.title) embed.setTitle(ed.title);
+  if (ed.description) embed.setDescription(ed.description);
+  if (ed.footer?.text) embed.setFooter({ text: ed.footer.text, iconURL: ed.footer.iconURL || undefined });
+  if (ed.image) embed.setImage(ed.image);
+  if (ed.author?.name) embed.setAuthor({ name: ed.author.name, iconURL: ed.author.iconURL || undefined, url: ed.author.url || undefined });
+  if (ed.url) embed.setURL(ed.url);
+  if (ed.color) embed.setColor(ed.color);
+  else embed.setColor(db.theme);
+  if (ed.thumbnail) embed.setThumbnail(ed.thumbnail);
+  if (ed.useTimestamp) embed.setTimestamp();
+  return embed;
 }
 
 async function sendScheduledMessage(client, guildId, msgData) {
@@ -64,42 +142,54 @@ async function sendScheduledMessage(client, guildId, msgData) {
             return await executeScheduledCommand(client, guild, channel, msgData);
         }
 
-        const context = gatherContext(client, guildId, msgData.channelId, msgData.createdBy, msgData.sendCount || 0);
+        const context = buildScheduleContext(client, guild, channel, msgData);
 
         let processedContent = null;
         let processedEmbedData = null;
 
         if (msgData.type === "content" && msgData.content) {
-            processedContent = processTemplate(msgData.content, { ...context });
+            const result = runTagSafe(msgData.content, context);
+            if (result.ok && result.result.text?.trim()) {
+                processedContent = result.result.text.slice(0, 2000);
+            } else {
+                processedContent = msgData.content;
+            }
         } else if (msgData.type === "embed" && msgData.embedData) {
             processedEmbedData = {};
             const ed = msgData.embedData;
-            if (ed.title) processedEmbedData.title = processTemplate(ed.title, { ...context });
-            if (ed.description) processedEmbedData.description = processTemplate(ed.description, { ...context });
+
+            const runField = (text) => {
+                if (!text) return text;
+                const r = runTagSafe(text, context);
+                return (r.ok && r.result.text) ? r.result.text : text;
+            };
+
+            if (ed.title) processedEmbedData.title = runField(ed.title);
+            if (ed.description) processedEmbedData.description = runField(ed.description);
             if (ed.footer?.text) {
                 processedEmbedData.footer = {
-                    text: processTemplate(ed.footer.text, { ...context }),
-                    iconURL: ed.footer.iconURL
+                    text: runField(ed.footer.text),
+                    iconURL: ed.footer.iconURL,
                 };
             }
-            if (ed.image) processedEmbedData.image = processTemplate(ed.image, { ...context });
+            if (ed.image) processedEmbedData.image = runField(ed.image);
             if (ed.author?.name) {
                 processedEmbedData.author = {
-                    name: processTemplate(ed.author.name, { ...context }),
+                    name: runField(ed.author.name),
                     iconURL: ed.author.iconURL,
-                    url: ed.author.url
+                    url: ed.author.url,
                 };
             }
-            if (ed.url) processedEmbedData.url = processTemplate(ed.url, { ...context });
+            if (ed.url) processedEmbedData.url = runField(ed.url);
             if (ed.color) processedEmbedData.color = ed.color;
-            if (ed.thumbnail) processedEmbedData.thumbnail = processTemplate(ed.thumbnail, { ...context });
+            if (ed.thumbnail) processedEmbedData.thumbnail = runField(ed.thumbnail);
             if (ed.useTimestamp) processedEmbedData.useTimestamp = true;
         }
 
         let sendSuccess = false;
 
         if (msgData.webhook && msgData.webhook.name) {
-            const result = await sendViaWebhook(client, channel, msgData, processedContent, processedEmbedData);
+            const result = await sendViaWebhook(client, channel, msgData, processedContent, processedEmbedData, guildId);
             if (result && result.success) sendSuccess = true;
         }
 
@@ -109,7 +199,7 @@ async function sendScheduledMessage(client, guildId, msgData) {
                     await channel.send(processedContent || msgData.content);
                     sendSuccess = true;
                 } else if (msgData.type === "embed") {
-                    const embed = buildEmbed(processedEmbedData || msgData.embedData);
+                    const embed = buildEmbed(processedEmbedData || msgData.embedData, guildId, client);
                     if (embed) {
                         await channel.send({ embeds: [embed] });
                         sendSuccess = true;
@@ -120,9 +210,9 @@ async function sendScheduledMessage(client, guildId, msgData) {
             }
         }
 
-      if (sendSuccess && msgData.recurring && msgData.recurring !== "none") {
-        await scheduleNextRecurring(client, guildId, msgData);
-      }
+        if (sendSuccess && msgData.recurring && msgData.recurring !== "none") {
+            await scheduleNextRecurring(client, guildId, msgData);
+        }
 
         return { success: sendSuccess };
     } catch (err) {

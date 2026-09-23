@@ -13,6 +13,14 @@ const userSchema = new Schema({
   userId: { type: String, required: true, unique: true },
   timezone: { type: String, default: null },
   reminders: { type: [reminderSchema], default: [] },
+  birthday: {
+    day: { type: Number, default: null },
+    month: { type: Number, default: null },
+    age: { type: Number, default: null },
+    lastBirthday: { type: Number, default: null },
+    ping: { type: Boolean, default: true },
+    enabledGuilds: { type: [String], default: [] },
+  },
 });
 
 module.exports = model("users", userSchema);

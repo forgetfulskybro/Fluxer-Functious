@@ -1,5 +1,20 @@
 const { Router } = require('express');
 const { makeRequireApiKey } = require('../middleware');
+const { validDay } = require('../../functions/birthdayHelpers');
+const { getUserProfile, getUserProfiles } = require('../../functions/userProfiles');
+
+const MAX_BATCH_IDS = 100;
+
+function normalizeBirthday(birthday) {
+  return {
+    day: birthday?.day ?? null,
+    month: birthday?.month ?? null,
+    age: birthday?.age ?? null,
+    lastBirthday: birthday?.lastBirthday ?? null,
+    ping: birthday?.ping ?? true,
+    enabledGuilds: birthday?.enabledGuilds ?? [],
+  };
+}
 
 function usersRouter(client, apiKey) {
   const router = Router();
@@ -15,9 +30,155 @@ function usersRouter(client, apiKey) {
         userId: user.userId,
         timezone: user.timezone,
         reminderCount: user.reminders?.length ?? 0,
+        birthday: normalizeBirthday(user.birthday),
       });
     } catch (err) {
       console.error('[API] GET /api/users/:userId:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.patch('/:userId', requireApiKey, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const body = req.body ?? {};
+
+      const user = await client.database.getUser(userId, true);
+      const updates = {};
+
+      if (body.timezone !== undefined) {
+        if (body.timezone !== null && typeof body.timezone !== 'string') {
+          return res.status(400).json({ error: 'timezone must be a string or null' });
+        }
+        updates.timezone = body.timezone;
+      }
+
+      if (body.birthday !== undefined) {
+        if (typeof body.birthday !== 'object' || body.birthday === null) {
+          return res.status(400).json({ error: 'birthday must be an object' });
+        }
+        const incoming = body.birthday;
+        const current = user.birthday ?? {};
+        const next = { ...current };
+
+        const hasDateField = 'day' in incoming || 'month' in incoming;
+        if (hasDateField) {
+          const day = incoming.day ?? null;
+          const month = incoming.month ?? null;
+          if ((day === null) !== (month === null)) {
+            return res.status(400).json({ error: 'day and month must both be set or both be cleared' });
+          }
+          if (day !== null) {
+            if (!Number.isInteger(day) || day < 1 || day > 31) {
+              return res.status(400).json({ error: 'day must be between 1 and 31' });
+            }
+            if (!Number.isInteger(month) || month < 1 || month > 12) {
+              return res.status(400).json({ error: 'month must be between 1 and 12' });
+            }
+            if (!validDay(month, day)) {
+              return res.status(400).json({ error: 'Invalid day for that month' });
+            }
+            if (day !== current.day || month !== current.month) {
+              next.lastBirthday = null;
+            }
+          }
+          next.day = day;
+          next.month = month;
+        }
+
+        if ('age' in incoming) {
+          const age = incoming.age ?? null;
+          if (age !== null && (!Number.isInteger(age) || age < 1 || age > 150)) {
+            return res.status(400).json({ error: 'age must be an integer between 1 and 150' });
+          }
+          next.age = age;
+        }
+
+        if ('ping' in incoming) {
+          if (typeof incoming.ping !== 'boolean') {
+            return res.status(400).json({ error: 'ping must be a boolean' });
+          }
+          next.ping = incoming.ping;
+        }
+
+        if ('enabledGuilds' in incoming) {
+          if (!Array.isArray(incoming.enabledGuilds)) {
+            return res.status(400).json({ error: 'enabledGuilds must be an array' });
+          }
+          const guildIds = [...new Set(incoming.enabledGuilds.map((id) => String(id)))];
+          for (const guildId of guildIds) {
+            const guild = await client.database.getGuild(guildId, false);
+            if (guild?.birthdayBlacklist?.includes(userId)) {
+              return res.status(403).json({
+                error: 'You are blacklisted from birthday announcements in this server',
+              });
+            }
+          }
+          next.enabledGuilds = guildIds;
+        }
+
+        updates.birthday = next;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+      }
+
+      await client.database.updateUser(userId, updates, true);
+      return res.json({ ok: true, birthday: normalizeBirthday(updates.birthday ?? user.birthday) });
+    } catch (err) {
+      console.error('[API] PATCH /api/users/:userId:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.get('/:userId/birthdays/blacklist-status', requireApiKey, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const guildIds = String(req.query.guilds ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => /^\d{17,20}$/.test(s));
+
+      const blacklisted = {};
+      for (const guildId of guildIds) {
+        const guild = await client.database.getGuild(guildId, false);
+        blacklisted[guildId] = Array.isArray(guild?.birthdayBlacklist)
+          ? guild.birthdayBlacklist.includes(userId)
+          : false;
+      }
+      return res.json({ blacklisted });
+    } catch (err) {
+      console.error('[API] GET /api/users/:userId/birthdays/blacklist-status:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.get('/:userId/profile', requireApiKey, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      if (!/^\d{17,20}$/.test(userId)) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+      return res.json(getUserProfile(client, userId));
+    } catch (err) {
+      console.error('[API] GET /api/users/:userId/profile:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.post('/profiles', requireApiKey, async (req, res) => {
+    try {
+      const ids = Array.isArray(req.body?.ids)
+        ? [...new Set(req.body.ids.map(String))]
+        : [];
+      const validIds = ids
+        .filter((id) => /^\d{17,20}$/.test(id))
+        .slice(0, MAX_BATCH_IDS);
+      const profiles = await getUserProfiles(client, validIds);
+      return res.json({ profiles });
+    } catch (err) {
+      console.error('[API] POST /api/users/profiles:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
   });
