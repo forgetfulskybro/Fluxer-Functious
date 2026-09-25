@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
 const Giveaway = require("../models/giveaways");
+const UserDB = require("../models/users");
 const { dependencies } = require("../package.json");
 const Pings = require("../functions/pings");
 
@@ -14,7 +15,11 @@ module.exports = {
   },
   run: async (client, message, args, db) => {
     const { gatewayPing, dbPing, pollCount, memory } = await Pings(client);
-    const giveawayCount = await Giveaway.countDocuments();
+
+    const [giveawayCount, birthdayCount] = await Promise.all([
+      Giveaway.countDocuments(),
+      UserDB.countDocuments({ "birthday.day": { $ne: null } }),
+    ]);
 
     const unixstamp = client.functions.get("fetchTime")(
       Math.floor(client.uptime),
@@ -31,6 +36,7 @@ module.exports = {
           name: `**${client.translate.get(db.language, "Commands.info.stats")}**`,
           value: [
             `> **${client.translate.get(db.language, "Commands.info.servers")}**: \`${client.guilds.size.toLocaleString()}\``,
+            `> **${client.translate.get(db.language, "Commands.info.birthdays")}**: \`${birthdayCount.toLocaleString()}\``,
             `> **${client.translate.get(db.language, "Commands.info.giveaways")}**: \`${giveawayCount.toLocaleString()}\``,
             `> **${client.translate.get(db.language, "Commands.info.polls")}**: \`${pollCount.toLocaleString()}\``,
             `> **${client.translate.get(db.language, "Commands.info.library")}**: [Fluxer.js](https://fluxer.js.org) \`${dependencies["@fluxerjs/core"]}\``,
@@ -44,6 +50,7 @@ module.exports = {
             `> **${client.translate.get(db.language, "Commands.info.ping")}**: \`${gatewayPing}ms\``,
             `> **${client.translate.get(db.language, "Commands.info.memory")}**: \`${memory} MB\``,
             `> **${client.translate.get(db.language, "Commands.info.database")}**: \`${dbPing}ms\``,
+            `> **Node.js**: \`${process.version}\``,
           ].join("\n"),
           inline: true
         }
