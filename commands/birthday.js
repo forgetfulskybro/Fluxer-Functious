@@ -10,6 +10,20 @@ const {
 const UserDB = require("../models/users");
 const Paginator = require("../functions/pagination");
 const getRoles = require("../functions/getRoles");
+const { trackGuildUpdates, trackResource } = require("../api/trackSettings");
+
+function userBirthdaySnapshot(userId, userData) {
+  const bd = userData?.birthday;
+  if (!bd) return null;
+  return {
+    userId,
+    day: bd.day ?? null,
+    month: bd.month ?? null,
+    age: bd.age ?? null,
+    ping: bd.ping ?? true,
+    enabledGuilds: bd.enabledGuilds ?? [],
+  };
+}
 
 function resolveMonth(str, client, lang) {
   const n = parseInt(str, 10);
@@ -194,16 +208,26 @@ module.exports = {
         return err(client.translate.get(db.language, "Commands.birthday.alreadySet", { cmdEdit: cmdTag(prefix, "edit") }));
       }
 
-      await client.database.updateUser(message.author.id, {
-        birthday: {
-          day: parsed.day,
-          month: parsed.month,
-          age: userData.birthday?.age ?? null,
-          lastBirthday: null,
-          ping: userData.birthday?.ping ?? true,
-          enabledGuilds: userData.birthday?.enabledGuilds ?? [],
-        },
-      }, true);
+      const newBirthday = {
+        day: parsed.day,
+        month: parsed.month,
+        age: userData.birthday?.age ?? null,
+        lastBirthday: null,
+        ping: userData.birthday?.ping ?? true,
+        enabledGuilds: userData.birthday?.enabledGuilds ?? [],
+      };
+
+      await client.database.updateUser(message.author.id, { birthday: newBirthday }, true);
+      await trackResource(client, {
+        userId: message.author.id,
+        groupId: message.guildId,
+        category: 'birthdays',
+        key: 'userBirthday',
+        action: sub === "set" ? "create" : "update",
+        label: 'User Birthday',
+        value: userBirthdaySnapshot(message.author.id, { birthday: newBirthday }),
+        previous: userBirthdaySnapshot(message.author.id, userData),
+      });
 
       const tz = userData.timezone || "UTC";
       const nextTs = nextBirthdayTimestamp(parsed.month, parsed.day, tz);
@@ -250,6 +274,16 @@ module.exports = {
         await client.database.updateUser(message.author.id, {
           birthday: { ...userData.birthday, age: null },
         }, true);
+        await trackResource(client, {
+          userId: message.author.id,
+          groupId: message.guildId,
+          category: 'birthdays',
+          key: 'userBirthday',
+          action: "update",
+          label: 'User Birthday',
+          value: userBirthdaySnapshot(message.author.id, { birthday: { ...userData.birthday, age: null } }),
+          previous: userBirthdaySnapshot(message.author.id, userData),
+        });
         return ok(client.translate.get(db.language, "Commands.birthday.ageRemoved"));
       }
 
@@ -261,6 +295,16 @@ module.exports = {
       await client.database.updateUser(message.author.id, {
         birthday: { ...userData.birthday, age },
       }, true);
+      await trackResource(client, {
+        userId: message.author.id,
+        groupId: message.guildId,
+        category: 'birthdays',
+        key: 'userBirthday',
+        action: "update",
+        label: 'User Birthday',
+        value: userBirthdaySnapshot(message.author.id, { birthday: { ...userData.birthday, age } }),
+        previous: userBirthdaySnapshot(message.author.id, userData),
+      });
       return ok(client.translate.get(db.language, "Commands.birthday.ageSet", { age, next: age + 1 }));
     }
 
@@ -276,6 +320,16 @@ module.exports = {
       await client.database.updateUser(message.author.id, {
         birthday: { day: null, month: null, age: null, ping: true, enabledGuilds: [] },
       }, true);
+      await trackResource(client, {
+        userId: message.author.id,
+        groupId: message.guildId,
+        category: 'birthdays',
+        key: 'userBirthday',
+        action: "delete",
+        label: 'User Birthday',
+        value: null,
+        previous: userBirthdaySnapshot(message.author.id, userData),
+      });
       return ok(client.translate.get(db.language, "Commands.birthday.removed"));
     }
 
@@ -299,6 +353,16 @@ module.exports = {
       await client.database.updateUser(message.author.id, {
         birthday: { ...userData.birthday, ping: newPing },
       }, true);
+      await trackResource(client, {
+        userId: message.author.id,
+        groupId: message.guildId,
+        category: 'birthdays',
+        key: 'userBirthday',
+        action: "update",
+        label: 'User Birthday',
+        value: userBirthdaySnapshot(message.author.id, { birthday: { ...userData.birthday, ping: newPing } }),
+        previous: userBirthdaySnapshot(message.author.id, userData),
+      });
       return ok(client.translate.get(db.language, "Commands.birthday.pingToggled", {
         status: newPing ? client.translate.get(db.language, "Commands.birthday.on") : client.translate.get(db.language, "Commands.birthday.off"),
       }));
@@ -328,6 +392,16 @@ module.exports = {
       await client.database.updateUser(message.author.id, {
         birthday: { ...userData.birthday, enabledGuilds: updated },
       }, true);
+      await trackResource(client, {
+        userId: message.author.id,
+        groupId: message.guildId,
+        category: 'birthdays',
+        key: 'userBirthday',
+        action: "update",
+        label: 'User Birthday',
+        value: userBirthdaySnapshot(message.author.id, { birthday: { ...userData.birthday, enabledGuilds: updated } }),
+        previous: userBirthdaySnapshot(message.author.id, userData),
+      });
 
       return ok(sub === "enable"
         ? client.translate.get(db.language, "Commands.birthday.enabledSuccess", { guild: message.guild?.name || "" })
@@ -484,6 +558,12 @@ module.exports = {
       const channel = await client.channels.resolve(channelId).catch(() => null);
       if (!channel || channel.type !== 0) return err(client.translate.get(db.language, "Commands.birthday.invalidChannel"));
       await client.database.updateGuild(message.guildId, { birthdayChannel: channel.id });
+      await trackGuildUpdates(client, {
+        guildId: message.guildId,
+        userId: message.author.id,
+        existing: db,
+        updates: { birthdayChannel: channel.id },
+      });
       return ok(client.translate.get(db.language, "Commands.birthday.channelSet", { channel: `<#${channel.id}>` }));
     }
 
@@ -505,6 +585,12 @@ module.exports = {
 
       const role = roleIds[0];
       await client.database.updateGuild(message.guildId, { birthdayRole: role.id });
+      await trackGuildUpdates(client, {
+        guildId: message.guildId,
+        userId: message.author.id,
+        existing: db,
+        updates: { birthdayRole: role.id },
+      });
       return ok(client.translate.get(db.language, "Commands.birthday.roleSet", { role: `<@&${role.id}>` }));
     }
 
@@ -514,6 +600,12 @@ module.exports = {
       }
       const newPing = !(db.birthdayPing ?? true);
       await client.database.updateGuild(message.guildId, { birthdayPing: newPing });
+      await trackGuildUpdates(client, {
+        guildId: message.guildId,
+        userId: message.author.id,
+        existing: db,
+        updates: { birthdayPing: newPing },
+      });
       return ok(client.translate.get(db.language, "Commands.birthday.annPingSet", {
         status: newPing ? client.translate.get(db.language, "Commands.birthday.on") : client.translate.get(db.language, "Commands.birthday.off"),
       }));
@@ -559,19 +651,29 @@ module.exports = {
 
       if (action === "reset") {
         const target = args[2]?.toLowerCase();
+        const trackUpdates = (updates) =>
+          trackGuildUpdates(client, {
+            guildId: message.guildId,
+            userId: message.author.id,
+            existing: db,
+            updates,
+          });
         if (!target) {
           await client.database.updateGuild(message.guildId, {
             birthdayMessageWithAge: null,
             birthdayMessageNoAge: null,
           });
+          await trackUpdates({ birthdayMessageWithAge: null, birthdayMessageNoAge: null });
           return ok(t("messageReset"));
         }
         if (target === "withage") {
           await client.database.updateGuild(message.guildId, { birthdayMessageWithAge: null });
+          await trackUpdates({ birthdayMessageWithAge: null });
           return ok(t("messageResetWithAge"));
         }
         if (target === "noage") {
           await client.database.updateGuild(message.guildId, { birthdayMessageNoAge: null });
+          await trackUpdates({ birthdayMessageNoAge: null });
           return ok(t("messageResetNoAge"));
         }
         return err(t("messageUsage", msgUsageVars));
@@ -584,6 +686,12 @@ module.exports = {
 
         const field = action === "withage" ? "birthdayMessageWithAge" : "birthdayMessageNoAge";
         await client.database.updateGuild(message.guildId, { [field]: text });
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { [field]: text },
+        });
         return ok(t("messageSet", {
           type: action === "withage" ? withAgeLabel : noAgeLabel,
           text: `\n> ${text.replace(/\n/g, "\n> ")}`,
@@ -640,6 +748,12 @@ module.exports = {
           return ok(client.translate.get(db.language, "Commands.birthday.blacklistClearEmpty"));
         }
         await client.database.updateGuild(message.guildId, { birthdayBlacklist: [] });
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { birthdayBlacklist: [] },
+        });
         return ok(client.translate.get(db.language, "Commands.birthday.blacklistCleared", { count: blacklist.length }));
       }
 
@@ -654,6 +768,12 @@ module.exports = {
         }
         const updatedBlacklist = blacklist.filter(id => id !== targetId);
         await client.database.updateGuild(message.guildId, { birthdayBlacklist: updatedBlacklist });
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { birthdayBlacklist: updatedBlacklist },
+        });
         return ok(client.translate.get(db.language, "Commands.birthday.blacklistRemoved", { user: `<@${targetId}>`, cmdEnable: cmdTag(prefix, "enable") }));
       }
 
@@ -669,6 +789,12 @@ module.exports = {
 
       const updatedBlacklist = [...blacklist, targetId];
       await client.database.updateGuild(message.guildId, { birthdayBlacklist: updatedBlacklist });
+      await trackGuildUpdates(client, {
+        guildId: message.guildId,
+        userId: message.author.id,
+        existing: db,
+        updates: { birthdayBlacklist: updatedBlacklist },
+      });
 
       const targetUserData = await getUserData(targetId, client);
       if (targetUserData.birthday?.enabledGuilds?.includes(message.guildId)) {
@@ -714,6 +840,21 @@ module.exports = {
       client.database.updateUser(targetId, {
         birthday: { ...targetUserData.birthday, lastBirthday: new Date().getFullYear() },
       }, true).catch(() => {});
+
+      await trackResource(client, {
+        userId: message.author.id,
+        groupId: message.guildId,
+        category: 'birthdays',
+        key: 'birthdayAnnouncement',
+        action: 'create',
+        label: 'Announce Birthday',
+        value: {
+          userId: targetId,
+          channelId: announceChannel.id ?? channelId,
+          roleId: db.birthdayRole ?? null,
+          ping: pingUser,
+        },
+      });
 
       if (announceChannel.id !== message.channel.id) {
         return ok(client.translate.get(db.language, "Commands.birthday.announced", { channel: `<#${announceChannel.id}>` }));
