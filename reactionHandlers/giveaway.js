@@ -29,10 +29,12 @@ module.exports = async (client, message, userId, db, emojiId, event = "add") => 
 
   if (emojiId === client.config.emojis.stop && db.owner === userId) {
     const endDate = Date.now();
+    const guildDb = await client.database.getGuild(db.serverId).catch(() => null);
+    const theme = guildDb?.theme ?? "#A52F05";
 
     if (db.users.length === 0) {
       const noUsers = new EmbedBuilder()
-        .setColor(db.theme)
+        .setColor(theme)
         .setTitle(db.prize)
         .setDescription(
           `${client.translate.get(lang, "Events.messageReactionAdd.early")}\n${client.translate.get(lang, "Events.messageReactionAdd.endNone")}!\n\n${client.translate.get(lang, "Events.messageReactionAdd.ended")}: <t:${Math.floor(endDate / 1000)}:R>\n${client.translate.get(lang, "Commands.giveaway.hosted")}: <@${db.owner}>\n${client.translate.get(lang, "Events.messageReactionAdd.winnersNone")}${db.requirement ? `\n\n${client.translate.get(lang, "Events.messageReactionAdd.reqs")}:\n${db.requirement}` : ""}`,
@@ -83,7 +85,7 @@ module.exports = async (client, message, userId, db, emojiId, event = "add") => 
     handleDelete(db.messageId);
 
     const winnersEmbed = new EmbedBuilder()
-      .setColor(db.theme)
+      .setColor(theme)
       .setTitle(db.prize)
       .setDescription(
         `${client.translate.get(lang, "Events.messageReactionAdd.early")}\n\n${client.translate.get(lang, "Events.messageReactionAdd.ended")}: <t:${Math.floor(endDate / 1000)}:R>\n${client.translate.get(lang, "Commands.giveaway.hosted")}: <@${db.owner}>\n${client.translate.get(lang, "Events.messageReactionAdd.partici")}: ${db.users.length}\n${client.translate.get(lang, "Events.messageReactionAdd.winners")}: ${db.pickedWinners.length ? db.pickedWinners.map((w) => `<@${w.id}>`).join(", ") : client.translate.get(lang, "Events.messageReactionAdd.none")}${db.requirement ? `\n${client.translate.get(lang, "Events.messageReactionAdd.reqs")}: ${db.requirement}` : ""}`,
