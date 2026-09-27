@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { makeRequireApiKey } = require('../middleware');
-const { trackGuildUpdates, actorFromReq } = require('../trackSettings');
+const { trackGuildUpdates, trackResource, actorFromReq } = require('../trackSettings');
 const UserDB = require('../../models/users');
 const {
   nextBirthdayTimestamp,
@@ -445,6 +445,21 @@ function guildsRouter(client, apiKey) {
       client.database.updateUser(userId, {
         birthday: { ...targetUserData.birthday, lastBirthday: new Date().getFullYear() },
       }, true).catch(() => {});
+
+      await trackResource(client, {
+        userId: actorFromReq(req),
+        groupId: guildId,
+        category: 'birthdays',
+        key: 'birthdayAnnouncement',
+        action: 'create',
+        label: 'Announce Birthday',
+        value: {
+          userId,
+          channelId: guild.birthdayChannel,
+          roleId: guild.birthdayRole ?? null,
+          ping: pingUser,
+        },
+      });
 
       return res.json({ ok: true });
     } catch (err) {

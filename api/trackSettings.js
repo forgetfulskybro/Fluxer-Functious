@@ -20,6 +20,11 @@ const FIELD_META = {
   mediaChannels: { category: 'mediachannels', label: 'Media Channels' },
   giveaway: { category: 'giveaways', label: 'Giveaway' },
   poll: { category: 'polls', label: 'Poll' },
+  birthdayChannel: { category: 'birthdays', label: 'Birthday Channel' },
+  birthdayRole: { category: 'birthdays', label: 'Birthday Role' },
+  birthdayPing: { category: 'birthdays', label: 'Announcement Ping' },
+  birthdayMessageWithAge: { category: 'birthdays', label: 'Birthday Message (With Age)' },
+  birthdayMessageNoAge: { category: 'birthdays', label: 'Birthday Message (No Age)' },
 };
 
 const COLLECTION_META = {
@@ -131,6 +136,18 @@ const COLLECTION_META = {
         : typeof c === 'string' || typeof c === 'number'
           ? { id: String(c) }
           : { id: c.id ?? c.channelId ?? null, ...(typeof c === 'object' ? c : {}) },
+  },
+  birthdayBlacklist: {
+    category: 'birthdays',
+    singular: 'Blacklisted User',
+    idOf: (u) =>
+      String(typeof u === 'string' || typeof u === 'number' ? u : u?.id ?? u?.userId ?? ''),
+    snapshot: (u) =>
+      u == null
+        ? null
+        : typeof u === 'string' || typeof u === 'number'
+          ? { id: String(u) }
+          : { id: u.id ?? u.userId ?? null, ...(typeof u === 'object' ? u : {}) },
   },
 };
 
