@@ -1,7 +1,84 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const { inspect } = require("util");
 const Paginator = require("../functions/pagination");
-const { runTagSafe } = require('../interpreter/index.js');
+const { runTagSafe } = require("../interpreter/index.js");
+
+const REDACTED = "[REDACTED]";
+
+const SECRET_KEY_NAMES =
+  "api[-_]?keys?|api[-_]?secret|access[-_]?key|secret[-_]?key|auth[-_]?key|token|_token|authorization|auth|password|passwd|passphrase|secret|client[-_]?secret|connection[-_]?string|mongo(?:db)?[-_]?(?:uri|url)|private[-_]?key|dsn|sentry[-_]?dsn|bearer|x[-_]?api[-_]?key|webhook[-_]?(?:url|token)|access[-_]?token|refresh[-_]?token";
+
+const SECRET_EXACT = new Set([
+  "token",
+  "client",
+  "apikey",
+  "apisecret",
+  "secretkey",
+  "authkey",
+  "accesstoken",
+  "refreshtoken",
+  "authtoken",
+  "bearertoken",
+  "authorization",
+  "auth",
+  "password",
+  "passwd",
+  "passphrase",
+  "secret",
+  "clientsecret",
+  "privatekey",
+  "connectionstring",
+  "mongodb",
+  "mongouri",
+  "dsn",
+  "sentrydsn",
+  "cookie",
+  "sessionid",
+  "xapikey",
+  "webhookurl",
+]);
+
+function isSecretKey(key = "") {
+  const normalized = String(key).toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (SECRET_EXACT.has(normalized)) return true;
+
+  return (
+    normalized.includes("token") ||
+    normalized.includes("apikey") ||
+    normalized.includes("secret") ||
+    normalized.includes("password") ||
+    normalized.includes("passphrase") ||
+    normalized.includes("authorization") ||
+    normalized.includes("connectionstring") ||
+    normalized.includes("privatekey") ||
+    normalized.includes("accesskey")
+  );
+}
+
+function redactSecrets(text) {
+  if (typeof text !== "string" || !text) return text;
+
+  return text
+    .replace(
+      /\b(mongodb(?:\+srv)?:\/\/)[^\s"'`&]+/gi,
+      `$1${REDACTED}`,
+    )
+    .replace(
+      /(https?:\/\/[^\s"'`]*?[?&](?:api[-_]?key|token|key|secret|sig)=)[^&\s"'`]+/gi,
+      `$1${REDACTED}`,
+    )
+    .replace(
+      new RegExp(
+        `(["'\`]?\\b(?:${SECRET_KEY_NAMES})\\b["'\`]?\\s*[:=]>?\\s*)(?!\\[${REDACTED}\\])(("[^"\\n]*"|'[^'\\n]*'|\`[^\`\\n]*\`|[^\\s,;)}\\]]+))`,
+        "gi",
+      ),
+      (_match, prefix, value) =>
+        value.startsWith("[") ? `${prefix}${value}` : `${prefix}"${REDACTED}"`,
+    )
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, `Bearer ${REDACTED}`)
+    .replace(/\bvk_[A-Za-z0-9._-]{6,}/g, REDACTED)
+    .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{4,}/g, REDACTED);
+}
 
 function tokenizeArgs(text) {
   const args = [];
@@ -162,39 +239,61 @@ module.exports = {
       let result = await eval(`(async () => {\n${preparedCode}\n})()`);
 
       if (result && typeof result === "object") {
-        const nullTokens = (obj, visited = new Set()) => {
+        const sanitize = (obj, seen = new WeakSet(), depth = 0) => {
           if (!obj || typeof obj !== "object") return obj;
-          if (visited.has(obj)) return "[Circular]";
+          if (seen.has(obj)) return "[Circular]";
+          if (depth > 6) return "[Object]";
 
-          visited.add(obj);
+          seen.add(obj);
 
           if (Array.isArray(obj)) {
-            return obj.map((item) => nullTokens(item, visited));
+            return obj.map((item) => sanitize(item, seen, depth + 1));
           }
 
-          const newObj = { ...obj };
-          for (const key in newObj) {
-            const lowerKey = key.toLowerCase();
+          if (typeof obj[inspect.custom] === "function") {
+            try {
+              return sanitize(obj[inspect.custom](2, {}, inspect), seen, depth + 1);
+            } catch {}
+          }
 
-            if (
-              lowerKey.includes("token") ||
-              lowerKey === "client" ||
-              lowerKey.includes("_token") ||
-              lowerKey.includes("connectionString")
-            ) {
-              newObj[key] = null;
+          const newObj = {};
+          for (const key in obj) {
+            let value;
+            try {
+              value = obj[key];
+            } catch {
+              newObj[key] = "[Unreadable]";
               continue;
             }
 
-            if (newObj[key] && typeof newObj[key] === "object") {
-              newObj[key] = nullTokens(newObj[key], visited);
+            if (isSecretKey(key)) {
+              const isFlag = typeof value === "boolean" || typeof value === "number";
+              newObj[key] = value === null || value === undefined || isFlag ? value : REDACTED;
+              continue;
             }
+
+            if (value === null || value === undefined) {
+              newObj[key] = value;
+              continue;
+            }
+
+            if (typeof value === "function") {
+              newObj[key] = `[Function ${value.name || "anonymous"}]`;
+              continue;
+            }
+
+            if (typeof value === "object") {
+              newObj[key] = sanitize(value, seen, depth + 1);
+              continue;
+            }
+
+            newObj[key] = value;
           }
 
           return newObj;
         };
 
-        result = nullTokens(result);
+        result = sanitize(result);
       }
 
       let output;
@@ -204,19 +303,7 @@ module.exports = {
         output = result;
       }
 
-      if (
-        output.includes("token") ||
-        output.includes("connectionString") ||
-        output.includes("_token")
-      ) {
-        output = output
-          .replace(/"token"\s*:\s*"[^"]+"/g, '"token": null')
-          .replace(/"_token"\s*:\s*"[^"]+"/g, '"_token": null')
-          .replace(
-            /"connectionString"\s*:\s*"[^"]+"/g,
-            '"connectionString": null',
-          );
-      }
+      output = redactSecrets(output);
 
       const prefix = "```js\n";
       const suffix = "```";
@@ -263,7 +350,9 @@ module.exports = {
         paginator.add(pages).start(message.channel);
       }
     } catch (e) {
-      const errMsg = (e?.stack || e?.message || "Unknown Error").slice(0, 1985);
+      const errMsg = redactSecrets(
+        (e?.stack || e?.message || "Unknown Error").slice(0, 1985),
+      );
       await message.reply("```js\n" + errMsg + "```", false);
     }
   },

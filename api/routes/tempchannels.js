@@ -36,7 +36,6 @@ function tempChannelsRouter(client, apiKey) {
       }
 
       let category = null;
-      let voiceChannel = null;
       if (customCategoryId) {
         category = await client.channels.resolve(customCategoryId);
         if (!category || category.type !== 4) {
@@ -47,14 +46,14 @@ function tempChannelsRouter(client, apiKey) {
           type: 4,
           name: client.translate.get(db.language, 'Commands.tempchannels.tempChannels'),
         });
-
-        voiceChannel = await liveGuild.createChannel({
-          type: 2,
-          name: client.translate.get(db.language, 'Commands.tempchannels.joinCreate'),
-          parentId: category.id,
-          bitrate: 64000,
-        });
       }
+
+      const voiceChannel = await liveGuild.createChannel({
+        type: 2,
+        name: client.translate.get(db.language, 'Commands.tempchannels.joinCreate'),
+        parentId: category.id,
+        bitrate: 64000,
+      });
 
       let manageChannelId = null;
       let manageMessageId = null;

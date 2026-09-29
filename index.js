@@ -22,9 +22,10 @@ const client = new Client({
 function connectedToFluxer() {
   if (!client.isReady()) {
     console.log(color("%", "%4[Error_Handling] :: Fluxer didn't connect after 15 seconds, restarting...%c"));
-    client.vanta.monitorStop
-    client.vanta.shutdown()
-    process.exit(1);
+    client.vanta
+      .stop()
+      .catch(() => {})
+      .finally(() => process.exit(1));
   }
 }
 
@@ -39,10 +40,8 @@ client.database.cacheSweeper(client);
 client.database.guildSweeper(client);
 client.sentry = Sentry;
 
-client.vanta.init();
-client.vanta.startHeartbeat("bot", {
-  intervalMs: 60_000,
-  graceMs: 30_000,
+client.vanta.start({
+  heartbeat: { slug: "bot", intervalMs: 60_000, graceMs: 30_000 },
 });
 
 setInterval(async () => {
