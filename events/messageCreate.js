@@ -6,8 +6,11 @@ const EditCollector = require("../functions/messageEdit");
 const errorHandler = require("../functions/errorHandler");
 const parseTime = require("../functions/parseTime");
 const manageVC = require("../functions/manageVC");
+const { checkMessage } = require("../functions/checkReactionReminders");
 
 module.exports = async (client, message) => {
+  checkMessage(client, message).catch(() => {});
+
   if (!message?.channel || (!message.content && !message.attachments?.size) || message.author.bot) return;
   const MVC = client.manageVC.get(message.author.id);
   if (message.channel.type === 1 && MVC) return await manageVC(client, message)

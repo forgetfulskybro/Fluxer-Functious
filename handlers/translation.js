@@ -166,7 +166,7 @@ class TranslationHandler {
     formatProgressReport(languages = this.availableLanguages, options = {}) {
         const separator = options.separator ?? '\n';
         return languages
-            .map((language) => `\`${language}\` — ${this.formatProgress(language, options)}`)
+            .map((language) => `\`${language}\` - ${this.formatProgress(language, options)}`)
             .join(separator);
     }
 

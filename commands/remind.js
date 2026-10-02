@@ -2,7 +2,9 @@ const crypto = require("crypto");
 const fetchTime = require("../functions/fetchTime");
 const { handleNewReminder, handleDeletedReminder } = require("../functions/checkReminders");
 const { EmbedBuilder } = require("@fluxerjs/core");
-const chrono = require("chrono-node");
+const { parseTimeForUser, parseWatchTime } = require("../functions/reminderTime");
+const { addWatcher, removeWatchers, MAX_WATCHERS, WATCH_EMOJI, beginSelfSend, endSelfSend } = require("../functions/checkReactionReminders");
+const { buildFingerprint, buildSample, detectSourceType, attachNames, isMatchable } = require("../functions/messageSimilarity");
 
 const EMBED_COLORS = {
   ERROR: "#FF0000",
@@ -19,12 +21,35 @@ const CONFIG = {
   MENTIONS: ["@here", "@everyone"]
 };
 
-const timeRegex =
-  /(?:(?<months>\d+)mo)?(?:(?<weeks>\d+)w)?(?:(?<days>\d+)d)?(?:(?<hours>\d+)h)?(?:(?<minutes>\d+)m)?(?:(?<seconds>\d+)s)?/i;
+const SNOWFLAKE_REGEX = /^\d{17,20}$/;
+const LINK_REGEX = /(\d{17,20})\/(\d{17,20})\/(\d{17,20})/;
+const CODE_CHARS_REGEX = /[`\\]/g;
+const DISPLAY_WHITESPACE_REGEX = /\s+/g;
+const CONFIRM_TIME_MS = 30000;
 
 function truncate(str, maxLen) {
   if (!str) return str;
   return str.length > maxLen ? str.substring(0, maxLen - 3) + "..." : str;
+}
+
+function escapeCode(text) {
+  return String(text ?? "").replace(CODE_CHARS_REGEX, "\\$&");
+}
+
+function codeSample(text, maxLen = CONFIG.DISPLAY_LENGTH) {
+  const flat = String(text ?? "").replace(DISPLAY_WHITESPACE_REGEX, " ").trim();
+  return `\`${escapeCode(truncate(flat, maxLen))}\``;
+}
+
+async function sendTracked(channel, payload) {
+  beginSelfSend();
+  let sent;
+  try {
+    sent = await channel.send(payload);
+    return sent;
+  } finally {
+    endSelfSend(sent?.id);
+  }
 }
 
 function cleanReminderMessage(text) {
@@ -54,6 +79,14 @@ function cleanReminderMessage(text) {
     .join(" ");
 }
 
+function cleanWatcherMessage(text) {
+  return String(text ?? "")
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+    .filter((word) => !CONFIG.MENTIONS.includes(word.toLowerCase().replace(/[<>]/g, "")))
+    .join(" ");
+}
+
 function createEmbed(color, title = null, description = null) {
   const embed = new EmbedBuilder().setColor(color);
   if (title) embed.setTitle(title);
@@ -70,6 +103,9 @@ function getExamples(prefix, client, language) {
     create: `\`${prefix}remind ${client.translate.get(language, "Commands.remind.create")}\``,
     timeFormats: client.translate.get(language, "Commands.remind.timeFormats"),
     shortFormats: client.translate.get(language, "Commands.remind.shortFormats"),
+    add: `\`${prefix}remind add <${client.translate.get(language, "Commands.remind.source")}> <${client.translate.get(language, "Commands.remind.time")}> [${client.translate.get(language, "Commands.remind.reminderText")}]\``,
+    rlist: `\`${prefix}remind rlist\``,
+    rdelete: `\`${prefix}remind rdelete 1\``,
   };
 }
 
@@ -89,6 +125,17 @@ function errorEmbed(prefix, type, client, language, extra = "") {
     deleteUsage: `${client.translate.get(language, "Commands.remind.deleteUsage")}\n\n**${client.translate.get(language, "Commands.remind.example")}:** ${examples.delete}`,
     tooFar: `${client.translate.get(language, "Commands.remind.tooFar")}\n\n**${client.translate.get(language, "Commands.remind.example")}:**\n\`${prefix}remind 1 year ...\`\n\`${prefix}remind 1y ...\``,
     numberOnly: `${client.translate.get(language, "Commands.remind.numberOnly")}\n\n**${client.translate.get(language, "Commands.remind.example")}:**\n${examples.basic}\n${examples.list}\n${examples.delete}`,
+    addNoTime: `${client.translate.get(language, "Commands.remind.addNoTime")}\n\n**${client.translate.get(language, "Commands.remind.example")}:**\n${examples.add}`,
+    addInvalidTime: `${client.translate.get(language, "Commands.remind.addInvalidTime")}\n\n**${client.translate.get(language, "Commands.remind.example")}:**\n${examples.add}\n\`${prefix}remind add ${client.translate.get(language, "Commands.remind.addExample")}\``,
+    addNoSource: `${client.translate.get(language, "Commands.remind.addNoSource")}\n\n**${client.translate.get(language, "Commands.remind.example")}:**\n${examples.add}`,
+    addNoGuild: client.translate.get(language, "Commands.remind.addNoGuild"),
+    addMessageTooLong: `${client.translate.get(language, "Commands.remind.addMessageTooLong", { "max": CONFIG.MAX_MESSAGE_LENGTH })}\n${extra}`,
+    addTooShort: client.translate.get(language, "Commands.remind.addTooShort"),
+    addNotTextChannel: client.translate.get(language, "Commands.remind.addNotTextChannel"),
+    addMaxWatchers: client.translate.get(language, "Commands.remind.addMaxWatchers", { "max": MAX_WATCHERS, "cmd": `${prefix}remind rlist` }),
+    noReactionReminders: `${client.translate.get(language, "Commands.remind.noReactionReminders")}\n\n**${client.translate.get(language, "Commands.remind.example")}:** ${examples.add}`,
+    rdeleteUsage: `${client.translate.get(language, "Commands.remind.rdeleteUsage")}\n\n**${client.translate.get(language, "Commands.remind.example")}:** ${examples.rdelete}`,
+    rdeleteInvalidIndex: client.translate.get(language, "Commands.remind.rdeleteInvalidIndex", { "cmd": `${prefix}remind rlist` }),
   };
   return createEmbed(EMBED_COLORS.ERROR, null, messages[type]);
 }
@@ -99,103 +146,6 @@ function successEmbed(message, themeColor) {
 
 function infoEmbed(title, description, themeColor) {
   return createEmbed(themeColor, title, description);
-}
-
-function parseRelativeTime(txt) {
-  if (!txt) return false;
-  txt = txt.trim();
-
-  let time = 0;
-  let currentTxt = txt;
-
-  if (/^\d+$/.test(currentTxt)) {
-    time += parseInt(currentTxt, 10);
-  } else {
-    const firstWord = currentTxt.split(/\s+/)[0];
-    if (/^\d+$/.test(firstWord)) {
-      const s = firstWord;
-      time += parseInt(s, 10);
-      currentTxt = currentTxt.slice(currentTxt.indexOf(s) + s.length);
-    } else {
-      const match = timeRegex.exec(currentTxt);
-      if (!match || !match[0]) return false;
-
-      const g = match.groups || {};
-      if (g.months) time += parseInt(g.months, 10) * 2592000;
-      if (g.weeks) time += parseInt(g.weeks, 10) * 604800;
-      if (g.days) time += parseInt(g.days, 10) * 86400;
-      if (g.hours) time += parseInt(g.hours, 10) * 3600;
-      if (g.minutes) time += parseInt(g.minutes, 10) * 60;
-      if (g.seconds) time += parseInt(g.seconds, 10);
-
-      currentTxt = currentTxt.replace(timeRegex, "");
-    }
-  }
-
-  let text = currentTxt;
-  if (text && text[0] === " ") text = text.slice(1);
-  text = text.trim();
-
-  return { time, text };
-}
-
-function parseTimeWithTimezone(inputText, userTimezone) {
-  if (!userTimezone) {
-    return chrono.parse(inputText, new Date(), { forwardDate: true });
-  }
-
-  try {
-    const now = new Date();
-    const offsetMinutes = -Math.round(
-      (now.getTime() - 
-       new Date(now.toLocaleString("en-US", { timeZone: userTimezone })).getTime()
-      ) / 60000
-    );
-
-    const reference = {
-      instant: now,
-      timezone: offsetMinutes
-    };
-
-    return chrono.parse(inputText, reference, {
-      forwardDate: true
-    });
-  } catch (e) {
-    return chrono.parse(inputText, new Date(), { forwardDate: true });
-  }
-}
-
-function parseTimeAndMessage(inputText, timezone) {
-  const parsedResults = parseTimeWithTimezone(inputText, timezone);
-
-  if (parsedResults && parsedResults.length > 0) {
-    const parsedResult = parsedResults[0];
-    const parsedDate = parsedResult.start.date();
-    const timestamp = Math.floor(parsedDate.getTime() / 1000);
-    const timeText = parsedResult.text;
-    const beforeTime = inputText.substring(0, parsedResult.index).trim();
-    const afterTime = inputText
-      .substring(parsedResult.index + timeText.length)
-      .trim();
-    const reminderMessage = beforeTime ? (beforeTime + " " + afterTime).trim() : afterTime;
-    return { timestamp, reminderMessage };
-  }
-
-  const relativeResult = parseRelativeTime(inputText);
-  if (relativeResult && relativeResult.time > 0) {
-    const now = Math.floor(Date.now() / 1000);
-    return {
-      timestamp: now + relativeResult.time,
-      reminderMessage: relativeResult.text,
-    };
-  }
-
-  return null;
-}
-
-async function parseTimeAndMessageWithUserTimezone(inputText, userId, client) {
-  const userData = await client.database.getUser(userId, false);
-  return parseTimeAndMessage(inputText, userData?.timezone);
 }
 
 async function getSortedReminders(userId, client) {
@@ -230,19 +180,23 @@ async function deleteReminder(userId, index, client) {
 
 async function handleHelp(message, prefix, client, language, themeColor) {
   const examples = getExamples(prefix, client, language);
+  const reactionHow = [
+    client.translate.get(language, "Commands.remind.addDetailHeading"),
+    client.translate.get(language, "Commands.remind.helpReactionSteps", { "emoji": WATCH_EMOJI }),
+  ].join("\n");
   const embed = infoEmbed(
     "Remind Help",
-    `**${client.translate.get(language, "Commands.remind.setReminder")}:**\n\`${prefix}remind <time> <message>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.basic}\n\n**${client.translate.get(language, "Commands.remind.setDMReminder")}:**\n\`${prefix}remind dm <time> <message>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.dm}\n*${client.translate.get(language, "Commands.remind.dmExplain")}*\n\n**${client.translate.get(language, "Commands.remind.view")}:**\n\`${prefix}remind list\`\n\n**${client.translate.get(language, "Commands.remind.delete")}:**\n\`${prefix}remind delete <index>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.delete}\n\n**${client.translate.get(language, "Commands.remind.naturalLang")}:**\n${examples.timeFormats}\n\n**${client.translate.get(language, "Commands.remind.shortForm")}:**\n${examples.shortFormats}\n${client.translate.get(language, "Commands.remind.exampleTime")}`,
+    `**${client.translate.get(language, "Commands.remind.setReminder")}:**\n\`${prefix}remind <time> <message>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.basic}\n\n**${client.translate.get(language, "Commands.remind.setDMReminder")}:**\n\`${prefix}remind dm <time> <message>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.dm}\n*${client.translate.get(language, "Commands.remind.dmExplain")}*\n\n**${client.translate.get(language, "Commands.remind.view")}:**\n\`${prefix}remind list\`\n\n**${client.translate.get(language, "Commands.remind.delete")}:**\n\`${prefix}remind delete <index>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.delete}\n\n**${client.translate.get(language, "Commands.remind.addWatcher")}:**\n\`${prefix}remind add <${client.translate.get(language, "Commands.remind.source")}> <${client.translate.get(language, "Commands.remind.time")}>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.add}\n\`${prefix}remind add ${client.translate.get(language, "Commands.remind.addExample")}\`\n*${client.translate.get(language, "Commands.remind.addExplain")}*\n\n${reactionHow}\n\n**${client.translate.get(language, "Commands.remind.viewWatchers")}:**\n\`${prefix}remind rlist\`\n\n**${client.translate.get(language, "Commands.remind.deleteWatcher")}:**\n\`${prefix}remind rdelete <index>\`\n${client.translate.get(language, "Commands.remind.example")}: ${examples.rdelete}\n\n**${client.translate.get(language, "Commands.remind.naturalLang")}:**\n${examples.timeFormats}\n\n**${client.translate.get(language, "Commands.remind.shortForm")}:**\n${examples.shortFormats}\n${client.translate.get(language, "Commands.remind.exampleTime")}`,
     themeColor
   );
-  return message.channel.send({ embeds: [embed] });
+  return sendTracked(message.channel, { embeds: [embed] });
 }
 
 async function handleList(message, client, language, themeColor) {
   const { reminders } = await getSortedReminders(message.author.id, client);
 
   if (reminders.length === 0) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [infoEmbed(client.translate.get(language, "Commands.remind.reminders"), client.translate.get(language, "Commands.remind.noReminders"), themeColor)],
     });
   }
@@ -257,14 +211,14 @@ async function handleList(message, client, language, themeColor) {
     })
     .join("\n") + `\n\n📢 = ${client.translate.get(language, "Commands.remind.gReminder")} | 📩 = ${client.translate.get(language, "Commands.remind.dReminder")}`;
 
-  return message.channel.send({
+  return sendTracked(message.channel, {
     embeds: [infoEmbed(client.translate.get(language, "Commands.remind.reminders"), description, themeColor)],
   });
 }
 
 async function handleDelete(message, args, prefix, client, language, themeColor) {
   if (!args[1] || isNaN(args[1])) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "deleteUsage", client, language)],
     });
   }
@@ -273,7 +227,7 @@ async function handleDelete(message, args, prefix, client, language, themeColor)
   const result = await deleteReminder(message.author.id, index, client);
 
   if (!result.success) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, result.error, client, language)],
     });
   }
@@ -295,23 +249,351 @@ async function handleDelete(message, args, prefix, client, language, themeColor)
     description += `\n\n**${client.translate.get(language, "Commands.remind.reminders")}:**\n${reminderList}`;
   }
 
-  return message.channel.send({
+  return sendTracked(message.channel, {
     embeds: [successEmbed(description, themeColor)],
   });
+}
+
+function parseMessageLink(input) {
+  const match = String(input || "").match(LINK_REGEX);
+  if (!match) return null;
+  return { guildId: match[1], channelId: match[2], messageId: match[3] };
+}
+
+function isSourceToken(input) {
+  if (!input) return false;
+  return Boolean(parseMessageLink(input)) || SNOWFLAKE_REGEX.test(String(input).trim());
+}
+
+function isTextChannel(channel) {
+  if (!channel) return false;
+  if (typeof channel.isTextBased === "function" && !channel.isTextBased()) return false;
+  if (channel.type === 4 || channel.type === 5) return false;
+  return true;
+}
+
+async function fetchMessage(client, channelId, messageId) {
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+  if (!channel?.messages?.fetch) return null;
+  const fetched = await channel.messages.fetch(messageId).catch(() => null);
+  if (!fetched) return null;
+  return { message: fetched, channel };
+}
+
+async function resolveSource(client, message, args) {
+  const reference = message.messageReference;
+  if (reference?.messageId) {
+    const replied = await fetchMessage(client, reference.channelId, reference.messageId);
+    if (replied) return replied;
+  }
+
+  const token = args[0];
+  if (!isSourceToken(token)) return null;
+
+  const link = parseMessageLink(token);
+  if (link) return fetchMessage(client, link.channelId, link.messageId);
+
+  const localChannel = await client.channels.fetch(message.channelId).catch(() => null);
+  if (localChannel?.messages?.fetch) {
+    const local = await localChannel.messages.fetch(String(token).trim()).catch(() => null);
+    if (local) return { message: local, channel: localChannel };
+  }
+
+  if (!message.channel?.messages?.fetch) return null;
+  const own = await message.channel.messages.fetch(String(token).trim()).catch(() => null);
+  return own ? { message: own, channel: message.channel } : null;
+}
+
+function watcherList(userData) {
+  return (userData?.reactionReminders || [])
+    .map((w) => (w.toObject ? w.toObject() : w))
+    .filter((w) => w && w.id && w.guildId && w.channelId);
+}
+
+function watcherLine(watcher, index, client, language) {
+  const timeStr = fetchTime(watcher.durationSeconds * 1000, client, language, false, true).replace(/,/g, "");
+  const sample = codeSample(watcher.sample || watcher.fingerprint || "");
+  return `\`${index + 1}\`. ⏰ <#${watcher.channelId}> - ${sample} - \`${timeStr}\``;
+}
+
+async function askChannelChoice(client, message, language, themeColor, sourceChannelId, currentChannelId, timeStr) {
+  const yes = client.config?.emojis?.check || "✅";
+  const no = client.config?.emojis?.cross || "❌";
+
+  const embed = createEmbed(themeColor, null, client.translate.get(language, "Commands.remind.channelPrompt", {
+    "current": `<#${currentChannelId}>`,
+    "source": `<#${sourceChannelId}>`,
+    "yes": yes,
+    "no": no,
+    "time": timeStr,
+  }));
+
+  const prompt = await sendTracked(message.channel, { embeds: [embed] });
+  await prompt.react(yes).catch(() => {});
+  await prompt.react(no).catch(() => {});
+
+  const answered = await new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    let collector;
+    try {
+      collector = prompt.createReactionCollector({
+        filter: (r, user) => (r.emoji?.name === yes || r.emoji?.name === no) && user?.id === message.author.id,
+        time: CONFIRM_TIME_MS,
+      });
+    } catch (err) {
+      finish(null);
+      return;
+    }
+
+    collector.on("collect", (r) => finish(r.emoji?.name === yes ? "current" : "source"));
+    collector.on("end", () => finish(null));
+  });
+
+  if (answered === null) {
+    await prompt.edit({
+      embeds: [createEmbed(themeColor, null, client.translate.get(language, "Commands.remind.channelTimedOut"))],
+    }).catch(() => {});
+    await prompt.removeAllReactions().catch(() => {});
+  } else {
+    await prompt.delete().catch(() => {});
+  }
+
+  return answered;
+}
+
+async function handleAdd(message, args, prefix, client, language, themeColor) {
+  if (!message.guildId || !message.channelId) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "addNoGuild", client, language)] });
+  }
+
+  const rest = args.slice(1);
+  const hasSource = isSourceToken(rest[0]);
+  const timeText = (hasSource ? rest.slice(1) : rest).join(" ").trim();
+
+  if (!timeText) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "addNoTime", client, language)] });
+  }
+
+  const userData = await client.database.getUser(message.author.id, false);
+  const timezone = userData?.timezone;
+
+  const parsed = parseWatchTime(timeText, timezone);
+  if (!parsed || !parsed.timestamp) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "addInvalidTime", client, language)] });
+  }
+
+  const reminderMessage = cleanWatcherMessage(parsed.reminderMessage);
+
+  if (reminderMessage.length > CONFIG.MAX_MESSAGE_LENGTH) {
+    return sendTracked(message.channel, {
+      embeds: [errorEmbed(prefix, "addMessageTooLong", client, language, client.translate.get(language, "Commands.remind.yourMessage", { "numbers": reminderMessage.length }))],
+    });
+  }
+
+  const resolved = await resolveSource(client, message, rest);
+  if (!resolved) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "addNoSource", client, language)] });
+  }
+
+  const source = resolved.message;
+  const sourceChannel = resolved.channel;
+  const sourceGuildId = source.guildId || sourceChannel?.guildId || null;
+  const sourceChannelId = source.channelId || sourceChannel?.id || null;
+
+  if (!sourceGuildId || !sourceChannelId) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "addNoGuild", client, language)] });
+  }
+
+  if (!isTextChannel(sourceChannel)) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "addNotTextChannel", client, language)] });
+  }
+
+  const fingerprint = buildFingerprint(source);
+  const attachmentNames = attachNames(source);
+  if (!isMatchable(fingerprint, attachmentNames)) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "addTooShort", client, language)] });
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const durationSeconds = parsed.timestamp - now;
+
+  if (durationSeconds < 0) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "pastTime", client, language)] });
+  }
+  if (durationSeconds < CONFIG.MIN_TIME_SECONDS) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "tooShort", client, language)] });
+  }
+  if (durationSeconds > CONFIG.MAX_TIME_SECONDS) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "tooFar", client, language)] });
+  }
+
+  let guildId = sourceGuildId;
+  let channelId = sourceChannelId;
+
+  if (sourceChannelId !== message.channelId) {
+    const timeStr = fetchTime(durationSeconds * 1000, client, language, false, true).replace(/,/g, "");
+    const choice = await askChannelChoice(client, message, language, themeColor, sourceChannelId, message.channelId, timeStr);
+    if (choice === null) return;
+    if (choice === "current") {
+      guildId = message.guildId;
+      channelId = message.channelId;
+    }
+  }
+
+  const watchedChannel = channelId === message.channelId ? message.channel : sourceChannel;
+  const channelName = watchedChannel?.name || client.channels?.get?.(channelId)?.name || "";
+  const guildName = guildId === message.guildId
+    ? (message.guild?.name || client.guilds?.get?.(guildId)?.name || "")
+    : (client.guilds?.get?.(guildId)?.name || "");
+
+  const existing = watcherList(userData);
+  const duplicate = existing.find(
+    (w) =>
+      w.guildId === guildId &&
+      w.channelId === channelId &&
+      w.fingerprint === fingerprint
+  );
+
+  if (!duplicate) {
+    if (existing.length >= MAX_WATCHERS) {
+      return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "addMaxWatchers", client, language)] });
+    }
+  }
+
+  const watcher = {
+    id: duplicate?.id || crypto.randomUUID(),
+    guildId,
+    guildName,
+    channelId,
+    channelName,
+    sourceMessageId: source.id,
+    sourceAuthorId: source.author?.id || null,
+    sourceType: detectSourceType(source),
+    fingerprint,
+    sample: buildSample(source),
+    reminderMessage,
+    attachmentNames,
+    durationSeconds,
+    language,
+    createdAt: duplicate?.createdAt || now,
+  };
+
+  const next = duplicate
+    ? existing.map((w) => (w.id === duplicate.id ? watcher : w))
+    : [...existing, watcher];
+
+  if (duplicate) {
+    await removeWatchers(client, message.author.id, (w) => w.id === duplicate.id, { notify: false });
+  }
+
+  const timeStr = fetchTime(durationSeconds * 1000, client, language, false, true).replace(/,/g, "");
+  const sample = codeSample(watcher.sample || watcher.fingerprint);
+  const channelRef = `<#${channelId}>`;
+  const params = { "channel": channelRef, "time": timeStr, "message": sample, "emoji": WATCH_EMOJI };
+
+  const reminderLine = reminderMessage
+    ? client.translate.get(language, "Commands.remind.addDetailReminder", {
+      ...params,
+      "reminder": codeSample(reminderMessage),
+    })
+    : client.translate.get(language, "Commands.remind.addDetailReminderFallback", params);
+
+  const description = [
+    client.translate.get(language, duplicate ? "Commands.remind.addUpdated" : "Commands.remind.addSuccess", params),
+    client.translate.get(language, "Commands.remind.addDetailWatching", params),
+    reminderLine,
+    client.translate.get(language, "Commands.remind.addStepRemove", {
+      ...params,
+      "cmd": `${prefix}remind rlist`,
+      "rm": `${prefix}remind rdelete <index>`,
+    }),
+  ].join("\n\n");
+
+  const sent = await sendTracked(message.channel, { embeds: [successEmbed(description, themeColor)] });
+
+  await client.database.updateUser(message.author.id, { reactionReminders: next }, true);
+  await addWatcher(client, message.author.id, watcher);
+
+  return sent;
+}
+
+async function listWatchers(message, prefix, client, language, themeColor) {
+  const userData = await client.database.getUser(message.author.id, false);
+  const watchers = watcherList(userData);
+
+  if (watchers.length === 0) {
+    return sendTracked(message.channel, {
+      embeds: [errorEmbed(prefix, "noReactionReminders", client, language)],
+    });
+  }
+
+  const description = watchers
+    .map((w, i) => watcherLine(w, i, client, language))
+    .join("\n");
+
+  return sendTracked(message.channel, {
+    embeds: [infoEmbed(client.translate.get(language, "Commands.remind.reactionReminders"), description, themeColor)],
+  });
+}
+
+async function deleteWatcher(message, args, prefix, client, language, themeColor) {
+  if (!args[1] || isNaN(args[1])) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "rdeleteUsage", client, language)] });
+  }
+
+  const userData = await client.database.getUser(message.author.id, false);
+  const watchers = watcherList(userData);
+  const index = parseInt(args[1]) - 1;
+  const target = watchers[index];
+
+  if (!target) {
+    return sendTracked(message.channel, {
+      embeds: [errorEmbed(prefix, "rdeleteInvalidIndex", client, language)],
+    });
+  }
+
+  const removed = await removeWatchers(
+    client,
+    message.author.id,
+    (w) => w.id === target.id,
+    { notify: false }
+  );
+
+  if (!removed || removed.length === 0) {
+    return sendTracked(message.channel, { embeds: [errorEmbed(prefix, "rdeleteInvalidIndex", client, language)] });
+  }
+
+  const fresh = await client.database.getUser(message.author.id, false);
+  const remaining = watcherList(fresh);
+  let description = client.translate.get(language, "Commands.remind.rdeleteSuccess", { "index": args[1], "channel": `<#${target.channelId}>` });
+
+  if (remaining.length > 0) {
+    description += `\n\n**${client.translate.get(language, "Commands.remind.reactionReminders")}:**\n${remaining
+      .map((w, i) => watcherLine(w, i, client, language))
+      .join("\n")}`;
+  }
+
+  return sendTracked(message.channel, { embeds: [successEmbed(description, themeColor)] });
 }
 
 async function handleCreate(message, args, prefix, isDM, client, language, themeColor) {
   let inputText = isDM ? args.slice(1).join(" ") : args.join(" ");
 
   if (!inputText.trim()) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "noInput", client, language)],
     });
   }
 
-  const parsed = await parseTimeAndMessageWithUserTimezone(inputText, message.author.id, client);
+  const parsed = await parseTimeForUser(inputText, message.author.id, client);
   if (!parsed) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "invalidTime", client, language)],
     });
   }
@@ -320,7 +602,7 @@ async function handleCreate(message, args, prefix, isDM, client, language, theme
   timestamp = Number(timestamp);
 
   if (!reminderMessage) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "noMessage", client, language)],
     });
   }
@@ -328,13 +610,13 @@ async function handleCreate(message, args, prefix, isDM, client, language, theme
   const cleanedMessage = cleanReminderMessage(reminderMessage);
 
   if (!cleanedMessage || cleanedMessage.length === 0) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "noMessage", client, language)],
     });
   }
 
   if (cleanedMessage.length > CONFIG.MAX_MESSAGE_LENGTH) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "tooLong", client, language, client.translate.get(language, "Commands.remind.yourMessage", { "numbers": cleanedMessage.length }))],
     });
   }
@@ -342,19 +624,19 @@ async function handleCreate(message, args, prefix, isDM, client, language, theme
   const now = Math.floor(Date.now() / 1000);
 
   if (timestamp <= now) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "pastTime", client, language)],
     });
   }
 
   if (timestamp - now < CONFIG.MIN_TIME_SECONDS) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "tooShort", client, language)],
     });
   }
 
   if (timestamp - now > CONFIG.MAX_TIME_SECONDS) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "tooFar", client, language)],
     });
   }
@@ -366,19 +648,19 @@ async function handleCreate(message, args, prefix, isDM, client, language, theme
 
   const totalReminders = userData.reminders?.length || 0;
   if (totalReminders >= CONFIG.MAX_REMINDERS) {
-    return message.channel.send({
+    return sendTracked(message.channel, {
       embeds: [errorEmbed(prefix, "maxReminders", client, language)],
     });
   }
 
   if (isDM) {
     try {
-      await message.author.send({
+      await sendTracked(message.author, {
         embeds: [successEmbed(client.translate.get(language, "Commands.remind.dmReminder"), themeColor)],
       });
       await message.delete().catch(() => {});
     } catch (err) {
-      return message.channel.send({
+      return sendTracked(message.channel, {
         embeds: [errorEmbed(prefix, "dmFailed", client, language)],
       });
     }
@@ -424,7 +706,7 @@ async function handleCreate(message, args, prefix, isDM, client, language, theme
     
     const displayMsg = truncate(cleanedMessage, CONFIG.DISPLAY_LENGTH);
 
-    await message.channel.send({
+    await sendTracked(message.channel, {
       embeds: [successEmbed(`${client.translate.get(language, "Commands.remind.success")} ${timeStr} (${dateStr}): \`${displayMsg}\``, themeColor)],
     });
   }
@@ -444,7 +726,7 @@ module.exports = {
     const themeColor = db.theme || EMBED_COLORS.DEFAULT;
 
     if (!args.length) {
-      return message.channel.send({
+      return sendTracked(message.channel, {
         embeds: [errorEmbed(prefix, "noArgs", client, db.language)],
       });
     }
@@ -465,9 +747,21 @@ module.exports = {
       case "dm":
         return handleCreate(message, args, prefix, true, client, db.language, themeColor);
 
+      case "add":
+        return handleAdd(message, args, prefix, client, db.language, themeColor);
+
+      case "rlist":
+      case "reactions":
+      case "reactlist":
+        return listWatchers(message, prefix, client, db.language, themeColor);
+
+      case "rdelete":
+      case "removereaction":
+        return deleteWatcher(message, args, prefix, client, db.language, themeColor);
+
       default:
         if (args.length === 1 && /^\d+$/.test(args[0])) {
-          return message.channel.send({
+          return sendTracked(message.channel, {
             embeds: [errorEmbed(prefix, "numberOnly", client, db.language)],
           });
         }

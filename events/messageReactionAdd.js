@@ -1,12 +1,14 @@
 const scheduleCollectorHandler = require("../reactionHandlers/scheduleCollector");
+const reminderReactionHandler = require("../reactionHandlers/reminderReaction");
 const reloadSelectionHandler = require("../reactionHandlers/reloadSelection");
 const editCollectorHandler = require("../reactionHandlers/editCollector");
 const roleReactionHandler = require("../reactionHandlers/roleReaction");
+const { WATCH_EMOJI } = require("../functions/checkReactionReminders");
+const mediaRatingHandler = require("../reactionHandlers/mediaRating");
 const paginationHandler = require("../reactionHandlers/pagination");
 const collectorHandler = require("../reactionHandlers/collector");
 const giveawayHandler = require("../reactionHandlers/giveaway");
 const timezoneHandler = require("../reactionHandlers/timezone");
-const mediaRatingHandler = require("../reactionHandlers/mediaRating");
 const manageVC = require("../reactionHandlers/manageVC");
 const pollHandler = require("../reactionHandlers/poll");
 const parseTime = require("../functions/parseTime");
@@ -44,6 +46,10 @@ module.exports = async (client, reaction) => {
   }
 
   if (!reactionMsg) return;
+
+  if (emojiId === WATCH_EMOJI) {
+    return reminderReactionHandler(client, reaction, userId, reactionMsg, reactionChan);
+  }
 
   if (reloadSelection && reloadSelection.messageId === reaction.messageId) {
     return reloadSelectionHandler(client, reaction, userId, reloadSelection, emojiId);

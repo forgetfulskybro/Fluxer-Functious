@@ -2,8 +2,65 @@ const { Router } = require('express');
 const { makeRequireApiKey } = require('../middleware');
 const { validDay } = require('../../functions/birthdayHelpers');
 const { getUserProfile, getUserProfiles } = require('../../functions/userProfiles');
+const { handleNewReminder, handleDeletedReminder } = require('../../functions/checkReminders');
+const { removeWatchers, updateWatcher } = require('../../functions/checkReactionReminders');
 
 const MAX_BATCH_IDS = 100;
+
+const REACTION_MIN_SECONDS = 59;
+const REACTION_MAX_SECONDS = 63115209;
+const REACTION_MAX_MESSAGE_LENGTH = 400;
+const REACTION_MENTIONS = ['@here', '@everyone'];
+
+function toPlain(value) {
+  return value?.toObject ? value.toObject() : value;
+}
+
+function cleanWatcherMessage(text) {
+  return String(text ?? '')
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+    .filter((word) => !REACTION_MENTIONS.includes(word.toLowerCase().replace(/[<>]/g, '')))
+    .join(' ');
+}
+
+async function resolveChannelName(client, channelId) {
+  if (!channelId) return null;
+  const cached = client.channels?.get?.(channelId);
+  if (cached?.name) return cached.name;
+  if (typeof client.channels?.fetch !== 'function') return null;
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+  return channel?.name ?? null;
+}
+
+function serializeReactionReminder(watcher, channelName, guildName) {
+  return {
+    id: watcher.id,
+    guildId: watcher.guildId,
+    guildName: guildName ?? null,
+    channelId: watcher.channelId,
+    channelName: channelName ?? null,
+    reminderMessage: watcher.reminderMessage ?? '',
+    sample: watcher.sample ?? '',
+    durationSeconds: watcher.durationSeconds,
+    createdAt: watcher.createdAt,
+    matches: watcher.matches ?? 0,
+    sourceMessageId: watcher.sourceMessageId ?? null,
+    sourceType: watcher.sourceType ?? 'content',
+    language: watcher.language ?? 'en_EN',
+  };
+}
+
+async function enrichReactionReminders(client, watchers) {
+  return Promise.all(
+    watchers.map(async (raw) => {
+      const watcher = toPlain(raw) ?? {};
+      const channelName = await resolveChannelName(client, watcher.channelId);
+      const guild = client.guilds?.get?.(watcher.guildId);
+      return serializeReactionReminder(watcher, channelName, guild?.name ?? null);
+    })
+  );
+}
 
 function normalizeBirthday(birthday) {
   return {
@@ -226,6 +283,7 @@ function usersRouter(client, apiKey) {
 
       const reminders = [...(user.reminders ?? []), newReminder];
       await client.database.updateUser(userId, { reminders }, true);
+      handleNewReminder(userId, newReminder);
       return res.json({ reminder: newReminder });
     } catch (err) {
       console.error('[API] POST reminder:', err);
@@ -241,6 +299,9 @@ function usersRouter(client, apiKey) {
       const user = await client.database.getUser(userId, false);
       if (!user) return res.status(404).json({ error: 'User not found' });
 
+      const existing = (user.reminders ?? []).find((r) => r.id === reminderId);
+      if (!existing) return res.status(404).json({ error: 'Reminder not found' });
+
       const reminders = (user.reminders ?? []).map((r) => {
         if (r.id !== reminderId) return r;
         return {
@@ -251,6 +312,13 @@ function usersRouter(client, apiKey) {
       });
 
       await client.database.updateUser(userId, { reminders }, false);
+
+      const updated = reminders.find((r) => r.id === reminderId);
+      if (updated && updated.timestamp !== existing.timestamp) {
+        handleDeletedReminder(userId, reminderId);
+        handleNewReminder(userId, updated);
+      }
+
       return res.json({ ok: true });
     } catch (err) {
       console.error('[API] PATCH reminder:', err);
@@ -265,11 +333,92 @@ function usersRouter(client, apiKey) {
       const user = await client.database.getUser(userId, false);
       if (!user) return res.status(404).json({ error: 'User not found' });
 
+      const existing = (user.reminders ?? []).find((r) => r.id === reminderId);
+      if (!existing) return res.status(404).json({ error: 'Reminder not found' });
+
       const reminders = (user.reminders ?? []).filter((r) => r.id !== reminderId);
       await client.database.updateUser(userId, { reminders }, false);
+      handleDeletedReminder(userId, reminderId);
       return res.json({ ok: true });
     } catch (err) {
       console.error('[API] DELETE reminder:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.get('/:userId/reaction-reminders', requireApiKey, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const user = await client.database.getUser(userId, false);
+      const watchers = (user?.reactionReminders ?? []).map(toPlain).filter(Boolean);
+      return res.json({ reactionReminders: await enrichReactionReminders(client, watchers) });
+    } catch (err) {
+      console.error('[API] GET reaction-reminders:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.patch('/:userId/reaction-reminders/:watcherId', requireApiKey, async (req, res) => {
+    try {
+      const { userId, watcherId } = req.params;
+      const body = req.body ?? {};
+
+      if (body.guildId !== undefined || body.channelId !== undefined) {
+        return res.status(400).json({ error: 'The channel cannot be changed' });
+      }
+
+      const user = await client.database.getUser(userId, false);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      const existing = (user.reactionReminders ?? []).map(toPlain).find((w) => w?.id === watcherId);
+      if (!existing) return res.status(404).json({ error: 'Reaction reminder not found' });
+
+      const updates = {};
+
+      if (body.durationSeconds !== undefined) {
+        const duration = Number(body.durationSeconds);
+        if (!Number.isInteger(duration) || duration < REACTION_MIN_SECONDS || duration > REACTION_MAX_SECONDS) {
+          return res.status(400).json({ error: 'Invalid duration' });
+        }
+        updates.durationSeconds = duration;
+      }
+
+      if (body.reminderMessage !== undefined) {
+        if (typeof body.reminderMessage !== 'string') {
+          return res.status(400).json({ error: 'reminderMessage must be a string' });
+        }
+        const cleaned = cleanWatcherMessage(body.reminderMessage);
+        if (cleaned.length > REACTION_MAX_MESSAGE_LENGTH) {
+          return res.status(400).json({ error: 'Reminder message is too long' });
+        }
+        updates.reminderMessage = cleaned;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+      }
+
+      const updated = await updateWatcher(client, userId, watcherId, updates);
+      if (!updated) return res.status(404).json({ error: 'Reaction reminder not found' });
+
+      const [serialized] = await enrichReactionReminders(client, [updated]);
+      return res.json({ ok: true, reactionReminder: serialized });
+    } catch (err) {
+      console.error('[API] PATCH reaction-reminder:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.delete('/:userId/reaction-reminders/:watcherId', requireApiKey, async (req, res) => {
+    try {
+      const { userId, watcherId } = req.params;
+      const removed = await removeWatchers(client, userId, (watcher) => watcher.id === watcherId);
+      if (removed.length === 0) {
+        return res.status(404).json({ error: 'Reaction reminder not found' });
+      }
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error('[API] DELETE reaction-reminder:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
   });

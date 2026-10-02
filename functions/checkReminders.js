@@ -1,5 +1,6 @@
 const cron = require("node-cron");
 const db = require("../models/users");
+const { beginSelfSend, endSelfSend } = require("./checkReactionReminders");
 
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
@@ -20,7 +21,13 @@ async function sendGuildReminderWithRetry(client, channelId, userId, message, cr
         try {
             const channel = await client.channels.fetch(channelId);
             if (channel) {
-                await channel.send(`<@${userId}>, reminder from ${timestampText}: ${message}`);
+                beginSelfSend();
+                let sent;
+                try {
+                    sent = await channel.send(`<@${userId}>, reminder from ${timestampText}: ${message}`);
+                } finally {
+                    endSelfSend(sent?.id);
+                }
                 return { success: true };
             }
         } catch (err) {

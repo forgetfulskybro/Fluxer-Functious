@@ -2,11 +2,15 @@ const Giveaways = require("../models/giveaways");
 const Polls = require("../models/polls");
 const { stickyTimers } = require("../commands/mediachannels");
 const { trackGuildUpdates, trackResource } = require('../api/trackSettings');
+const { removeChannel } = require("../functions/checkReactionReminders");
 
 const UNKNOWN = "Unknown (Deleted manually)";
 
 module.exports = async (client, channel) => {
   const guildId = channel.guildId;
+
+  removeChannel(client, guildId, channel.id, channel.name).catch(() => {});
+
   const db = await client.database.getGuild(guildId);
   if (!db) return;
 
