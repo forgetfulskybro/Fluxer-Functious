@@ -101,7 +101,7 @@ module.exports = async (client, reaction) => {
     return giveawayHandler(client, reaction, userId, db, emojiId, "add");
   }
 
-  const guildDb = await client.database.getGuild(reaction.channel.guildId, false);
+  const guildDb = await client.database.getGuild(reaction.member.guild.id, false);
   if (guildDb) {
     const mc = guildDb.mediaChannels.find((m) => m.channelId === reaction.channelId);
     if (mc) return mediaRatingHandler(client, reaction, userId, mc, reactionMsg, emojiId, "add");
