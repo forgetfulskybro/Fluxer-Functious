@@ -1,6 +1,7 @@
 const { startCron: startScheduledCron } = require("../functions/checkScheduledMessages");
 const { startCron: startTimedRolesCron } = require("../functions/checkTimedRoles");
 const { startCron: startGiveawayCron } = require("../functions/checkGiveaways");
+const { startCron: startFluxerList } = require("../functions/updateFluxerList");
 const { startCron: startPollsCron } = require("../functions/checkPolls");
 const { startBirthdayCheck } = require("../functions/checkBirthdays");
 const { loadIndex } = require("../functions/checkReactionReminders");
@@ -32,4 +33,5 @@ module.exports = async (client) => {
   await checkManage(client);
   await checkRoles(client);
   startPollsCron(client);
+  startFluxerList(client);
 }
