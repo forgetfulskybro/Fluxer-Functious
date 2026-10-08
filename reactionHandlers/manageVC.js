@@ -1,8 +1,6 @@
 const { EmbedBuilder, resolvePermissionsToBitfield } = require("@fluxerjs/core");
 const errorHandler = require("../functions/errorHandler");
 
-const COLOR = "#A52F05";
-
 module.exports = async (client, message, userId, emojiId) => {
   if (client.manageVC.get(userId)) return;
   
@@ -20,15 +18,15 @@ module.exports = async (client, message, userId, emojiId) => {
     case "<:rename:1502164676598628060>":
       type = "channelName";
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.renameChannel")}`)
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.renameChannelDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
     
-    case "<:userlimit:1502164677802393309":
+    case "<:userlimit:1502164677802393309>":
       type = "userLimit";
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.setLimit")}`)
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.setLimitDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
@@ -36,7 +34,7 @@ module.exports = async (client, message, userId, emojiId) => {
     case "<:block:1502164675642326745>":
       type = "blockUser";
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.setBlock")}`)
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.setBlockDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
@@ -44,7 +42,7 @@ module.exports = async (client, message, userId, emojiId) => {
     case "<:unblock:1502164681409494751>":
       type = "unblockUser";
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.allowUser")}`)
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.allowUserDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
@@ -95,7 +93,7 @@ module.exports = async (client, message, userId, emojiId) => {
       
       type = "changeRegion";
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.changeRegion")}`)
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.changeRegionDesc")}\`${(groupRegions(regionMap)).join(', ')}\`\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
@@ -103,7 +101,7 @@ module.exports = async (client, message, userId, emojiId) => {
     case "<:transfer:1502164678616088286>":
       type = "transferOwner";
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.transferOwner")}`)
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.transferOwnerDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
@@ -111,7 +109,7 @@ module.exports = async (client, message, userId, emojiId) => {
     case "<:close:1502185371235901763>":
       type = "closeChannel";
       result = new EmbedBuilder()
-        .setColor(COLOR)
+        .setColor(db.theme)
         .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.closeChannel")}`)
         .setDescription(`${client.translate.get(db.language, "Functions.manageVC.closeChannelDesc")}\n\n${client.translate.get(db.language, "Functions.manageVC.cancelLimit")}`);
       break;
@@ -140,7 +138,7 @@ module.exports = async (client, message, userId, emojiId) => {
           : client.translate.get(db.language, "Functions.manageVC.isNotPrivate");
         
         result = new EmbedBuilder()
-          .setColor(COLOR)
+          .setColor(db.theme)
           .setTitle(`${guild.name} - ${client.translate.get(db.language, "Functions.manageVC.privacy")}`)
           .setDescription(statusText);
       } catch (error) {
@@ -157,6 +155,30 @@ module.exports = async (client, message, userId, emojiId) => {
   }
   
   if (result) {
+    const inChannel = !!message.channelId && message.channelId === connected.channelId;
+
+    if (inChannel) {
+      let channelTarget = guild.channels.get(message.channelId) ?? null;
+      if (!channelTarget && typeof client.channels?.resolve === "function") {
+        try { channelTarget = await client.channels.resolve(message.channelId); } catch { channelTarget = null; }
+      }
+
+      if (channelTarget && typeof channelTarget.send === "function") {
+        channelTarget.send({ content: `<@${userId}>`, embeds: [result] }).then((d) => {
+          if (type !== "private") client.manageVC.set(userId, { type, channelId: connected.channelId, guildId: connected.guildId, inChannel: true, prompt: d });
+          const timeout = setTimeout(() => {
+            if (client.manageVC.get(userId)) {
+              d.edit({ content: client.translate.get(db.language, "Functions.manageVC.collectEnded"), embeds: [result] });
+              client.manageVC.delete(userId)
+            }
+          }, 60000);
+
+          connected.timeout = timeout;
+        }).catch(() => {});
+        return;
+      }
+    }
+
     const user = client.users.get(userId);
     try {
       const DM = await user.createDM();
@@ -173,8 +195,11 @@ module.exports = async (client, message, userId, emojiId) => {
       })
     } catch (e) {
       if (client.reactions.get(userId)) return;
-      if (!db.config?.manage) return;
-      guild.channels.get(db.config.manage).send(`<@${userId}>, ${client.translate.get(db.language, "Functions.manageVC.dmsOff")}`).then((m) => { 
+      const fallbackChannel = db.config?.manage
+        ? guild.channels.get(db.config.manage)
+        : guild.channels.get(message.channelId);
+      if (!fallbackChannel) return;
+      fallbackChannel.send(`<@${userId}>, ${client.translate.get(db.language, "Functions.manageVC.dmsOff")}`).then((m) => { 
         client.reactions.set(userId, Date.now() + 2500);
         setTimeout(() => client.reactions.delete(userId), 2500)
         setTimeout(() => m.delete(), 8000);

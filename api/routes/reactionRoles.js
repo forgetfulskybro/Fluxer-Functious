@@ -2,6 +2,7 @@ const { Router } = require('express');
 const { EmbedBuilder, PermissionFlags } = require('@fluxerjs/core');
 const { makeRequireApiKey } = require('../middleware');
 const { trackResource, actorFromReq } = require('../trackSettings');
+const { syncReactions } = require('../../functions/syncReactions');
 
 function reactionRolesRouter(client, apiKey) {
   const router = Router({ mergeParams: true });
@@ -86,8 +87,13 @@ function reactionRolesRouter(client, apiKey) {
 
       const msg = await channel.send(payload);
 
-      for (const r of processedRoles) {
-        await msg.react(r.emoji).catch(() => {});
+      const { failed } = await syncReactions(msg, processedRoles.map((r) => r.emoji));
+      if (failed.length) {
+        await msg.delete().catch(() => {});
+        return res.status(500).json({
+          error: 'Failed to add reactions to the new reaction role message',
+          detail: failed.join(', '),
+        });
       }
 
       const entry = {
@@ -174,6 +180,15 @@ function reactionRolesRouter(client, apiKey) {
       const channel = await client.channels.resolve(existing.chanId);
       if (!channel) return res.status(400).json({ error: 'Channel no longer exists' });
 
+      const liveGuild = client.guilds?.get(guildId);
+      if (liveGuild) {
+        const me = liveGuild.members.me ?? (await liveGuild.members.fetchMe());
+        const perms = me.permissionsIn(channel);
+        if (!perms.has(PermissionFlags.AddReactions)) {
+          return res.status(403).json({ error: 'Bot missing Add Reactions' });
+        }
+      }
+
       const msg = await channel.messages.fetch(messageId).catch(() => null);
       if (!msg) return res.status(404).json({ error: 'Fluxer message not found' });
 
@@ -186,11 +201,7 @@ function reactionRolesRouter(client, apiKey) {
           : { content: finalText.slice(0, 1960), embeds: [] };
 
       await msg.edit(payload);
-      await msg.removeAllReactions().catch(() => {});
-
-      for (const r of processedRoles) {
-        await msg.react(r.emoji).catch(() => {});
-      }
+      const { failed } = await syncReactions(msg, processedRoles.map((r) => r.emoji));
 
       const entry = {
         ...existing,
@@ -227,7 +238,7 @@ function reactionRolesRouter(client, apiKey) {
         },
       });
 
-      return res.json({ ok: true, entry });
+      return res.json({ ok: true, entry, failedReactions: failed });
     } catch (err) {
       console.error('[API] PATCH reaction-roles:', err);
       return res.status(500).json({

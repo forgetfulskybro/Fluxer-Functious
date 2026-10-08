@@ -1,5 +1,6 @@
 const { PermissionFlags, resolvePermissionsToBitfield } = require('@fluxerjs/core');
 const errorHandler = require("../functions/errorHandler");
+const { sendManagePanel } = require("../functions/managePanel");
 
 module.exports = async (client, oldState, newState) => {
   const state = newState ?? oldState;
@@ -140,6 +141,10 @@ module.exports = async (client, oldState, newState) => {
           });
           
           client.observedVoiceUsers.delete(userId);
+        }
+
+        if (db.config?.managevc) {
+          await sendManagePanel(client, voiceChannel, db, true).catch(() => {});
         }
       } catch (error) {
         //client.observedVoiceUsers.delete(userId);

@@ -12,6 +12,8 @@ async function pushStats(client) {
     const botId = client?.user?.id || process.env.BOTID;
     const serverCount = client?.guilds?.size ?? 0;
 
+    if (!token) return false;
+
     try {
         const res = await fetch(`${FLUXERLIST_API}/${botId}/stats`, {
             method: "POST",
@@ -19,7 +21,7 @@ async function pushStats(client) {
                 "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ serverCount }),
+            body: JSON.stringify({ serverCount }), 
         });
 
         if (!res.ok) {

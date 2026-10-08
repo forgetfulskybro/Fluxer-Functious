@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require("../functions/pagination");
 const { trackGuildUpdates, trackResource  } = require("../api/trackSettings");
+const { syncReactions } = require("../functions/syncReactions");
 
 const CHANNEL_MENTION_REGEX = /^<#(?<id>\d+)>/;
 const TYPE_OPTIONS = ["content", "embed"];
@@ -139,11 +140,10 @@ module.exports = {
               
             try {
               const foundFixMsg = await (await client.channels.resolve(reactMsg.chanId))?.messages?.fetch(reactMsg.msgId);
-              await foundFixMsg.removeAllReactions();
-              
-              for (const reaction of reactMsg.roles) {
-                await foundFixMsg.react(reaction.emoji).catch(() => {});
-              }
+              if (!foundFixMsg) throw new Error("Reaction role message not found");
+
+              const { failed } = await syncReactions(foundFixMsg, (reactMsg.roles || []).map(r => r.emoji));
+              if (failed.length) throw new Error(failed.join(", "));
             } catch {
               return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.reactionFixError")}`).setColor(`#FF0000`)] });
             }

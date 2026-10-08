@@ -1,7 +1,8 @@
 const { Router } = require('express');
-const { EmbedBuilder, resolvePermissionsToBitfield } = require('@fluxerjs/core');
+const { resolvePermissionsToBitfield } = require('@fluxerjs/core');
 const { makeRequireApiKey } = require('../middleware');
 const { trackResource, actorFromReq } = require('../trackSettings');
+const { sendManagePanel } = require('../../functions/managePanel');
 
 function tempChannelsRouter(client, apiKey) {
   const router = Router({ mergeParams: true });
@@ -13,6 +14,7 @@ function tempChannelsRouter(client, apiKey) {
       const {
         customCategoryId = null,
         manage = false,
+        managevc = false,
         channelName = null,
         channelLimit = null,
         counting = false,
@@ -75,35 +77,7 @@ function tempChannelsRouter(client, apiKey) {
           }
         } catch {}
 
-        const CDNLang = {
-          en_EN: 'https://functious-cdn.vercel.app/api/images/ef27463013d7f69f67a0f3eb38129717.png',
-          es_ES: 'https://functious-cdn.vercel.app/api/images/9e51affa3d366da1cb46aba84246d712.png',
-          pt_BR: 'https://functious-cdn.vercel.app/api/images/bf709079782d5097798381835cf1e69b.png',
-          ar_AR: 'https://functious-cdn.vercel.app/api/images/2791aacd0a1aef7ae25e124759f601a7.png',
-        };
-
-        const manageEmbed = new EmbedBuilder()
-          .setColor(db.theme)
-          .setTitle(client.translate.get(db.language, 'Commands.tempchannels.manageTitle'))
-          .setImage(CDNLang[db.language] ?? CDNLang.en_EN)
-          .setFooter({ text: client.translate.get(db.language, 'Commands.tempchannels.manageFooter') });
-
-        const manageMsg = await manageChannel.send({ embeds: [manageEmbed] });
-
-        const manageReactions = [
-          '<:rename:1502164676598628060>',
-          '<:userlimit:1502164677802393309>',
-          '<:region:1502164672647593687>',
-          '<:privacy:1502164674153348824>',
-          '<:unblock:1502164681409494751>',
-          '<:block:1502164675642326745>',
-          '<:transfer:1502164678616088286>',
-          '<:close:1502185371235901763>',
-        ];
-
-        for (const reaction of manageReactions) {
-          await manageMsg.react(reaction).catch(() => {});
-        }
+        const manageMsg = await sendManagePanel(client, manageChannel, db);
 
         manageChannelId = manageChannel.id;
         manageMessageId = manageMsg.id;
@@ -119,6 +93,7 @@ function tempChannelsRouter(client, apiKey) {
         customParent: customCategoryId || null,
         manage: manageChannelId,
         manageMessage: manageMessageId,
+        managevc: !!managevc,
       };
 
       await client.database.updateGuild(
@@ -244,6 +219,7 @@ async function disableTempChannels(client, guildId, db) {
         customParent: null,
         manage: null,
         manageMessage: null,
+        managevc: false,
       },
     },
     false

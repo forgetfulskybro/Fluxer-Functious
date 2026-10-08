@@ -12,6 +12,24 @@ async function processError(client, error, message) {
   });
 } 
 
+function sendReply(message, MVC, payload, endSession) {
+  const sent = Promise.resolve().then(() => message.reply(payload)).catch(() => null);
+
+  if (MVC?.inChannel) {
+    setTimeout(() => {
+      Promise.resolve()
+        .then(() => message.delete())
+        .then(() => sent)
+        .then((m) => Promise.all([m, endSession ? MVC.prompt : null]
+          .filter((target) => target && typeof target.delete === "function")
+          .map((target) => target.delete())))
+        .catch(() => {});
+    }, 7000);
+  }
+
+  return sent;
+}
+
 async function manageVC(client, message) {
   const MVC = client.manageVC.get(message.author.id);
   const db = await client.database.getGuild(MVC.guildId);
@@ -24,7 +42,7 @@ async function manageVC(client, message) {
   if (content.toLowerCase() === `cancel`) {
     clearTimeout(client.observedVoiceUsers.get(message.author.id).timeout);
     client.manageVC.delete(message.author.id);
-    return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.stopped"))] })
+    return sendReply(message, MVC, { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.stopped"))] })
   }
   
   switch (MVC.type) {
@@ -47,7 +65,7 @@ async function manageVC(client, message) {
       break;
     
     case "userLimit":
-      if (isNaN(content)) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidLimit"))] })
+      if (isNaN(content)) return sendReply(message, MVC, { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidLimit"))] })
       if (Number(content) > 99) content = "99";
       if (Number(content) < 0) content = 0;
       
@@ -61,7 +79,7 @@ async function manageVC(client, message) {
       
       try {
         await channel.edit({
-          user_limit: Number(content)
+          userLimit: Number(content)
         });
       } catch (err) {
         result = null;
@@ -72,7 +90,7 @@ async function manageVC(client, message) {
     case "blockUser":
       guild = await client.guilds.get(MVC.guildId);
       member = await getMember(guild, content)
-      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
+      if (!member) return sendReply(message, MVC, { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
       
       if (client.observedVoiceUsers.get(member.id)) {
         const tempChannel = await guild.createChannel({
@@ -103,7 +121,7 @@ async function manageVC(client, message) {
     case "unblockUser":
       guild = await client.guilds.get(MVC.guildId);
       member = await getMember(guild, content)
-      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
+      if (!member) return sendReply(message, MVC, { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
 
       result = new EmbedBuilder()
         .setColor(db.theme)
@@ -151,7 +169,7 @@ async function manageVC(client, message) {
 
       const region = regionMap[regionInput];
       if (!region) {
-        return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidRegion"))] });
+        return sendReply(message, MVC, { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidRegion"))] });
       }
 
       result = new EmbedBuilder()
@@ -172,8 +190,8 @@ async function manageVC(client, message) {
     case "transferOwner":
       guild = await client.guilds.get(MVC.guildId);
       member = await getMember(guild, content);
-      if (!member) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
-      if (member.user.bot) return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.noBots"))] });
+      if (!member) return sendReply(message, MVC, { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.invalidUser"))] });
+      if (member.user.bot) return sendReply(message, MVC, { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.noBots"))] });
 
       result = new EmbedBuilder()
         .setColor(db.theme)
@@ -199,7 +217,7 @@ async function manageVC(client, message) {
 
     case "closeChannel":
       if (content.toLowerCase() !== 'confirm') {
-        return message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.closeConfirm"))] });
+        return sendReply(message, MVC, { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Functions.manageVC.closeConfirm"))] });
       }
 
       try {
@@ -225,7 +243,7 @@ async function manageVC(client, message) {
   if (result) {
     if (client.observedVoiceUsers.get(message.author.id)) clearTimeout(client.observedVoiceUsers.get(message.author.id).timeout);
     client.manageVC.delete(message.author.id);
-    message.reply({ embeds: [result] });
+    sendReply(message, MVC, { embeds: [result] }, true);
   }
 }
 

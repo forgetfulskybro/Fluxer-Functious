@@ -12,8 +12,9 @@ module.exports = async (client, message) => {
   checkMessage(client, message).catch(() => {});
 
   if (!message?.channel || (!message.content && !message.attachments?.size) || message.author.bot) return;
-  const MVC = client.manageVC.get(message.author.id);
-  if (message.channel.type === 1 && MVC) return await manageVC(client, message)
+  const MVC = client.manageVC.get(message.author.id); 
+  const replyChannelId = message.channelId ?? message.channel?.id;
+  if (MVC && (message.channel.type >= 1 || (MVC.inChannel && replyChannelId === MVC.channelId))) return await manageVC(client, message)
   if (message.channel.type === 1) return;
 
   // const channel = message.channel;

@@ -28,6 +28,7 @@ const guilds = new Schema({
     customParent: { type: String, default: null },
     manage: { type: String, nullable: true, default: null },
     manageMessage: { type: String, nullable: true, default: null },
+    managevc: { type: Boolean, default: false },
   },
   tags: { type: Array, default: [] },
   mediaChannels: { type: Array, default: [] },
