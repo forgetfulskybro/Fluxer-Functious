@@ -100,7 +100,10 @@
       "unknownSub": "أمر فرعي غير معروف. استخدم",
       "unknownSubSuffix": "للاستخدام",
       "defaultStickyText": "📌 هذه قناة الوسائط فقط. مسموح فقط بـ {types} . سيتم إزالة الرسائل الأخرى.",
-      "attachments": "المرفقات"
+      "attachments": "المرفقات",
+      "threadFlag": "إنشاء سلسلة على كل منشور مقبول",
+      "threadDescFlag": "يسمح بإضافة نص إلى رسالتك",
+      "defaultThreadName": "نقاش"
     },
     "theme": {
       "description": "تغيير لون الصورة الرمزية للروبوت، اللافتة و الضمائم للمجتمع.",
@@ -815,7 +818,12 @@
       "pollNotFound": "لم يتم العثور على الاستطلاع #{pollNumber} أو إنتهيه بالفعل.",
       "deleted": "تم إنهاء الاستطلاع #{pollNumber} مبكرا.",
       "message": "رسالة",
-      "noUserPolls": "ليس لديك استطلاعات رأي لعرضها."
+      "noUserPolls": "ليس لديك استطلاعات رأي لعرضها.",
+      "usageTitle": "الاستخدام",
+      "threadUsageTitle": "وضع السلسلة",
+      "threadUsageDesc": "ينشر الاستطلاع في القناة ويفتح سلسلة نقاش عليه.",
+      "otherTitle": "أخرى",
+      "threadName": "نقاش الاستطلاع"
     },
     "reroll": {
       "input": "قم بتوفير معرف رسالة هدية لإعادة تسجيل الفائزين.",

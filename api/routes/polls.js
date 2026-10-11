@@ -5,6 +5,7 @@ const PollInstance = require('../../functions/poll');
 const { EmbedBuilder } = require('@fluxerjs/core');
 const dhms = require('../../functions/dhms');
 const Polls = require('../../models/polls');
+const createThread = require('../../functions/createThread');
 const { trackResource, actorFromReq } = require('../trackSettings');
 
 function pollsRouter(client, apiKey) {
@@ -41,7 +42,7 @@ function pollsRouter(client, apiKey) {
   router.post('/', requireApiKey, async (req, res) => {
     try {
       const { guildId } = req.params;
-      const { channelId, question, duration, options: optionList, ownerId = null } = req.body || {};
+      const { channelId, question, duration, options: optionList, ownerId = null, thread = false } = req.body || {};
 
       if (!channelId || !question || !duration || !Array.isArray(optionList) || optionList.length < 2) {
         return res.status(400).json({ error: 'channelId, question, duration, and at least 2 options are required' });
@@ -171,6 +172,14 @@ function pollsRouter(client, apiKey) {
 
       handleNew(pollData);
 
+      if (thread) {
+        await createThread(msg, {
+          name: String(question),
+          description: String(question),
+          fallbackName: client.translate.get(db.language, 'Commands.polls.threadName'),
+        }).catch(() => {});
+      }
+
       await trackResource(client, {
         userId: hostId,
         groupId: guildId,
@@ -184,6 +193,7 @@ function pollsRouter(client, apiKey) {
           question: pollData.desc,
           options: names,
           durationMs,
+          thread: !!thread,
         },
         previous: null,
       });

@@ -100,7 +100,10 @@
       "unknownSub": "Subcomando desconocido. Usar",
       "unknownSubSuffix": "para su uso.",
       "defaultStickyText": "📌 Este es un canal de solo medios. Sólo se permiten {types} . Otros mensajes serán eliminados.",
-      "attachments": "archivos adjuntos"
+      "attachments": "archivos adjuntos",
+      "threadFlag": "Crea un hilo en cada publicación aceptada",
+      "threadDescFlag": "Permite texto en tu mensaje",
+      "defaultThreadName": "Discusión"
     },
     "theme": {
       "description": "Cambia el color del avatar, banner y embeds del bot para la comunidad.",
@@ -815,7 +818,12 @@
       "pollNotFound": "Encuesta #{pollNumber} no encontrada o ya terminada.",
       "deleted": "La encuesta #{pollNumber} ha terminado antes.",
       "message": "Mensaje",
-      "noUserPolls": "No tienes encuestas que ver."
+      "noUserPolls": "No tienes encuestas que ver.",
+      "usageTitle": "Uso",
+      "threadUsageTitle": "Modo hilo",
+      "threadUsageDesc": "Publica la encuesta en el canal y abre un hilo de discusión sobre ella.",
+      "otherTitle": "Otros",
+      "threadName": "Discusión de la encuesta"
     },
     "reroll": {
       "input": "Proporcione un identificador de mensaje de entrega para releer a sus ganadores.",

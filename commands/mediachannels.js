@@ -47,6 +47,8 @@ module.exports = {
       `**${t("helpDesc")}**\n`,
       `**${t("addChannel")}**`,
       `\`${db.prefix}mc add #channel [${t("options")}]\``,
+      `\`--thread\` ${t("threadFlag")}`,
+      `\`--desc\` ${t("threadDescFlag")}`,
       `**${t("attachmentOptions")}** (${t("attachmentDefault")}):`,
       `\`--attachments\` ${t("attachAny")}`,
       `\`--images\` ${t("attachImages")}`,
@@ -85,6 +87,8 @@ module.exports = {
           mc.allowLinks && "links",
           mc.rating && `rating${mc.deleteThreshold > 0 ? ` (delete at -${mc.deleteThreshold})` : ""}`,
           mc.sticky && "sticky",
+          mc.threads && "threads",
+          mc.desc && "desc",
         ].filter(Boolean).join(", ");
         return `<#${mc.channelId}> - ${flags || t("attachmentsOnly")}`;
       });
@@ -116,6 +120,9 @@ module.exports = {
       const stickyTextIdx = rest.indexOf("--stickytext");
       const stickyText = stickyTextIdx !== -1 ? rest.slice(stickyTextIdx + 1).join(" ") || null : null;
 
+      const threads = rest.includes("--threads") || rest.includes("--thread");
+      const desc = rest.includes("--desc");
+
       const existing = (db.mediaChannels ?? []).find((mc) => mc.channelId === channelId);
       if (sub === "add" && existing) return err(`<#${channelId}> ${t("alreadyConfigured")} \`${db.prefix}mc edit <#${channelId}>\` ${t("alreadyConfiguredSuffix")}`);
       if (sub === "edit" && !existing) return err(`<#${channelId}> ${t("notConfigured")} \`${db.prefix}mc add <#${channelId}>\` ${t("notConfiguredSuffix")}`);
@@ -131,6 +138,8 @@ module.exports = {
         deleteThreshold: rating ? deleteThreshold : 0,
         sticky,
         stickyText,
+        threads,
+        desc,
         stickyMessageId: existing?.stickyMessageId ?? null,
       };
 
@@ -157,6 +166,8 @@ module.exports = {
         allowLinks && "links",
         rating && `rating${deleteThreshold > 0 ? ` (auto-delete at -${deleteThreshold})` : ""}`,
         sticky && "sticky",
+        threads && "threads",
+        desc && "desc",
       ].filter(Boolean).join(", ");
 
       return message.reply({ embeds: [embed(`${sub === "add" ? t("added") : t("updated")} <#${channelId}> ${t("asMediaChannel")}\n**${t("allowed")}:** ${flags || t("attachmentsOnly")}`)] });

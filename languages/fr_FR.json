@@ -100,7 +100,10 @@
       "unknownSub": "Sous-commande inconnue. Utiliser",
       "unknownSubSuffix": "pour l'utilisation.",
       "defaultStickyText": "📌 Il s'agit d'un canal uniquement média. Seul l' {types} est autorisé. Les autres messages seront supprimés.",
-      "attachments": "pièces jointes"
+      "attachments": "pièces jointes",
+      "threadFlag": "Créer un fil sur chaque publication acceptée",
+      "threadDescFlag": "Autorise du texte sur votre message",
+      "defaultThreadName": "Discussion"
     },
     "theme": {
       "description": "Changez la couleur de l'avatar du bot, de la bannière et intégrez pour la communauté.",
@@ -815,7 +818,12 @@
       "pollNotFound": "Sondage #{pollNumber} introuvable ou déjà terminé.",
       "deleted": "Le sondage #{pollNumber} a été terminé prématurément.",
       "message": "Message",
-      "noUserPolls": "Vous n'avez pas de sondages à voir."
+      "noUserPolls": "Vous n'avez pas de sondages à voir.",
+      "usageTitle": "Utilisation",
+      "threadUsageTitle": "Mode fil",
+      "threadUsageDesc": "Publie le sondage dans le salon et ouvre un fil de discussion dessus.",
+      "otherTitle": "Autre",
+      "threadName": "Discussion du sondage"
     },
     "reroll": {
       "input": "Fournir l'ID du message d'un cadeau pour relancer ses gagnants.",

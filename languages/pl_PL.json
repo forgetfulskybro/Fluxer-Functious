@@ -100,7 +100,10 @@
       "unknownSub": "Nieznane podpolecenie. Użyj",
       "unknownSubSuffix": "do użycia.",
       "defaultStickyText": "📌 To jest kanał tylko dla mediów. Dozwolone są tylko {types} . Inne wiadomości zostaną usunięte.",
-      "attachments": "załączniki"
+      "attachments": "załączniki",
+      "threadFlag": "Twórz wątek przy każdym zaakceptowanym poście",
+      "threadDescFlag": "Pozwala dodać tekst do wiadomości",
+      "defaultThreadName": "Dyskusja"
     },
     "theme": {
       "description": "Zmień kolor awatara bota, banera i osadzenia dla społeczności.",
@@ -815,7 +818,12 @@
       "pollNotFound": "Ankieta #{pollNumber} nie została znaleziona lub już się zakończyła.",
       "deleted": "Ankieta #{pollNumber} została zakończona wcześniej.",
       "message": "Wiadomość",
-      "noUserPolls": "Nie masz ankiet do wyświetlenia."
+      "noUserPolls": "Nie masz ankiet do wyświetlenia.",
+      "usageTitle": "Użycie",
+      "threadUsageTitle": "Tryb wątku",
+      "threadUsageDesc": "Publikuje ankietę na kanale i otwiera dla niej wątek dyskusyjny.",
+      "otherTitle": "Inne",
+      "threadName": "Dyskusja ankiety"
     },
     "reroll": {
       "input": "Podaj identyfikator wiadomości prezentu, aby odnowić jego zwycięzców.",

@@ -100,7 +100,10 @@
       "unknownSub": "Subcomando desconhecido. Use",
       "unknownSubSuffix": "para uso.",
       "defaultStickyText": "📌 Este é um canal exclusivo de mídia. Somente {types} são permitidos. Outras mensagens serão removidas.",
-      "attachments": "Anexos"
+      "attachments": "Anexos",
+      "threadFlag": "Cria um tópico em cada publicação aceita",
+      "threadDescFlag": "Permite texto na sua mensagem",
+      "defaultThreadName": "Discussão"
     },
     "theme": {
       "description": "Muda a cor do avatar do bot, estandarte, e incorpora a comunidade.",
@@ -815,7 +818,12 @@
       "pollNotFound": "Poll #{pollNumber} not found or already ended.",
       "deleted": "A enquete #{pollNumber} terminou mais cedo.",
       "message": "mensagem",
-      "noUserPolls": "Você não tem nenhuma enquete para ver."
+      "noUserPolls": "Você não tem nenhuma enquete para ver.",
+      "usageTitle": "Uso",
+      "threadUsageTitle": "Modo tópico",
+      "threadUsageDesc": "Publica a enquete no canal e abre um tópico de discussão sobre ela.",
+      "otherTitle": "Outros",
+      "threadName": "Discussão da enquete"
     },
     "reroll": {
       "input": "Forneça o ID da mensagem de um brinde para rerolar seus vencedores.",

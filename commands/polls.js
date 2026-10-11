@@ -4,6 +4,7 @@ const dhms = require(`../functions/dhms`);
 const PollDB = require("../models/polls");
 const { handleNew, handleDelete } = require("../functions/checkPolls");
 const Paginator = require(`../functions/pagination`);
+const createThread = require(`../functions/createThread`);
 const { trackResource } = require('../api/trackSettings');
 
 async function endPollEarly(client, poll, db) {
@@ -68,6 +69,28 @@ module.exports = {
     },
     run: async (client, message, args, db) => {
       const subcommand = args[0]?.toLowerCase();
+      const tr = (key, vars) => client.translate.get(db.language, `Commands.polls.${key}`, vars);
+
+      if (subcommand === "help") {
+        const helpText = [
+          `**${tr("usageTitle")}**`,
+          `\`${db.prefix}poll <time> | <question> | <option> | <option>\``,
+          ``,
+          `**${tr("threadUsageTitle")}**`,
+          `\`${db.prefix}poll thread <time> | <question> | <option> | <option>\``,
+          tr("threadUsageDesc"),
+          ``,
+          `**${tr("otherTitle")}**`,
+          `\`${db.prefix}poll view\``,
+          `\`${db.prefix}poll delete <number>\``,
+          `\`${db.prefix}poll toggle\``,
+        ].join("\n");
+
+        return message.reply({ embeds: [new EmbedBuilder().setTitle(tr("polls")).setDescription(helpText).setColor(db.theme)] });
+      }
+
+      const threadMode = subcommand === "thread";
+      const pollArgs = threadMode ? args.slice(1) : args;
 
       if (subcommand === "view") {
         const polls = await PollDB.find({ owner: message.author.id, ended: false });
@@ -197,7 +220,7 @@ module.exports = {
 
       const check = await PollDB.find({ owner: message.author.id, ended: false })
       if (check.length === 5) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.polls.tooMany")).setColor(`#FF0000`)] });
-      const options = args.join(` `).split(`|`).map(x => x.trim()).filter(x => x);
+      const options = pollArgs.join(` `).split(`|`).map(x => x.trim()).filter(x => x);
       if (!options[0]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.validTime")}: \`${db.prefix}polls 5m | ${client.translate.get(db.language, "Commands.polls.example")}\``).setColor(`#FF0000`)] });
       const time = dhms(options[0]);
       if (!time) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.validTime")}: \`${db.prefix}polls 5m | ${client.translate.get(db.language, "Commands.polls.example")}\``).setColor(`#FF0000`)] });
@@ -248,6 +271,14 @@ module.exports = {
         msg.guildId = message.guildId
         const pollData = await poll.start(msg, poll, { tooMuch, pollNumber: nextPollNumber });
         if (pollData) handleNew(pollData);
+
+        if (threadMode) {
+          await createThread(msg, {
+            name: options[1],
+            description: options[1],
+            fallbackName: tr("threadName"),
+          }).catch(() => {});
+        }
 
         await trackResource(client, {
           userId: message.author.id,

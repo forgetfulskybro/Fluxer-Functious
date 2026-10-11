@@ -1,4 +1,5 @@
 const { UPVOTE, DOWNVOTE, URL_REGEX, STICKY_DELAY, stickyTimers, IMAGE_EXTS, VIDEO_EXTS } = require("../commands/mediachannels");
+const createThread = require("./createThread");
 const stickySending = new Set();
 
 function extOf(filename) {
@@ -41,6 +42,15 @@ const checkMediaChannel = async function checkMediaChannel(client, message, db) 
   if (mc.rating) {
     message.react(UPVOTE).catch(() => {});
     setTimeout(() => message.react(DOWNVOTE).catch(() => {}), 300);
+  }
+
+  if (mc.threads) {
+    const caption = mc.desc ? (message.content ?? "").trim() : "";
+    createThread(message, {
+      name: caption,
+      description: caption,
+      fallbackName: client.translate.get(db.language, "Commands.mediachannels.defaultThreadName"),
+    }).catch(() => {});
   }
 
   if (mc.sticky) {

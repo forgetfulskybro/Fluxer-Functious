@@ -100,7 +100,10 @@
       "unknownSub": "Unknown subcommand. Use",
       "unknownSubSuffix": "for usage.",
       "defaultStickyText": "📌 This is a media-only channel. Only {types} are allowed. Other messages will be removed.",
-      "attachments": "attachments"
+      "attachments": "attachments",
+      "threadFlag": "Vytvoriť vlákno pri každom prijatom príspevku",
+      "threadDescFlag": "Povolí pridať text k správe",
+      "defaultThreadName": "Diskusia"
     },
     "theme": {
       "description": "Change the color for the bot's avatar, banner, and embeds for the community.",
@@ -815,7 +818,12 @@
       "pollNotFound": "Poll #{pollNumber} not found or already ended.",
       "deleted": "Poll #{pollNumber} has been ended early.",
       "message": "Message",
-      "noUserPolls": "You have no polls to view."
+      "noUserPolls": "You have no polls to view.",
+      "usageTitle": "Použitie",
+      "threadUsageTitle": "Režim vlákna",
+      "threadUsageDesc": "Zverejní anketu v kanáli a otvorí k nej diskusné vlákno.",
+      "otherTitle": "Iné",
+      "threadName": "Diskusia k ankete"
     },
     "reroll": {
       "input": "Provide a giveaway's message ID to reroll its winners.",

@@ -100,7 +100,10 @@
       "unknownSub": "Unknown subcommand. Use",
       "unknownSubSuffix": "for usage.",
       "defaultStickyText": "📌 This is a media-only channel. Only {types} are allowed. Other messages will be removed.",
-      "attachments": "attachments"
+      "attachments": "attachments",
+      "threadFlag": "Create a thread on every accepted post",
+      "threadDescFlag": "Allows text on your message",
+      "defaultThreadName": "Discussion"
     },
     "theme": {
       "description": "Change the color for the bot's avatar, banner, and embeds for the community.",
@@ -813,7 +816,12 @@
       "pollNotFound": "Poll #{pollNumber} not found or already ended.",
       "deleted": "Poll #{pollNumber} has been ended early.",
       "message": "Message",
-      "noUserPolls": "You have no polls to view."
+      "noUserPolls": "You have no polls to view.",
+      "usageTitle": "Usage",
+      "threadUsageTitle": "Thread mode",
+      "threadUsageDesc": "Posts the poll in the channel and opens a discussion thread on it.",
+      "otherTitle": "Other",
+      "threadName": "Poll Discussion"
     },
     "reroll": {
       "input": "Provide a giveaway's message ID to reroll its winners.",
