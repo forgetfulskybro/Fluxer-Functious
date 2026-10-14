@@ -5,7 +5,7 @@ module.exports = async (client, member) => {
   if (!db) return;
 
   if (db.stickyRolesEnabled) {
-    const roleIds = member.roles.ids ?? [];
+    const roleIds = member.roles?.ids ?? [];
     if (roleIds.length > 0) {
       const stickyRoles = [
         ...db.stickyRoles.filter((s) => s.user !== member.user.id),
