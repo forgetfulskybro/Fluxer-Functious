@@ -132,7 +132,7 @@ module.exports = {
           
           const userTzData = await client.database.getUser(targetUserId, false)
           
-          if (!userTzData) {
+          if (!userTzData?.timezone) {
             const isSelf = targetUserId === message.author.id;
             return message.reply({
               embeds: [
