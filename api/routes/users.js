@@ -6,7 +6,6 @@ const { handleNewReminder, handleDeletedReminder } = require('../../functions/ch
 const { removeWatchers, updateWatcher } = require('../../functions/checkReactionReminders');
 
 const MAX_BATCH_IDS = 100;
-
 const REACTION_MIN_SECONDS = 59;
 const REACTION_MAX_SECONDS = 63115209;
 const REACTION_MAX_MESSAGE_LENGTH = 400;

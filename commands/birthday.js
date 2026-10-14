@@ -78,7 +78,7 @@ function parseDate(input, client, lang) {
   return null;
 }
 
-function buildViewEmbed(client, db, userData) {
+function buildViewEmbed(client, db, userData, viewerData) {
   const lang = db.language;
   const bday = userData.birthday;
   const tz = userData.timezone || "UTC";
@@ -104,7 +104,9 @@ function buildViewEmbed(client, db, userData) {
     : client.translate.get(lang, "Commands.birthday.pingFalse");
 
   if (tz === "UTC") {
-    footerText += client.translate.get(lang, "Commands.birthday.utcHint", { cmdTimezone: `\`${db.prefix}timezone set <IANA timezone>\`` });
+    if (!viewerData?.timezone) {
+      footerText += client.translate.get(lang, "Commands.birthday.utcHint", { cmdTimezone: `\`${db.prefix}timezone set <IANA timezone>\`` });
+    }
   }
 
   embed.setFooter({ text: footerText });
@@ -123,7 +125,6 @@ function buildHelpEmbed(client, db, prefix, isAdmin) {
   const lines = [
     t("helpPersonal"),
     line("set <date>", t("helpSet")),
-    line("edit <date>", t("helpEdit")),
     line("age <number|remove>", t("helpAge")),
     line("view", t("helpView")),
     line("remove", t("helpRemove")),
@@ -191,7 +192,7 @@ module.exports = {
       const dateInput = args.slice(1).join(" ");
       if (!dateInput) {
         return err(
-          client.translate.get(db.language, "Commands.birthday.provideDate", { prefix, sub })
+          client.translate.get(db.language, "Commands.birthday.provideDate", { prefix, sub: "set" })
         );
       }
 
@@ -203,10 +204,7 @@ module.exports = {
       }
 
       const userData = await getUserData(message.author.id, client);
-
-      if (sub === "set" && userData.birthday?.day) {
-        return err(client.translate.get(db.language, "Commands.birthday.alreadySet", { cmdEdit: cmdTag(prefix, "edit") }));
-      }
+      const hadBirthday = Boolean(userData.birthday?.day);
 
       const newBirthday = {
         day: parsed.day,
@@ -223,7 +221,7 @@ module.exports = {
         groupId: message.guildId,
         category: 'birthdays',
         key: 'userBirthday',
-        action: sub === "set" ? "create" : "update",
+        action: hadBirthday ? "update" : "create",
         label: 'User Birthday',
         value: userBirthdaySnapshot(message.author.id, { birthday: newBirthday }),
         previous: userBirthdaySnapshot(message.author.id, userData),
@@ -233,16 +231,18 @@ module.exports = {
       const nextTs = nextBirthdayTimestamp(parsed.month, parsed.day, tz);
       const dateStr = `${ordinal(parsed.day, client, db.language)} ${getMonthName(parsed.month - 1, client, db.language)}`;
       const ambiguousNote = parsed.ambiguous
-        ? client.translate.get(db.language, "Commands.birthday.ambiguous", { date: dateStr, cmdEdit: cmdTag(prefix, "edit") })
+        ? client.translate.get(db.language, "Commands.birthday.ambiguous", { date: dateStr, cmdEdit: cmdTag(prefix, "set") })
         : "";
 
       let tzNote = "";
       if (tz === "UTC") {
-        tzNote = client.translate.get(db.language, "Commands.birthday.tzNote", { cmdTimezone: `\`${prefix}timezone set <IANA timezone>\`` });
+        if (!userData?.timezone) {
+          tzNote = client.translate.get(db.language, "Commands.birthday.tzNote", { cmdTimezone: `\`${prefix}timezone set <IANA timezone>\`` });
+        }
       }
 
       const optedIn = (userData.birthday?.enabledGuilds ?? []).includes(message.guildId);
-      const successKey = sub === "edit"
+      const successKey = hadBirthday
         ? (optedIn ? "Commands.birthday.successEditOptedIn" : "Commands.birthday.successEdit")
         : (optedIn ? "Commands.birthday.successSetOptedIn" : "Commands.birthday.successSet");
 
@@ -311,7 +311,8 @@ module.exports = {
     if (sub === "view") {
       const userData = await getUserData(message.author.id, client);
       if (!userData.birthday?.day) return err(client.translate.get(db.language, "Commands.birthday.notSetYet", { cmdSet: cmdTag(prefix, "set <date>") }));
-      return message.reply({ embeds: [buildViewEmbed(client, db, userData)] });
+      const viewerData = await getUserData(message.author.id, client);
+      return message.reply({ embeds: [buildViewEmbed(client, db, userData, viewerData)] });
     }
 
     if (sub === "remove") {
