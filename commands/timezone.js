@@ -130,7 +130,7 @@ module.exports = {
             targetMember = await getMember(message.guild, message.author.id);
           }
           
-          const userTzData = await client.database.getUser(message.author.id, false)
+          const userTzData = await client.database.getUser(targetUserId, false)
           
           if (!userTzData) {
             const isSelf = targetUserId === message.author.id;
