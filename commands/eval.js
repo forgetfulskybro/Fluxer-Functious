@@ -80,14 +80,6 @@ function redactSecrets(text) {
     .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{4,}/g, REDACTED);
 }
 
-function tokenizeArgs(text) {
-  const args = [];
-  const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
-  let m;
-  while ((m = re.exec(text))) args.push(m[1] ?? m[2] ?? m[3]);
-  return args;
-}
-
 module.exports = {
   config: {
     name: "eval",
@@ -266,9 +258,14 @@ module.exports = {
               continue;
             }
 
+            if (key === "client" && value && typeof value === "object") {
+              newObj[key] = null;
+              continue;
+            }
+            
             if (isSecretKey(key)) {
               const isFlag = typeof value === "boolean" || typeof value === "number";
-              newObj[key] = value === null || value === undefined || isFlag ? value : REDACTED;
+              newObj[key] = value === null || value === undefined || isFlag ? value : null;
               continue;
             }
 
