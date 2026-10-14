@@ -22,7 +22,8 @@ module.exports = async (client, message) => {
 
   let member = message.guild.members.get(message.author.id) ?? await message.guild.fetchMember(message.author.id);
   const isMention = new RegExp(`^(<@!?${client.user.id}>)`).test(message.content);
-  const db = await client.database.getGuild(message.guildId, true);
+  const db = await client.database.getGuild(message?.guildId, true);
+  if (!db) return;
 
   if (await checkMediaChannel(client, message, db)) return;
 
@@ -202,7 +203,7 @@ module.exports = async (client, message) => {
     client.vanta.track({
       event: "command.used",
       userId: message.author.id,
-      groupId: message.guildId,
+      groupId: message?.guildId ?? "Unknown Guild",
       data: { command: cmd },
     }),
   ]);
