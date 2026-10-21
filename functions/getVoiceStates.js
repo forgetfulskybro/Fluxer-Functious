@@ -5,6 +5,7 @@ const color = require("../functions/colorCodes");
 async function getVoiceStates(client) {
   let totalSeeded = 0;
   const processedGuilds = new Set();
+  const attachedShards = new WeakSet();
 
   const processVoiceState = (guildId, userId, channelId, isBot) => {
     if (!channelId) return;
@@ -16,6 +17,9 @@ async function getVoiceStates(client) {
     try {
       const ws = shard?.ws;
       if (!ws) return;
+
+      if (attachedShards.has(ws)) return;
+      attachedShards.add(ws);
 
       const handleRaw = (data) => {
         try {

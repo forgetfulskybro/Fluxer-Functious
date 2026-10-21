@@ -3,6 +3,14 @@ const { runTagSafe } = require("../interpreter/index");
 const chrono = require("chrono-node");
 const checkScheduled = require("./checkScheduledMessages");
 
+const GIVEAWAY_FLAGS = {
+    dm: "dm:yes",
+    ping: "ping:no",
+    multiwin: "multiwin:yes",
+    image: "image:<url>",
+    requirement: "requirement:",
+};
+
 const MAX_CONTENT_LENGTH = 1960;
 const MAX_EMBED_TITLE = 236;
 const MAX_EMBED_DESC = 4040;
@@ -319,7 +327,7 @@ async function showEditMenu(client, session, guildId) {
     .setDescription(
       `**${client.translate.get(db.language, "Commands.schedule.editWhat")}**
 
-${isCommand ? "1️⃣ **Command Arguments**" : `1️⃣ **${client.translate.get(db.language, "Commands.schedule.msgContent")}** - ${msgData.type === "content" ? client.translate.get(db.language, "Commands.schedule.textMsg") : client.translate.get(db.language, "Commands.schedule.embedFields")}`}
+${isCommand ? `1️⃣ **${client.translate.get(db.language, "Functions.schedule.commandArgs")}**` : `1️⃣ **${client.translate.get(db.language, "Commands.schedule.msgContent")}** - ${msgData.type === "content" ? client.translate.get(db.language, "Commands.schedule.textMsg") : client.translate.get(db.language, "Commands.schedule.embedFields")}`}
 ${isCommand ? "2️⃣" : "2️⃣"} **${client.translate.get(db.language, "Commands.schedule.sendTime")}** - ${client.translate.get(db.language, "Commands.schedule.currently")}: <t:${msgData.timestamp}:f> (<t:${msgData.timestamp}:R>)
 ${isCommand ? "3️⃣" : "3️⃣"} **${client.translate.get(db.language, "Commands.schedule.recurring")}** - ${client.translate.get(db.language, "Commands.schedule.currently")}: ${msgData.recurring || client.translate.get(db.language, "Commands.schedule.none")}
 ${isCommand ? "" : `4️⃣ **${client.translate.get(db.language, "Commands.schedule.webhook")}** - ${client.translate.get(db.language, "Commands.schedule.currently")}: ${msgData.webhook?.name || client.translate.get(db.language, "Commands.schedule.disabled")}`}
@@ -676,7 +684,7 @@ async function ScheduleCollector(client, message, db) {
         const parsedArgs = newArgs.split("|").map(x => x.trim()).filter(x => x);
 
         if (!parsedArgs[0]) {
-            return message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription("Please provide valid arguments. Use `|` to separate arguments.")] }).then(m => {
+            return message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Functions.schedule.invalidArgs"))] }).then(m => {
                 setTimeout(() => m.delete().catch(() => {}), 5000);
             });
         }
@@ -684,9 +692,7 @@ async function ScheduleCollector(client, message, db) {
         if (session.commandName === 'giveaway' && parsedArgs.length < 3) {
             return message.reply({
                 embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(
-                    "Giveaway requires at least 3 arguments: `duration | winners | prize`\n" +
-                    "Optional flags can follow: `dm:yes`, `ping:no`, `multiwin:yes`, `image:<url>`, `requirement:<text>`\n" +
-                    "Example: `20m | 3 | A t-shirt | dm:yes | ping:no`"
+                    client.translate.get(db.language, "Functions.schedule.giveawayArgs", GIVEAWAY_FLAGS)
                 )]
             }).then(m => setTimeout(() => m.delete().catch(() => {}), 8000));
         }
@@ -718,7 +724,7 @@ async function ScheduleCollector(client, message, db) {
         }
 
         if (!timestamp) {
-          return message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`${client.translate.get(db.language, "Functions.schedule.invalidTime")} \`2:30pm\`, \`in 3 minutes\`, or \`tomorrow at 5pm\`.`)] }).then(m => {
+          return message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Functions.schedule.invalidTime", { examples: "`2:30pm`, `in 3 minutes`, or `tomorrow at 5pm`." }))] }).then(m => {
                 setTimeout(() => m.delete().catch(() => {}), 5000);
             });
         }

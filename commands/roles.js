@@ -85,7 +85,7 @@ module.exports = {
              break;
              
           case "view":
-            if (db.roles.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles")}: \`${db.prefix}roles\``).setColor(`#FF0000`)] });
+            if (db.roles.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles", { cmd: `\`${db.prefix}roles\`` })}`).setColor(`#FF0000`)] });
             const pages = new Paginator({ timeout: 5 * 2e4, user: message.author.id, client: client })
             let data;
             data = db.roles.map((msg, i) => `**ID**: ${msg.msgId}\n**${client.translate.get(db.language, "Commands.roles.roles")}**: ${msg.roles.length}${msg.exclusive ? `| **${client.translate.get(db.language, "Commands.roles.exclusiveView")}**: ${client.translate.get(db.language, "Commands.roles.on")}` : ''}\n[${client.translate.get(db.language, "Commands.roles.jump")}](https://fluxer.app/channels/${message.guildId}/${msg.chanId}/${msg.msgId})`);
@@ -204,7 +204,7 @@ module.exports = {
                     return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.already", { "prefix": db.prefix })}`).setColor(`#FF0000`)] });
                 }
                 if (db.roles.length === 0) {
-                    return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles")}: \`${db.prefix}roles\``).setColor(`#FF0000`)] });
+                    return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles", { cmd: `\`${db.prefix}roles\`` })}`).setColor(`#FF0000`)] });
                 }
                 if (!args[1]) {
                     return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.edit")}: \`${db.prefix}roles edit <messageId>\``).setColor(`#FF0000`)] });
@@ -243,7 +243,7 @@ Color Roles:
 
                 const sendChannel = isDifferentChannel ? targetChannel : message.channel;
                 if (isDifferentChannel) {
-                    message.reply(`${client.translate.get(db.language, "Commands.roles.success")} <#${targetChannel.id}>`, false);
+                    message.reply(client.translate.get(db.language, "Commands.roles.success", { channel: `<#${targetChannel.id}>` }), false);
                 }
 
                 const setupMsg = await sendChannel.send({ embeds: [setupEmbed] });

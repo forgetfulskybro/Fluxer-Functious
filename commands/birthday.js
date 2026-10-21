@@ -782,7 +782,7 @@ module.exports = {
       const targetId = mentionArg.replace(/[<@!>]/g, "");
       const targetMember = message.guild?.members?.get(targetId)
         ?? await message.guild?.fetchMember?.(targetId).catch(() => null);
-      if (!targetMember) return err(client.translate.get(db.language, "Commands.birthday.userNotFound"));
+      if (!targetMember) return err(client.translate.get(db.language, "Commands.birthday.userNotFound", { user: `<@${targetId}>` }));
 
       if (blacklist.includes(targetId)) {
         return ok(client.translate.get(db.language, "Commands.birthday.blacklistAlready", { user: `<@${targetId}>` }));
@@ -818,7 +818,7 @@ module.exports = {
       const targetId = mentionArg.replace(/[<@!>]/g, "");
       const targetMember = message.guild?.members?.get(targetId)
         ?? await message.guild?.fetchMember?.(targetId).catch(() => null);
-      if (!targetMember) return err(client.translate.get(db.language, "Commands.birthday.userNotFound"));
+      if (!targetMember) return err(client.translate.get(db.language, "Commands.birthday.userNotFound", { user: `<@${targetId}>` }));
 
       const targetUserData = await getUserData(targetId, client);
       if (!targetUserData.birthday?.day) return err(client.translate.get(db.language, "Commands.birthday.userNoBirthday"));

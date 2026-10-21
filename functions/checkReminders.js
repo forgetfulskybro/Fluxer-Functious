@@ -147,7 +147,7 @@ async function loadRemindersIntoQueue() {
       const usersWithReminders = await db.find({
         "reminders.0": { $exists: true },
         "reminders.timestamp": { $lte: windowEndTime }
-      });
+      }).lean();
 
         for (const userData of usersWithReminders) {
             const userId = userData.userId;

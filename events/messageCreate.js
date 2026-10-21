@@ -54,7 +54,7 @@ module.exports = async (client, message) => {
     const mention = new EmbedBuilder()
       .setColor(db.theme)
       .setTitle(client.user.username)
-      .setDescription(`${client.translate.get(db.language, "Events.messageCreate.prefix")} \`${db.prefix}\`\n${client.translate.get(db.language, "Events.messageCreate.prefix2")} \`${db.prefix}help\``);
+      .setDescription(`${client.translate.get(db.language, "Events.messageCreate.prefix", { prefix: `\`${db.prefix}\`` })}\n${client.translate.get(db.language, "Events.messageCreate.prefix2", { cmd: `\`${db.prefix}help\`` })}`);
 
     return message.reply({ embeds: [mention] }, false).catch(() => {});
   }
@@ -137,7 +137,7 @@ module.exports = async (client, message) => {
               new EmbedBuilder()
                   .setColor("#FF0000")
                   .setDescription(
-                    `${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [${String(commandfile.config.permissions.name)}]\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`,
+                    `${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2", { permission: String(commandfile.config.permissions.name) })}\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`,
                   ),
               ],
             },
@@ -155,7 +155,7 @@ module.exports = async (client, message) => {
               new EmbedBuilder()
                 .setColor("#FF0000")
                 .setDescription(
-                  `${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [${String(commandfile.config.permissions.name)}]\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`,
+                  `${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2", { permission: String(commandfile.config.permissions.name) })}\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`,
                 ),
             ],
           },

@@ -25,12 +25,10 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
         }).catch(() => {});
       }
       
-      if (explanation) {
-        setTimeout(() => {
-          explanation.delete().catch(() => {});
-          explainCooldown.delete(cooldownKey);
-        }, 5000);
-      }
+      setTimeout(() => {
+        if (explanation) explanation.delete().catch(() => {});
+        explainCooldown.delete(cooldownKey);
+      }, 5000);
     }
     return;
   }

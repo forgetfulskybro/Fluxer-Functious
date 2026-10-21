@@ -1,6 +1,14 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
 const ScheduleCollector = require("../functions/scheduleCollector");
 
+const GIVEAWAY_FLAGS = {
+    dm: "dm:yes",
+    ping: "ping:no",
+    multiwin: "multiwin:yes",
+    image: "image:<url>",
+    requirement: "requirement:",
+};
+
 module.exports = async (client, message, userId, collector, reactionChan, reactionMsg, emojiId, event = "add") => {
     if (event === "remove") return;
 
@@ -43,24 +51,21 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
                 collector.editMode = "commandArgs";
                 collector.waitingForCommandArgs = true;
 
-                let argsHint = `Use \`|\` to separate arguments (e.g. \`5m | Title | Option 1 | Option 2\`)`;
+                let argsHint = client.translate.get(db.language, "Functions.schedule.argsHint");
                 let currentArgsDisplay = collector.commandArgs.join(" | ");
 
                 if (collector.commandName === 'giveaway') {
-                    argsHint =
-                        "Format: `duration | winners | prize`\n" +
-                        "Optional flags (add after prize): `dm:yes`, `ping:no`, `multiwin:yes`, `image:<url>`, `requirement:<text>`\n" +
-                        "Example: `20m | 3 | A t-shirt | dm:yes | ping:no | requirement:Must boost`";
+                    argsHint = client.translate.get(db.language, "Functions.schedule.giveawayArgsHint", GIVEAWAY_FLAGS);
                 } else if (collector.commandName === 'polls') {
-                    argsHint = "Format: `duration | title | option1 | option2 | ...` (2–10 options)\nExample: `30m | Favourite color? | Red | Blue | Green`";
+                    argsHint = client.translate.get(db.language, "Functions.schedule.pollsArgsHint");
                 } else if (collector.commandName === 'remind') {
-                    argsHint = "Format: `duration message`\nExample: `1h Don't forget the meeting`";
+                    argsHint = client.translate.get(db.language, "Functions.schedule.remindArgsHint");
                 }
 
                 const argsEmbed = new EmbedBuilder()
                     .setColor(db.theme)
                     .setDescription(
-                        `**Current Arguments:**\n\`\`\`\n${currentArgsDisplay}\n\`\`\`\n\n**Send new arguments:**\n${argsHint}\n\n**To cancel:** React with ${client.config.emojis.cross}`
+                        client.translate.get(db.language, "Functions.schedule.argsEmbed", { args: currentArgsDisplay, hint: argsHint, cancel: client.config.emojis.cross })
                     );
                 await reactionMsg.edit({ embeds: [argsEmbed] });
                 await reactionMsg.react(client.config.emojis.cross);

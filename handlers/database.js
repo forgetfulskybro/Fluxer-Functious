@@ -1,57 +1,66 @@
 const { connect } = require("mongoose").set("strictQuery", true);
 const color = require("../functions/colorCodes");
 
+const GUILD_CACHE_MAX = 5000;
+const USER_CACHE_MAX = 20000;
+
 module.exports = class DatabaseHandler {
   constructor(connectionString) {
     this.cache = new Map();
     this.userCache = new Map();
-    this.pollCache = new Map();
-    this.giveawayCache = new Map();
+    this.guildCacheMax = GUILD_CACHE_MAX;
+    this.userCacheMax = USER_CACHE_MAX;
     this.guildModel = require("../models/guilds");
     this.userModel = require("../models/users");
-    this.pollModel = require("../models/polls");
-    this.giveawayModel = require("../models/giveaways");
     this.connectionString = connectionString;
   }
 
+  setBounded(map, key, value, max) {
+    if (map.has(key)) map.delete(key);
+    map.set(key, value);
+    while (map.size > max) {
+      const oldest = map.keys().next().value;
+      map.delete(oldest);
+    }
+  }
+
   cacheSweeper(client) {
-    setInterval(
+    const interval = setInterval(
       () => {
-        const guilds = this.cache.values();
-        for (const g of guilds) {
-          if (!client?.guilds?.has(g?.id)) {
-            this.cache.delete(g?.id);
-          }
-        }
-        
-        const users = this.userCache.values();
-        for (const u of users) {
-          if (!client?.users?.has(u?.userId)) {
-            this.userCache.delete(u?.userId);
+        const guilds = [...this.cache.keys()];
+        for (const gid of guilds) {
+          if (!client?.guilds?.has(gid)) {
+            this.cache.delete(gid);
           }
         }
       },
       60 * 60 * 1000,
     );
+    if (interval.unref) interval.unref();
   }
 
   guildSweeper(client) {
-    setInterval(
+    const delay = (ms) => new Promise((resolve) => {
+      const t = setTimeout(resolve, ms);
+      if (t.unref) t.unref();
+    });
+
+    const interval = setInterval(
       async () => {
-        const guilds = await this.getAll();
-        let i = 0;
-        for (const g of guilds) {
-          setTimeout(async () => {
-            i++;
+        try {
+          const guilds = await this.guildModel.find({}, { id: 1 }).lean();
+          for (const g of guilds) {
             if (!client?.guilds?.has(g?.id)) {
               this.cache.delete(g?.id);
-              this.deleteGuild(g?.id);
+              await this.deleteGuild(g?.id).catch(() => {});
+              await delay(3000);
             }
-          }, i * 3000);
-        }
+          }
+        } catch {}
       },
       180 * 180 * 1000,
     );
+    if (interval.unref) interval.unref();
   }
 
   async connectToDatabase() {
@@ -82,12 +91,15 @@ module.exports = class DatabaseHandler {
     if (force) return this.fetchUser(userId, createIfNotFound);
 
     if (this.userCache.has(userId)) {
-      return this.userCache.get(userId);
+      const cachedUser = this.userCache.get(userId);
+      this.userCache.delete(userId);
+      this.userCache.set(userId, cachedUser);
+      return cachedUser;
     }
 
     const fetched = await this.fetchUser(userId, createIfNotFound);
     if (fetched) {
-      this.userCache.set(userId, fetched?.toObject() ?? fetched);
+      this.setBounded(this.userCache, userId, fetched?.toObject() ?? fetched, this.userCacheMax);
       return this.userCache.get(userId);
     }
     return null;
@@ -100,7 +112,7 @@ module.exports = class DatabaseHandler {
       if (oldData?._doc) oldData = oldData?._doc;
 
       data = { ...oldData, ...data };
-      this.userCache.set(userId, data);
+      this.setBounded(this.userCache, userId, data, this.userCacheMax);
 
       return this.userModel.updateOne({ userId }, data);
     }
@@ -136,12 +148,15 @@ module.exports = class DatabaseHandler {
     if (force) return this.fetchGuild(guildId, createIfNotFound);
 
     if (this.cache.has(guildId)) {
-      return this.cache.get(guildId);
+      const cachedGuild = this.cache.get(guildId);
+      this.cache.delete(guildId);
+      this.cache.set(guildId, cachedGuild);
+      return cachedGuild;
     }
 
     const fetched = await this.fetchGuild(guildId, createIfNotFound);
     if (fetched) {
-      this.cache.set(guildId, fetched?.toObject() ?? fetched);
+      this.setBounded(this.cache, guildId, fetched?.toObject() ?? fetched, this.guildCacheMax);
 
       return this.cache.get(guildId);
     }
@@ -162,7 +177,7 @@ module.exports = class DatabaseHandler {
 
       data = { ...oldData, ...data };
 
-      this.cache.set(guildId, data);
+      this.setBounded(this.cache, guildId, data, this.guildCacheMax);
 
       return this.guildModel.updateOne(
         {
@@ -188,38 +203,21 @@ module.exports = class DatabaseHandler {
     return null;
   }
 
-  async getPoll(messageId, createIfNotFound = true, force = false) {
-    if (force) return this.fetchPoll(messageId, createIfNotFound);
-
-    if (this.pollCache.has(messageId)) {
-      return this.pollCache.get(messageId);
-    }
-
-    const fetched = await this.fetchPoll(messageId, createIfNotFound);
-    if (fetched) {
-      this.pollCache.set(messageId, fetched?.toObject() ?? fetched);
-      return this.pollCache.get(messageId);
-    }
-    return null;
+  async getPoll(messageId, createIfNotFound = true) {
+    return this.fetchPoll(messageId, createIfNotFound);
   }
 
   async updatePoll(messageId, data = {}, createIfNotFound = false) {
-    let oldData = await this.getPoll(messageId, createIfNotFound);
+    const oldData = await this.fetchPoll(messageId, false);
 
     if (oldData) {
-      if (oldData?._doc) oldData = oldData?._doc;
-
-      data = { ...oldData, ...data };
-      this.pollCache.set(messageId, data);
-
-      return this.pollModel.updateOne({ messageId }, data);
+      return this.pollModel.updateOne({ messageId }, { ...oldData.toObject(), ...data });
     }
     return null;
   }
 
-  async deletePoll(messageId, onlyCache = false) {
-    if (this.pollCache.has(messageId)) this.pollCache.delete(messageId);
-    return !onlyCache ? this.pollModel.deleteMany({ messageId }) : true;
+  async deletePoll(messageId) {
+    return this.pollModel.deleteMany({ messageId });
   }
 
   async getAllPolls() {
@@ -236,38 +234,21 @@ module.exports = class DatabaseHandler {
     return null;
   }
 
-  async getGiveaway(messageId, createIfNotFound = true, force = false) {
-    if (force) return this.fetchGiveaway(messageId, createIfNotFound);
-
-    if (this.giveawayCache.has(messageId)) {
-      return this.giveawayCache.get(messageId);
-    }
-
-    const fetched = await this.fetchGiveaway(messageId, createIfNotFound);
-    if (fetched) {
-      this.giveawayCache.set(messageId, fetched?.toObject() ?? fetched);
-      return this.giveawayCache.get(messageId);
-    }
-    return null;
+  async getGiveaway(messageId, createIfNotFound = true) {
+    return this.fetchGiveaway(messageId, createIfNotFound);
   }
 
   async updateGiveaway(messageId, data = {}, createIfNotFound = false) {
-    let oldData = await this.getGiveaway(messageId, createIfNotFound);
+    const oldData = await this.fetchGiveaway(messageId, false);
 
     if (oldData) {
-      if (oldData?._doc) oldData = oldData?._doc;
-
-      data = { ...oldData, ...data };
-      this.giveawayCache.set(messageId, data);
-
-      return this.giveawayModel.updateOne({ messageId }, data);
+      return this.giveawayModel.updateOne({ messageId }, { ...oldData.toObject(), ...data });
     }
     return null;
   }
 
-  async deleteGiveaway(messageId, onlyCache = false) {
-    if (this.giveawayCache.has(messageId)) this.giveawayCache.delete(messageId);
-    return !onlyCache ? this.giveawayModel.deleteMany({ messageId }) : true;
+  async deleteGiveaway(messageId) {
+    return this.giveawayModel.deleteMany({ messageId });
   }
 
   async getAllGiveaways() {

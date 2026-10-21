@@ -21,15 +21,14 @@ module.exports = async (client, message, userId, emojiId, event = "add") => {
   }
 
   if (!role) return;
-
-  if (client.reactions.get(userId)) return;
+  // if (client.reactions.get(userId)) return;
 
   const guild = client.guilds.cache.get(message.reaction.guildId) || (await client.guilds.fetch(message.reaction.guildId));
   const member = await guild?.fetchMember(userId);
   if (!member) return;
 
-  client.reactions.set(userId, Date.now() + 1500);
-  setTimeout(() => client.reactions.delete(userId), 1500);
+  // client.reactions.set(userId, Date.now() + 200);
+  // setTimeout(() => client.reactions.delete(userId), 200);
 
   const hasRole = member.roles.cache.has(role.role);
   if (event === "add" && hasRole) return;

@@ -134,14 +134,14 @@ function giveawaysRouter(client, apiKey) {
         .setTitle(prizeText)
         .setDescription(
           `${client.translate.get(db.language, 'Commands.giveaway.time')}: <t:${endTs}:R>\n` +
-            `${client.translate.get(db.language, 'Commands.giveaway.hosted')}: <@${hostId}>\n` +
+            `${client.translate.get(db.language, 'Commands.giveaway.hosted', { user: `<@${hostId}>` })}\n` +
             `${client.translate.get(db.language, 'Commands.giveaway.winners')}: ${winnersNum}` +
             (reqText
               ? `\n\n${client.translate.get(db.language, 'Commands.giveaway.reqs')}:\n${reqText.slice(0, 700)}`
               : '')
         )
         .setFooter({
-          text: `${client.translate.get(db.language, 'Commands.giveaway.react')} ${client.config.emojis.confetti} ${client.translate.get(db.language, 'Commands.giveaway.react2')}`,
+          text: `${client.translate.get(db.language, 'Commands.giveaway.react', { emoji: client.config.emojis.confetti })} ${client.translate.get(db.language, 'Commands.giveaway.react2')}`,
         });
 
       if (imageText) embed.setImage(imageText);

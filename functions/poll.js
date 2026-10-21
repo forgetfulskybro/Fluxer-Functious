@@ -182,32 +182,39 @@ async flush() {
     return;
   }
 
-  for (const item of batch) {
-    try {
-      if (item.type === 'add') {
-        const [option, user, avatar, id] = item.args;
-        this.votes[option]++;
-        await PollDB.findOneAndUpdate({ messageId: id }, { $push: { users: { user: user, option: option, avatar: avatar } }, $inc: { [`votes.${option}`]: 1 } });
-      } else if (item.type === 'remove') {
-        const [option, user, id] = item.args;
-        this.votes[option]--;
-        await PollDB.findOneAndUpdate({ messageId: id }, { $pull: { users: { user: user, option: option } }, $inc: { [`votes.${option}`]: -1 } });
+  try {
+    for (const item of batch) {
+      try {
+        if (item.type === 'add') {
+          const [option, user, avatar, id] = item.args;
+          this.votes[option]++;
+          await PollDB.findOneAndUpdate({ messageId: id }, { $push: { users: { user: user, option: option, avatar: avatar } }, $inc: { [`votes.${option}`]: 1 } });
+        } else if (item.type === 'remove') {
+          const [option, user, id] = item.args;
+          this.votes[option]--;
+          await PollDB.findOneAndUpdate({ messageId: id }, { $pull: { users: { user: user, option: option } }, $inc: { [`votes.${option}`]: -1 } });
+        }
+      } catch (err) {
+        item.rejected = true;
+        item.reject(err);
       }
-    } catch (err) {
-      item.reject(err);
     }
-  }
 
-  await this.update();
+    await this.update();
 
-  for (const item of batch) {
-    if (item.resolve) item.resolve(this.canvas);
-  }
+    for (const item of batch) {
+      if (!item.rejected && item.resolve) item.resolve(this.canvas);
+    }
+  } catch (err) {
+    for (const item of batch) {
+      if (!item.rejected && item.reject) item.reject(err);
+    }
+  } finally {
+    this.processing = false;
 
-  this.processing = false;
-
-  if (this.voteQueue.length > 0) {
-    this.scheduleFlush();
+    if (this.voteQueue.length > 0) {
+      this.scheduleFlush();
+    }
   }
 }
 
@@ -313,9 +320,13 @@ async drawFooter(ctx, x, y, width, height, padding, users) {
     context.closePath();
     context.clip();
 
-    const loadedAvatar = await Canvas.loadImage(avatarURL);
-    context.drawImage(loadedAvatar, 0, 0, rad * 2, rad * 2);
-    ctx.drawImage(a, pos, yPos);
+    try {
+      const loadedAvatar = await Canvas.loadImage(avatarURL);
+      context.drawImage(loadedAvatar, 0, 0, rad * 2, rad * 2);
+      ctx.drawImage(a, pos, yPos);
+    } catch {
+      ctx.drawImage(a, pos, yPos);
+    }
 
     ctx.closePath();
     pos -= rad;

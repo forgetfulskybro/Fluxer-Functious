@@ -35,6 +35,6 @@ module.exports = {
       updates: { prefix: args[1] },
     });
     
-    return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.prefix.success")} \`${args[1]}\``).setColor(db.theme)] });
+    return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.prefix.success", { prefix: `\`${args[1]}\`` })).setColor(db.theme)] });
   },
 };

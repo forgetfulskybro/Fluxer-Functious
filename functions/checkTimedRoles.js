@@ -37,7 +37,7 @@ async function processQueue(guildId, userId, roleId) {
     await giveRoleWithRetry(clientRef, guildId, userId, roleId);
 
     try {
-        const guildData = await db.findById(guildId);
+        const guildData = await db.findOne({ id: guildId });
         if (!guildData) return;
 
         const userEntry = guildData.usersJoined?.find(u => u.userId === userId);
@@ -124,7 +124,7 @@ async function loadQueue() {
             for (const userEntry of guildData.usersJoined) {
                 const dueRoles = userEntry.roleIds?.filter(r => {
                     const t = Number(r.time);
-                    return t <= windowEndMs && t > currentTime;
+                    return t <= windowEndMs;
                 }) || [];
 
                 for (const role of dueRoles) {

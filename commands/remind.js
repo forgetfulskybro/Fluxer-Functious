@@ -707,7 +707,7 @@ async function handleCreate(message, args, prefix, isDM, client, language, theme
     const displayMsg = truncate(cleanedMessage, CONFIG.DISPLAY_LENGTH);
 
     await sendTracked(message.channel, {
-      embeds: [successEmbed(`${client.translate.get(language, "Commands.remind.success")} ${timeStr} (${dateStr}): \`${displayMsg}\``, themeColor)],
+      embeds: [successEmbed(client.translate.get(language, "Commands.remind.success", { time: timeStr, date: dateStr, message: `\`${displayMsg}\`` }), themeColor)],
     });
   }
 }

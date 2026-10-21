@@ -131,7 +131,7 @@ module.exports = {
                             `**#${index} ${client.translate.get(db.language, "Commands.schedule.viewMsg")}**
 
 **${client.translate.get(db.language, "Commands.schedule.type")}:** ${typeDisplay}
-**${client.translate.get(db.language, "Commands.schedule.sendsTo")}:** <#${msgData.channelId}>
+**${client.translate.get(db.language, "Commands.schedule.sendsTo", { channel: `<#${msgData.channelId}>` })}**
 **${client.translate.get(db.language, "Commands.schedule.time")}:** <t:${msgData.timestamp}:f> (<t:${msgData.timestamp}:R>)
 ${msgData.recurring && msgData.recurring !== "none" ? `**${client.translate.get(db.language, "Commands.schedule.repeats")}:** ${msgData.recurring}\n` : ""}${msgData.webhook?.name ? `**${client.translate.get(db.language, "Commands.schedule.webhook")}:** ${msgData.webhook.name}\n` : ""}
 **${client.translate.get(db.language, "Commands.schedule.schedMsgContent")}:**`
@@ -378,16 +378,16 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
                     }
 
                     if (!targetChannel) {
-                        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.schedule.invalidChannel")} ${client.translate.get(db.language, "Commands.schedule.usage")}: \`${db.prefix}schedule ${messageType} #channel\``).setColor("#FF0000")] });
+                        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.schedule.invalidChannel", { channel: `<#${channelId}>` })} ${client.translate.get(db.language, "Commands.schedule.usage")}: \`${db.prefix}schedule ${messageType} #channel\``).setColor("#FF0000")] });
                     }
 
                     const me = message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null);
                     const chanPerms = me.permissionsIn(targetChannel);
                     if (!chanPerms.has(PermissionFlags.SendMessages)) {
-                        return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permCheck")).setColor("#FF0000")] });
+                        return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permCheck", { channel: `<#${targetChannel.id}>` })).setColor("#FF0000")] });
                     }
                     if (!chanPerms.has(PermissionFlags.ViewChannel)) {
-                        return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permCheck2")).setColor("#FF0000")] });
+                        return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permCheck2", { channel: `<#${targetChannel.id}>` })).setColor("#FF0000")] });
                     }
                 }
 
@@ -505,16 +505,16 @@ ${client.translate.get(db.language, "Commands.schedule.editSchedLast")}`
                     }
 
                     if (!targetChannel) {
-                        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.schedule.invalidChannel")}`).setColor("#FF0000")] });
+                        return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.invalidChannel", { channel: `<#${channelId}>` })).setColor("#FF0000")] });
                     }
 
                     const me = message.guild?.members.me ?? (message.guild ? await message.guild.members.fetchMe() : null);
                     const chanPerms = me.permissionsIn(targetChannel);
                     if (!chanPerms.has(PermissionFlags.SendMessages)) {
-                        return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permCheck")).setColor("#FF0000")] });
+                        return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permCheck", { channel: `<#${targetChannel.id}>` })).setColor("#FF0000")] });
                     }
                     if (!chanPerms.has(PermissionFlags.ViewChannel)) {
-                        return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permCheck2")).setColor("#FF0000")] });
+                        return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.schedule.permCheck2", { channel: `<#${targetChannel.id}>` })).setColor("#FF0000")] });
                     }
 
                     commandArgs = commandArgs.replace(CHANNEL_MENTION_REGEX, "").trim();

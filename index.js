@@ -14,7 +14,7 @@ const client = new Client({
   defaultReplyPing: false,
   cache: {
     guilds: 0,
-    channels: 0,
+    channels: 250,
   },
   waitForGuilds: true
 });

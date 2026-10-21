@@ -10,15 +10,35 @@ let clientRef = null;
 const pollQueue = new Map();
 let windowEndTime = 0;
 
+function releasePollInstance(client, messageId) {
+  const entry = client.polls?.get(messageId);
+  if (entry?.poll?.debounceTimer) clearTimeout(entry.poll.debounceTimer);
+  if (entry?.poll) {
+    entry.poll.voteQueue = [];
+    entry.poll.canvas = null;
+    entry.poll.ctx = null;
+  }
+  client.polls?.delete(messageId);
+}
+
 async function endPoll(client, poll) {
   try {
     removeFromQueue(poll.messageId);
 
     const channel = await client.channels.resolve(poll.channelId);
-    if (!channel) return;
+    if (!channel) {
+      await db.findOneAndUpdate({ messageId: poll.messageId }, { ended: true }).catch(() => {});
+      releasePollInstance(client, poll.messageId);
+      return;
+    }
 
     const msg = await channel.messages?.fetch(poll.messageId).catch(() => null);
     if (!msg) return;
+    // if (!msg) {
+    //   await db.findOneAndUpdate({ messageId: poll.messageId }, { ended: true }).catch(() => {});
+    //   releasePollInstance(client, poll.messageId);
+    //   return;
+    // }
 
     await db.findOneAndUpdate({ messageId: poll.messageId }, { ended: true });
     const newPoll = new Polls({
@@ -74,8 +94,9 @@ async function endPoll(client, poll) {
     });
 
     await msg.removeAllReactions().catch(() => { });
-    client.polls.delete(poll.messageId);
-  } catch {}
+  } catch {} finally {
+    //releasePollInstance(client, poll.messageId);
+  }
 }
 
 function addToQueue(pollData) {
@@ -181,10 +202,18 @@ function getStatus() {
 }
 
 async function initializePolls(client) {
-  const polls = await db.find({ ended: false });
-  if (!polls?.length) return;
+  const polls = await db.find({ ended: false }).lean();
+  const activeIds = new Set(polls.map((p) => p.messageId));
+
+  for (const messageId of [...client.polls.keys()]) {
+    if (!activeIds.has(messageId)) {
+      releasePollInstance(client, messageId);
+    }
+  }
 
   for (const poll of polls) {
+    if (client.polls.has(poll.messageId)) continue;
+
     const pollInstance = new Polls({
       time: poll.time,
       client,

@@ -99,7 +99,7 @@ module.exports = {
           message.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(`${client.translate.get(db.language, "Commands.bypass.successAll")} <@&${roleIds[0].id}>`)
+                .setDescription(client.translate.get(db.language, "Commands.bypass.successAll", { role: `<@&${roleIds[0].id}>` }))
                 .setColor(db.theme),
             ]
           });

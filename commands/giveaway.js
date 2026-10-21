@@ -24,7 +24,7 @@ module.exports = {
             `**Creating**\n\`${db.prefix}giveaway ${client.translate.get(db.language, "Commands.giveaway.creating")}\`\n\n` +
             `**Creating with settings**\n\`${db.prefix}giveaway 20m | 3 | A t-shirt | channel:#giveaways | dm:yes | ping:no | multiwin:no | image:https://...\`\n\n` +
             `**Deleting**\n\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\`\n\n` +
-            `**Rerolling**\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.usage")}\``
+            `**Rerolling**\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.input")}\``
           )
           .setColor(db.theme)]
       });
@@ -37,7 +37,7 @@ module.exports = {
       const msgId = args[1];
 
       const check = await Giveaways.findOne({ messageId: msgId });
-      if (!check) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.reroll.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.usage")}\``).setColor(`#FF0000`)] });
+      if (!check) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.reroll.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.input")}\``).setColor(`#FF0000`)] });
       winners = options[1] ? options[1] : check.winners === 1 ? winners = 1 : null;
       if (!winners) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.reroll.winners")).setColor(`#FF0000`)] });
       if (winners !== "all" && isNaN(winners) || winners > 5 || winners < 1) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(check.language, "Commands.reroll.winners")).setColor(`#FF0000`)] });
@@ -60,7 +60,7 @@ module.exports = {
         }
         await check.save();
       } else {
-        if (winners > check.pickedWinners.length) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(check.language, "Commands.reroll.onlyWinners")} ${check.pickedWinners.length} ${client.translate.get(check.language, "Commands.reroll.onlyWinners2")}: \`${db.prefix}reroll ${msgId} [${client.translate.get(check.language, "Commands.reroll.winnerNum")}, E.g. 1, 2, all] \``).setColor(`#FF0000`)] })
+        if (winners > check.pickedWinners.length) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(check.language, "Commands.reroll.onlyWinners")} ${check.pickedWinners.length} ${client.translate.get(check.language, "Commands.reroll.onlyWinners2")}: \`${db.prefix}giveaway reroll ${msgId} [${client.translate.get(check.language, "Commands.reroll.winnerNum")}, E.g. 1, 2, all] \``).setColor(`#FF0000`)] })
 
         let winner = check.picking[Math.floor(Math.random() * check.picking.length)];
         const filtered = check.picking.filter(object => object.userID != winner.userID)
@@ -75,13 +75,13 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setColor(db.theme)
         .setTitle(check.prize)
-        .setDescription(`${client.translate.get(check.language, "Commands.reroll.giveaway")}\n\n${client.translate.get(check.language, "Commands.reroll.ended")}: <t:${Math.floor((check.endDate) / 1000)}:R>\n${client.translate.get(check.language, "Commands.giveaway.hosted")}: <@${check.owner}>\n${client.translate.get(check.language, "Commands.reroll.partici")}: ${check.users.length}\n${client.translate.get(check.language, "Commands.reroll.winner")}: ${check.pickedWinners.map(w => `<@${w.id}>`).join(", ")}${check.requirement ? `\n${client.translate.get(check.language, "Commands.reroll.reqs")}: ${check.requirement}` : ``}`)
+        .setDescription(`${client.translate.get(check.language, "Commands.reroll.giveaway")}\n\n${client.translate.get(check.language, "Commands.reroll.ended")}: <t:${Math.floor((check.endDate) / 1000)}:R>\n${client.translate.get(check.language, "Commands.giveaway.hosted", { user: `<@${check.owner}>` })}\n${client.translate.get(check.language, "Commands.reroll.partici")}: ${check.users.length}\n${client.translate.get(check.language, "Commands.reroll.winner")}: ${check.pickedWinners.map(w => `<@${w.id}>`).join(", ")}${check.requirement ? `\n${client.translate.get(check.language, "Commands.reroll.reqs")}: ${check.requirement}` : ``}`)
 
       try {
         const newMsg = await (await client.channels.resolve(check.channelId))?.messages?.fetch(check.messageId);
         newMsg.edit({ embeds: [embed] });
       } catch { }
-      (await client.channels.resolve(check.channelId))?.send({ content: `${client.translate.get(check.language, "Commands.reroll.reroll")} ${picked.map(w => `<@${w.id}>`).join(", ")} ${client.translate.get(check.language, "Commands.reroll.reroll2")} [${check.prize}](https://fluxer.app/channels/${check.serverId}/${check.channelId}/${check.messageId})` });
+      (await client.channels.resolve(check.channelId))?.send({ content: client.translate.get(check.language, "Commands.reroll.reroll", { users: picked.map(w => `<@${w.id}>`).join(", "), prize: `[${check.prize}](https://fluxer.app/channels/${check.serverId}/${check.channelId}/${check.messageId})` }) });
     } else if (args[0] === "delete") {
       const msgId = args[1];
       if (!msgId) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\``).setColor(`#FF0000`)] })
@@ -164,20 +164,20 @@ module.exports = {
         .setTitle(prize)
         .setDescription(
           `${client.translate.get(db.language, "Commands.giveaway.time")}: <t:${Math.floor((dhms(time) + Date.now()) / 1000)}:R>\n` +
-          `${client.translate.get(db.language, "Commands.giveaway.hosted")}: <@${message.author.id}>\n` +
+          `${client.translate.get(db.language, "Commands.giveaway.hosted", { user: `<@${message.author.id}>` })}\n` +
           `${client.translate.get(db.language, "Commands.giveaway.winners")}: ${winners}` +
           (requirement ? `\n\n${client.translate.get(db.language, "Commands.giveaway.reqs")}:\n${requirement.slice(0, 700)}` : ``)
         )
-        .setFooter({ text: `${client.translate.get(db.language, "Commands.giveaway.react")} ${client.config.emojis.confetti} ${client.translate.get(db.language, "Commands.giveaway.react2")}` });
+        .setFooter({ text: `${client.translate.get(db.language, "Commands.giveaway.react", { emoji: client.config.emojis.confetti })} ${client.translate.get(db.language, "Commands.giveaway.react2")}` });
 
       if (imageUrl) embed.setImage(imageUrl);
 
       const chanPerms = me.permissionsIn(channel);
-      if (!chanPerms.has(PermissionFlags.SendMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms")} <#${channel.id}>`).setColor(`#FF0000`)] });
-      if (!chanPerms.has(PermissionFlags.ViewChannel)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms2")} <#${channel.id}>`).setColor(`#FF0000`)] });
-      if (!chanPerms.has(PermissionFlags.AddReactions)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.noperms3")} <#${channel.id}>`).setColor(`#FF0000`)] });
+      if (!chanPerms.has(PermissionFlags.SendMessages)) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.giveaway.noperms", { channel: `<#${channel.id}>` })).setColor(`#FF0000`)] });
+      if (!chanPerms.has(PermissionFlags.ViewChannel)) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.giveaway.noperms2", { channel: `<#${channel.id}>` })).setColor(`#FF0000`)] });
+      if (!chanPerms.has(PermissionFlags.AddReactions)) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.giveaway.noperms3", { channel: `<#${channel.id}>` })).setColor(`#FF0000`)] });
 
-      if (channel !== message.channel) { message.reply(`${client.translate.get(db.language, "Commands.giveaway.success")} <#${channel.id}>`); }
+      if (channel !== message.channel) { message.reply(client.translate.get(db.language, "Commands.giveaway.success", { channel: `<#${channel.id}>` })); }
       else message.delete().catch(() => {});
 
       channel.send({ embeds: [embed] }).then(async msg => {

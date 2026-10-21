@@ -118,7 +118,7 @@ async function endGiveaway(client, giveawayData) {
       .setColor("#A52F05")
       .setTitle(giveawayData.prize)
       .setDescription(
-        `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.ended")}: <t:${Math.floor(endDate / 1000)}:R>\n${client.translate.get(giveawayData.lang, "Commands.giveaway.hosted")}: <@${giveawayData.owner}>\n${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.partici")}: ${giveawayData.users.length}\n${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.winners")}: ${pickedWinners.map((w) => `<@${w.id}>`).join(", ")}${giveawayData.requirement ? `\n\n${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.reqs")}:\n${giveawayData.requirement}` : ``}`,
+        `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.ended")}: <t:${Math.floor(endDate / 1000)}:R>\n${client.translate.get(giveawayData.lang, "Commands.giveaway.hosted", { user: `<@${giveawayData.owner}>` })}\n${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.partici")}: ${giveawayData.users.length}\n${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.winners")}: ${pickedWinners.map((w) => `<@${w.id}>`).join(", ")}${giveawayData.requirement ? `\n\n${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.reqs")}:\n${giveawayData.requirement}` : ``}`,
       );
 
     if (giveawayData.imageUrl) embed.setImage(giveawayData.imageUrl);
@@ -128,7 +128,7 @@ async function endGiveaway(client, giveawayData) {
 
     if (pingWinners) {
       await foundChannel.send({
-        content: `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")} ${pickedWinners.map((w) => `<@${w.id}>`).join(", ")}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon")} **${giveawayData.prize}**\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
+        content: `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")} ${pickedWinners.map((w) => `<@${w.id}>`).join(", ")}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon", { prize: `**${giveawayData.prize}**` })}\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
       });
     }
 
@@ -139,7 +139,7 @@ async function endGiveaway(client, giveawayData) {
           if (user) {
             const dm = await user.createDM();
             await dm.send(
-              `🎉 ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon")} **${giveawayData.prize}**\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
+              `🎉 ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon", { prize: `**${giveawayData.prize}**` })}\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
             );
           }
         } catch {
@@ -222,7 +222,7 @@ async function loadQueue() {
   try {
     const currentTime = Date.now();
     const windowEndMs = windowEndTime * 1000;
-    const giveaways = await Giveaways.find({ ended: false });
+    const giveaways = await Giveaways.find({ ended: false }).lean();
 
     for (const gw of giveaways) {
       const endTime = Number(gw.now) + Number(gw.time);

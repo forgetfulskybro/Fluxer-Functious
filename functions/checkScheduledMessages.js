@@ -449,7 +449,7 @@ async function loadQueue() {
         const allGuilds = await db.guildModel.find({
             "scheduledMessages.0": { $exists: true },
             "scheduledMessages.timestamp": { $lte: windowEndTime, $gt: now }
-        });
+        }, { id: 1, scheduledMessages: 1 }).lean();
 
         for (const guildData of allGuilds) {
             const guildId = guildData.id;
@@ -463,7 +463,7 @@ async function loadQueue() {
         const pastDueGuilds = await db.guildModel.find({
             "scheduledMessages.0": { $exists: true },
             "scheduledMessages.timestamp": { $lte: now }
-        });
+        }, { id: 1, scheduledMessages: 1 }).lean();
 
         for (const guildData of pastDueGuilds) {
             const guildId = guildData.id;

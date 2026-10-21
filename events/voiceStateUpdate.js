@@ -24,59 +24,44 @@ module.exports = async (client, oldState, newState) => {
   const { parentChannel, childChannel, tempChannels, config } = db;
   const parentChannelId = config?.customParent || parentChannel;
 
+  const handleLeaveTempChannel = async (observe, map) => {
+    map.delete(userId);
+
+    const hasUsers = [...client.observedVoiceUsers.values()]
+      .filter(data => data?.channelId === observe.channelId)
+      .length > 0;
+    const hasBots = [...client.observedVoiceBots.values()]
+      .filter(data => data?.channelId === observe.channelId)
+      .length > 0;
+
+    if (!hasUsers && !hasBots) {
+      const tempChan = await guild.channels.find((c) => c.id === observe.channelId);
+      if (tempChan) await tempChan.delete();
+
+      const updatedTemps = tempChannels.filter(
+        (c) => c.channelId !== observe.channelId,
+      );
+      await client.database.updateGuild(guildId, {
+        tempChannels: updatedTemps,
+      });
+    }
+  };
+
   if (newChannelId && tempChannels.some((c) => c.channelId === newChannelId)) {
     target.set(userId, { channelId: newChannelId, guildId });
-  } else if (!newChannelId && client.observedVoiceUsers.get(userId)) {
+  } else if (client.observedVoiceUsers.get(userId)) {
     const observe = client.observedVoiceUsers.get(userId);
     const wasTemp = tempChannels.find((c) => c.channelId === observe.channelId);
 
-    if (wasTemp) {
-      client.observedVoiceUsers.delete(userId);
-
-      const hasUsers = [...client.observedVoiceUsers.values()]
-        .filter(data => data?.channelId === observe.channelId)
-        .length > 0;
-      const hasBots = [...client.observedVoiceBots.values()]
-        .filter(data => data?.channelId === observe.channelId)
-        .length > 0;
-
-      if (!hasUsers && !hasBots) {
-        const tempChan = await guild.channels.find((c) => c.id === observe.channelId);
-        if (tempChan) await tempChan.delete();
-
-        const updatedTemps = tempChannels.filter(
-          (c) => c.channelId !== observe.channelId,
-        );
-        await client.database.updateGuild(guildId, {
-          tempChannels: updatedTemps,
-        });
-      }
+    if (wasTemp && observe.channelId !== newChannelId) {
+      await handleLeaveTempChannel(observe, client.observedVoiceUsers);
     }
-  } else if (!newChannelId && client.observedVoiceBots.get(userId)) {
+  } else if (client.observedVoiceBots.get(userId)) {
     const observe = client.observedVoiceBots.get(userId);
     const wasTemp = tempChannels.find((c) => c.channelId === observe.channelId);
 
-    if (wasTemp) {
-      client.observedVoiceBots.delete(userId);
-
-      const hasUsers = [...client.observedVoiceUsers.values()]
-        .filter(data => data?.channelId === observe.channelId)
-        .length > 0;
-      const hasBots = [...client.observedVoiceBots.values()]
-        .filter(data => data?.channelId === observe.channelId)
-        .length > 0;
-
-      if (!hasUsers && !hasBots) {
-        const tempChan = await guild.channels.find((c) => c.id === observe.channelId);
-        if (tempChan) await tempChan.delete();
-
-        const updatedTemps = tempChannels.filter(
-          (c) => c.channelId !== observe.channelId,
-        );
-        await client.database.updateGuild(guildId, {
-          tempChannels: updatedTemps,
-        });
-      }
+    if (wasTemp && observe.channelId !== newChannelId) {
+      await handleLeaveTempChannel(observe, client.observedVoiceBots);
     }
   }
 
@@ -147,7 +132,7 @@ module.exports = async (client, oldState, newState) => {
           await sendManagePanel(client, voiceChannel, db, true).catch(() => {});
         }
       } catch (error) {
-        //client.observedVoiceUsers.delete(userId);
+        client.observedVoiceUsers.delete(userId);
         await errorHandler({
           type: "function",
           message: null,

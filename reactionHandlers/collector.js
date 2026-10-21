@@ -24,12 +24,10 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
         }).catch(() => { });
       }
       
-      if (explanation) {
-        setTimeout(() => {
-          explanation.delete().catch(() => { });
-          explainCooldown.delete(cooldownKey);
-        }, 5000);
-      }
+      setTimeout(() => {
+        if (explanation) explanation.delete().catch(() => { });
+        explainCooldown.delete(cooldownKey);
+      }, 5000);
     }
     return;
   }
@@ -88,7 +86,7 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
           });
 
           if (targetChannel.id !== message.channelId) {
-            await reactionChan.send(`${client.translate.get(db.language, "Commands.roles.success")} <#${targetChannel.id}>`).catch(() => { });
+            await reactionChan.send(client.translate.get(db.language, "Commands.roles.success", { channel: `<#${targetChannel.id}>` })).catch(() => { });
           }
         }).catch(err => {
           console.error("[Collector] Error sending final message:", err);

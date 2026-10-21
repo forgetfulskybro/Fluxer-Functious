@@ -202,8 +202,8 @@ async function promptForSelection(client, message, matches, name, selectionQueue
           }
         }
         showFinalResults(data.message, data.results, data.allNames);
-        client.reloadSelection.delete(message.author.id);
       }
+      client.reloadSelection.delete(message.author.id);
     }
   }, 180000);
 

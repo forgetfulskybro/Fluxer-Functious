@@ -108,6 +108,21 @@ module.exports = async (client, channel) => {
   const channelPolls = await Polls.find({ serverId: guildId, channelId: channel.id }).catch(() => []);
   if (channelPolls.length > 0) {
     await Polls.deleteMany({ serverId: guildId, channelId: channel.id });
+
+    for (const p of channelPolls) {
+      if (p?.messageId && client.polls?.has(p.messageId)) {
+        const entry = client.polls.get(p.messageId);
+        try {
+          if (entry?.poll?.debounceTimer) clearTimeout(entry.poll.debounceTimer);
+          if (entry?.poll) {
+            entry.poll.voteQueue = [];
+            entry.poll.canvas = null;
+            entry.poll.ctx = null;
+          }
+        } catch {}
+        client.polls.delete(p.messageId);
+      }
+    }
     await Promise.allSettled(channelPolls.map((p) =>
       trackResource(client, {
         userId: UNKNOWN,

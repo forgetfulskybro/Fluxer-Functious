@@ -60,7 +60,7 @@ module.exports = {
     switch (args[0]) {
       default: "help";
       case "help":
-        message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setTitle(client.translate.get(db.language, "Commands.timezone.viewingHelp")).setDescription(`${client.translate.get(db.language, "Commands.timezone.explanation")}\n\n**${client.translate.get(db.language, "Commands.timezone.exampleMsg")}**: ${client.translate.get(db.language, "Commands.timezone.formatText", { "time": "19:00" })}\n**${client.translate.get(db.language, "Commands.timezone.timestampMsg")}**: ${time}\n\n${client.translate.get(db.language, "Commands.timezone.toggle")}\n\`${db.prefix}timezone toggle\`\n\n${client.translate.get(db.language, "Commands.timezone.userTimezone")} [${client.translate.get(db.language, "Commands.timezone.timeZonePicker")}](https://zones.arilyn.cc/)\n\`${db.prefix}timezone set [${client.translate.get(db.language, "Commands.timezone.timezone")}, e.g. America/New_York]\`\n\n${client.translate.get(db.language, "Commands.timezone.userTimezoneRemove")}\n\`${db.prefix}timezone remove\`\n\n${client.translate.get(db.language, "Commands.timezone.viewCmd")}\n\`${db.prefix}timezone view [${client.translate.get(db.language, "Commands.timezone.optionalUser")}]\``)] })
+        message.reply({ embeds: [new EmbedBuilder().setColor(db.theme).setTitle(client.translate.get(db.language, "Commands.timezone.viewingHelp")).setDescription(`${client.translate.get(db.language, "Commands.timezone.explanation")}\n\n**${client.translate.get(db.language, "Commands.timezone.exampleMsg")}**: ${client.translate.get(db.language, "Commands.timezone.formatText", { "time": "19:00" })}\n**${client.translate.get(db.language, "Commands.timezone.timestampMsg")}**: ${time}\n\n${client.translate.get(db.language, "Commands.timezone.toggle")}\n\`${db.prefix}timezone toggle\`\n\n${client.translate.get(db.language, "Commands.timezone.userTimezone", { link: `[${client.translate.get(db.language, "Commands.timezone.timeZonePicker")}](https://zones.arilyn.cc/)` })}\n\`${db.prefix}timezone set [${client.translate.get(db.language, "Commands.timezone.timezone")}, e.g. America/New_York]\`\n\n${client.translate.get(db.language, "Commands.timezone.userTimezoneRemove")}\n\`${db.prefix}timezone remove\`\n\n${client.translate.get(db.language, "Commands.timezone.viewCmd")}\n\`${db.prefix}timezone view [${client.translate.get(db.language, "Commands.timezone.optionalUser")}]\``)] })
         break;
 
       case "view":
@@ -212,7 +212,7 @@ module.exports = {
           embeds: [
             new EmbedBuilder()
               .setColor("#FF0000")
-              .setDescription(`${client.translate.get(db.language, "Commands.timezone.sameTime")} [${client.translate.get(db.language, "Commands.timezone.timeZonePicker")}](https://zones.arilyn.cc/)`)]
+              .setDescription(client.translate.get(db.language, "Commands.timezone.sameTime", { link: `[${client.translate.get(db.language, "Commands.timezone.timeZonePicker")}](https://zones.arilyn.cc/)` }))]
         });
         
         let timezones;
