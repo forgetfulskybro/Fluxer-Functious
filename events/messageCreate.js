@@ -9,15 +9,6 @@ const manageVC = require("../functions/manageVC");
 const { checkMessage } = require("../functions/checkReactionReminders");
 
 module.exports = async (client, message) => {
-  console.log("[PROBE] messageCreate fired", JSON.stringify({
-    guild: message?.guildId,
-    channelType: message?.channel?.type,
-    hasContent: !!message?.content,
-    content: (message?.content || "").slice(0, 60),
-    bot: message?.author?.bot,
-    hasGuild: !!message?.guild,
-  }));
-
   checkMessage(client, message).catch(() => {});
 
   if (!message?.channel || (!message.content && !message.attachments?.size) || message.author.bot) return;
@@ -74,7 +65,6 @@ module.exports = async (client, message) => {
 
   const commandfile =
     client.commands.get(cmd) || client.commands.get(client.aliases.get(cmd));
-  console.log("[PROBE] cmd lookup", JSON.stringify({ prefix: db.prefix, cmd, found: !!commandfile, isMention }));
   if (!commandfile) return;
 
   // Turn off permission checking for the bot as Fluxer has lots of issues with it currently and I'd rather have the bot error than not respond when it should.
