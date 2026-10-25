@@ -40,7 +40,7 @@ module.exports = class VantaHandler {
     hide(this, "client", null);
     hide(this, "_ready", false);
     hide(this, "_initPromise", null);
-    hide(this, "_state", "stopped");
+    hide(this, "_state", this.apiKey ? "stopped" : "disabled");
     hide(this, "_paused", false);
     hide(this, "_startedAt", null);
     hide(this, "_restarts", 0);
@@ -49,6 +49,7 @@ module.exports = class VantaHandler {
     hide(this, "_heartbeats", new Map());
     hide(this, "_autoHeartbeat", options.heartbeat ?? null);
     hide(this, "_lastError", null);
+    hide(this, "_disabled", !this.apiKey);
   }
 
   get ready() {
@@ -72,6 +73,10 @@ module.exports = class VantaHandler {
   }
 
   async init() {
+    if (this._disabled || !this.apiKey) {
+      this._state = "disabled";
+      return null;
+    }
     if (this._ready) return this.client;
     if (this._initPromise) return this._initPromise;
 
@@ -110,6 +115,7 @@ module.exports = class VantaHandler {
   }
 
   async ensureReady() {
+    if (this._disabled || !this.apiKey) return null;
     if (!this.apiKey) {
       throw new Error("VantaHandler: missing apiKey (set VANTA or VANTA_API_KEY, or pass apiKey)");
     }
@@ -117,6 +123,12 @@ module.exports = class VantaHandler {
   }
 
   async start(options = {}) {
+    if (this._disabled || !this.apiKey) {
+      this._state = "disabled";
+      this._ready = false;
+      this.client = null;
+      return { state: "disabled", ready: false };
+    }
     if (options.apiKey) this.setApiKey(options.apiKey);
     if (options.source) this.source = options.source;
     if (options.apiUrl) this.apiUrl = options.apiUrl;
@@ -152,6 +164,16 @@ module.exports = class VantaHandler {
   }
 
   async stop(options = {}) {
+    if (this._disabled || !this.client) {
+      this.stopAllHeartbeats();
+      this._state = this.apiKey ? "stopped" : "disabled";
+      this._paused = false;
+      this._startedAt = null;
+      this._ready = false;
+      hide(this, "client", null);
+      hide(this, "_initPromise", null);
+      return this.status();
+    }
     this._state = "stopping";
     const stopped = this.stopAllHeartbeats();
 
@@ -218,6 +240,7 @@ module.exports = class VantaHandler {
   }
 
   async flush() {
+    if (this._disabled || !this.apiKey) return false;
     if (!this._ready) return false;
     try {
       if (typeof this.client?.flush === "function") return await this.client.flush();
@@ -229,6 +252,7 @@ module.exports = class VantaHandler {
   }
 
   async queueSize() {
+    if (this._disabled || !this.apiKey) return 0;
     if (!this._ready) return 0;
     try {
       if (typeof this.client?.queueSize === "function") return await this.client.queueSize();
@@ -239,6 +263,7 @@ module.exports = class VantaHandler {
   }
 
   async verify() {
+    if (this._disabled || !this.apiKey) return { ok: true, disabled: true, latencyMs: 0 };
     const started = Date.now();
     try {
       await this.ensureReady();
@@ -329,9 +354,11 @@ module.exports = class VantaHandler {
   }
 
   async track(opts = {}) {
+    if (this._disabled || !this.apiKey) return null;
     if (this._skip("track")) return null;
-    await this.ensureReady();
     try {
+      await this.ensureReady();
+      if (!this.client) return null;
       const result = await this.client.track({
         ...opts,
         source: opts.source ?? this.source,
@@ -366,9 +393,11 @@ module.exports = class VantaHandler {
   }
 
   async identify(opts = {}) {
+    if (this._disabled || !this.apiKey) return null;
     if (this._skip("identify")) return null;
-    await this.ensureReady();
     try {
+      await this.ensureReady();
+      if (!this.client) return null;
       const result = await this.client.identify(opts);
       this._delivered++;
       return result;
@@ -555,8 +584,10 @@ module.exports = class VantaHandler {
   }
 
   async startHeartbeat(slug, opts = {}) {
-    await this.ensureReady();
+    if (this._disabled || !this.apiKey) return null;
     try {
+      await this.ensureReady();
+      if (!this.client) return null;
       const existing = this._heartbeats.get(slug);
       if (existing) {
         try {
