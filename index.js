@@ -33,16 +33,20 @@ if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSam
 
 client.config = require("./config");
 client.translate = new TranslationHandler();
-client.vanta = new VantaHandler({ apiKey: process.env.VANTA, source: "bot", debug: true });
+client.vanta = new VantaHandler({ apiKey: process.env.VANTA, source: "bot", debug: false });
 client.database = new DatabaseHandler(process.env.MONGODB);
 client.database.connectToDatabase();
 client.database.cacheSweeper(client);
 client.database.guildSweeper(client);
 client.sentry = Sentry;
 
-client.vanta.start({
-  heartbeat: { slug: "bot", intervalMs: 60_000, graceMs: 30_000 },
-});
+if (process.env.VANTA && process.env.VANTA != "null") {
+  client.vanta.start({
+    heartbeat: { slug: "bot", intervalMs: 60_000, graceMs: 30_000 },
+  }).catch(() => {});
+} else {
+  client.vanta.stop().catch(() => {});
+}
 
 setInterval(async () => {
   await Pings(client);

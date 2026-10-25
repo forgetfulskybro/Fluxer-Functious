@@ -1,7 +1,7 @@
 const { inspect } = require("util");
 const color = require("../functions/colorCodes");
 
-const REDACTED = "[REDACTED]";
+const REDACTED = "null";
 
 const hide = (target, key, value) => {
   Object.defineProperty(target, key, {
