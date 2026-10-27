@@ -12,6 +12,8 @@ module.exports = class DatabaseHandler {
     this.userCacheMax = USER_CACHE_MAX;
     this.guildModel = require("../models/guilds");
     this.userModel = require("../models/users");
+    this.pollModel = require("../models/polls");
+    this.giveawayModel = require("../models/giveaways");
     this.connectionString = connectionString;
   }
 
