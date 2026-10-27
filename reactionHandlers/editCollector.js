@@ -77,7 +77,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
       await client.database.updateGuild(message.guildId, { roles: db.roles });
       const entry = db.roles.find((e) => e.msgId === oldMsg.id);
       await trackResource(client, {
-        userId: actorFromReq(req),
+        userId: userId,
         groupId: guildId,
         category: 'reactionroles',
         key: 'roles',

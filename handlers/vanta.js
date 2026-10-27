@@ -1,6 +1,5 @@
 const { inspect } = require("util");
 const color = require("../functions/colorCodes");
-
 const REDACTED = "null";
 
 const hide = (target, key, value) => {
