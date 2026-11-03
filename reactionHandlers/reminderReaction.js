@@ -82,11 +82,9 @@ async function storeReminder(client, options) {
   };
 
   const userData = await client.database.getUser(options.userId, true);
-  await client.database.updateUser(
-    options.userId,
-    { reminders: [...(userData.reminders || []), reminder] },
-    true
-  );
+  if (!userData) return null;
+
+  await client.database.addUserReminder(options.userId, reminder);
 
   handleNewReminder(options.userId, reminder);
   return reminder;

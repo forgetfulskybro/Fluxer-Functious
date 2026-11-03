@@ -18,6 +18,8 @@
       "duplicate": "Hay roles duplicados en tu mensaje, por favor elimínalos e inténtalo de nuevo",
       "positions": "Hay roles con rangos más altos (posición) que mi rol más alto en tu mensaje, por favor elimínalos e inténtalo de nuevo",
       "fix": "Si sabes que el bot tiene un rol mayor que tus roles proporcionados, puedes arreglar esto fácilmente dando/quitando un permiso aleatorio del rol del bot.",
+      "noBotRole": "I couldn't find my highest role. Make sure I have a role assigned in this community.",
+      "noMessage": "I couldn't find the original message to edit. It may have been deleted.",
       "stop": "Para detener este recolector de rol de reacción, envía `{prefix}roles stop`\nEste mensaje se eliminará a sí mismo en 3 segundos."
     },
     "messageReactionAdd": {
@@ -200,6 +202,8 @@
       "helpCreating": "Creando etiquetas",
       "helpExampleScript": "Ejemplo (script):",
       "helpUsing": "Usando Tags",
+      "helpTrigger": "\n**Triggers**: `{prefix}tags trigger <name>` runs the tag when only the name is sent. When you turn a tag into a Trigger word, the bot will use the tag's name as the word that is triggered and will reply with its tag.",
+      "helpReplySource": "\n**Anywhere trigger:** `{prefix}tags anytrigger <name>` runs the tag whenever its name appears anywhere in a message, not just on its own.\n\nReply to a message when using a tag to make `$message` point to the replied message.",
       "helpManaging": "Gestionando",
       "helpScriptContext": "Contexto del script",
       "helpScriptContextDesc": "• `$user`, `$channel`, `$message`, `$guild`\n• `args` (array de argumentos)\n• Idioma completo: variables, funciones, bucles, embeds, random, regex, fechas…",
@@ -216,7 +220,25 @@
       "reactTypeOrCancel": "React con el tipo que quieras, o ❌ cancelar.",
       "editContentTitle": "Editar contenido - {name}",
       "listItem": "**{n}.** {name} - {uses} usos ({emoji})",
-      "specifyTypeHint": "Para los scripts, prefiere:\n`{prefix}tags add mytag script`\n```\n// tu código aquí\n```"
+      "specifyTypeHint": "Para los scripts, prefiere:\n`{prefix}tags add mytag script`\n```\n// tu código aquí\n```",
+      "triggerTitle": "Trigger Word",
+      "triggerWord": "Trigger word",
+      "triggerBots": "Bot trigger words",
+      "triggerUsage": "Usage: `{prefix}tags trigger <name> on|off`\nOr: `{prefix}tags trigger bots on|off`",
+      "triggerTagStatus": "`{name}` is **{state}** as a trigger word.",
+      "triggerTagAlready": "`{name}` is already **{state}** as a trigger word.",
+      "triggerTagEnabled": "`{name}` is now a **trigger word**. Sending its name on its own will run it.",
+      "triggerTagDisabled": "`{name}` is no longer a trigger word. Use `{prefix}tag {name}` instead.",
+      "triggerBotsStatus": "Bot trigger words are **{state}**.",
+      "triggerBotsAlready": "Bot trigger words are already **{state}**.",
+      "triggerBotsEnabled": "Bots can now use trigger words.",
+      "triggerBotsDisabled": "Bots can no longer use trigger words.",
+      "invalidOption": "Invalid option. Use `on` or `off`.",
+      "anyTriggerWord": "Anywhere trigger",
+      "anyTriggerUsage": "Usage: `{prefix}tags anytrigger <name> [on|off]`",
+      "anyTriggerTagAlready": "`{name}` is already **{state}** as an anywhere trigger.",
+      "anyTriggerTagEnabled": "`{name}` will now run whenever its name appears anywhere in a message.",
+      "anyTriggerTagDisabled": "`{name}` will no longer run when its name appears in a message."
     },
     "schedule": {
       "description": "Programar mensajes para ser enviados en un momento determinado.",
@@ -432,7 +454,8 @@
       "loadingManageChannel": "Creando canal de menú",
       "loadingManageMessage": "Creando mensaje de menú",
       "resetting": "Canales temporales",
-      "usingCategory": "Utilizando categoría existente"
+      "usingCategory": "Utilizando categoría existente",
+      "processing": "Processing setup..."
     },
     "timezone": {
       "description": "Te permite configurar la zona horaria convirtiendo en tu comunidad, donde si alguien tiene su zona horaria definida, reacciona a su mensaje, y si el autor reacciona a eso, convierte su tiempo en una marca de tiempo.",
@@ -666,6 +689,7 @@
       "someRoleErrorsAdd": "Duplicar roles de unión que proporcionó:",
       "someRoleErrorsRemove": "Roles de unión erróneos proporcionados:",
       "noTimeOption": "No se proporcionó ninguna hora. Por favor proporcione una hora, por ejemplo, `{time:10m}`",
+      "invalidTime": "That time is invalid. Please provide a valid time, e.g. `{time:10m}`",
       "timedRoles": "**Rol temporizado**\nEste sub-comando configuró roles temporizados donde añade roles a los usuarios después de una cantidad específica de tiempo.",
       "stickyTitle": "Roles fijos",
       "joinTitle": "Unirse a roles",

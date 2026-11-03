@@ -18,6 +18,8 @@
       "duplicate": "W wiadomości są zduplikowane role, usuń je i spróbuj ponownie",
       "positions": "Istnieją role z wyższymi rangami (pozycja) niż moja najwyższa rola w wiadomości, usuń je i spróbuj ponownie",
       "fix": "Jeśli wiesz, że bot ma rolę wyższą niż twoje podane role, możesz łatwo to naprawić, dając / usuwając losowe uprawnienie z roli bota.",
+      "noBotRole": "I couldn't find my highest role. Make sure I have a role assigned in this community.",
+      "noMessage": "I couldn't find the original message to edit. It may have been deleted.",
       "stop": "Aby zatrzymać kolektor ról reakcji, wyślij `{prefix}stop`\nTa wiadomość usunie się w ciągu 3 sekund."
     },
     "messageReactionAdd": {
@@ -200,6 +202,8 @@
       "helpCreating": "Tworzenie tagów",
       "helpExampleScript": "Przykład (skrypt):",
       "helpUsing": "Używanie tagów",
+      "helpTrigger": "\n**Triggers**: `{prefix}tags trigger <name>` runs the tag when only the name is sent. When you turn a tag into a Trigger word, the bot will use the tag's name as the word that is triggered and will reply with its tag.",
+      "helpReplySource": "\n**Anywhere trigger:** `{prefix}tags anytrigger <name>` runs the tag whenever its name appears anywhere in a message, not just on its own.\n\nReply to a message when using a tag to make `$message` point to the replied message.",
       "helpManaging": "Zarządzanie",
       "helpScriptContext": "Kontekst skryptu",
       "helpScriptContextDesc": "• `$user`, `$channel`, `$message`, `$guild`\n• `args` (tablica argumentów)\n• Pełny język: zmienne, funkcje, pętle, osadzenia, losowe, regex, daty…",
@@ -216,7 +220,25 @@
       "reactTypeOrCancel": "React z typem jaki chcesz, lub ❌ aby anulować.",
       "editContentTitle": "Edytuj zawartość - {name}",
       "listItem": "**{n}.** {name} - {uses} używa ({emoji})",
-      "specifyTypeHint": "Dla skryptów preferowanych:\n` tagi{prefix}dodają mytag script`\n```\n// twój kod tutaj\n```"
+      "specifyTypeHint": "Dla skryptów preferowanych:\n` tagi{prefix}dodają mytag script`\n```\n// twój kod tutaj\n```",
+      "triggerTitle": "Trigger Word",
+      "triggerWord": "Trigger word",
+      "triggerBots": "Bot trigger words",
+      "triggerUsage": "Usage: `{prefix}tags trigger <name> on|off`\nOr: `{prefix}tags trigger bots on|off`",
+      "triggerTagStatus": "`{name}` is **{state}** as a trigger word.",
+      "triggerTagAlready": "`{name}` is already **{state}** as a trigger word.",
+      "triggerTagEnabled": "`{name}` is now a **trigger word**. Sending its name on its own will run it.",
+      "triggerTagDisabled": "`{name}` is no longer a trigger word. Use `{prefix}tag {name}` instead.",
+      "triggerBotsStatus": "Bot trigger words are **{state}**.",
+      "triggerBotsAlready": "Bot trigger words are already **{state}**.",
+      "triggerBotsEnabled": "Bots can now use trigger words.",
+      "triggerBotsDisabled": "Bots can no longer use trigger words.",
+      "invalidOption": "Invalid option. Use `on` or `off`.",
+      "anyTriggerWord": "Anywhere trigger",
+      "anyTriggerUsage": "Usage: `{prefix}tags anytrigger <name> [on|off]`",
+      "anyTriggerTagAlready": "`{name}` is already **{state}** as an anywhere trigger.",
+      "anyTriggerTagEnabled": "`{name}` will now run whenever its name appears anywhere in a message.",
+      "anyTriggerTagDisabled": "`{name}` will no longer run when its name appears in a message."
     },
     "schedule": {
       "description": "Zaplanuj wysyłanie wiadomości w określonym czasie.",
@@ -432,7 +454,8 @@
       "loadingManageChannel": "Tworzenie kanału menu",
       "loadingManageMessage": "Tworzenie wiadomości menu",
       "resetting": "Kanały tymczasowe",
-      "usingCategory": "Używanie istniejącej kategorii"
+      "usingCategory": "Używanie istniejącej kategorii",
+      "processing": "Processing setup..."
     },
     "timezone": {
       "description": "Pozwala skonfigurować strefę czasową konwertującą w Twojej społeczności, gdzie ktoś ma ustawioną strefę czasową, reaguje na ich wiadomość, a jeżeli autor na to zareaguje, przekształca ich czas w znacznik czasu.",
@@ -666,6 +689,7 @@
       "someRoleErrorsAdd": "Duplikuj role dołączenia, które podałeś:",
       "someRoleErrorsRemove": "Błędne dołączenie ról które podałeś:",
       "noTimeOption": "Nie podano czasu. Proszę podać czas, np. `{time:10m}`",
+      "invalidTime": "That time is invalid. Please provide a valid time, e.g. `{time:10m}`",
       "timedRoles": "**Rola czasowa**\nTo podpolecenie konfiguruje role w czasie, w którym dodaje role do użytkowników po określonym czasie.",
       "stickyTitle": "Przyklejone role",
       "joinTitle": "Dołącz do ról",

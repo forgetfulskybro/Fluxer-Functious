@@ -272,6 +272,8 @@ function usersRouter(client, apiKey) {
       }
 
       const user = await client.database.getUser(userId, true);
+      if (!user) return res.status(500).json({ error: 'Failed to create user' });
+
       const newReminder = {
         id: require('crypto').randomUUID(),
         message: String(message).slice(0, 400),
@@ -280,8 +282,7 @@ function usersRouter(client, apiKey) {
         type: 'dm',
       };
 
-      const reminders = [...(user.reminders ?? []), newReminder];
-      await client.database.updateUser(userId, { reminders }, true);
+      await client.database.addUserReminder(userId, newReminder);
       handleNewReminder(userId, newReminder);
       return res.json({ reminder: newReminder });
     } catch (err) {
@@ -295,27 +296,48 @@ function usersRouter(client, apiKey) {
       const { userId, reminderId } = req.params;
       const { message, timestamp } = req.body;
 
-      const user = await client.database.getUser(userId, false);
-      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (message === undefined && timestamp === undefined) {
+        return res.status(400).json({ error: 'message or timestamp is required' });
+      }
 
-      const existing = (user.reminders ?? []).find((r) => r.id === reminderId);
-      if (!existing) return res.status(404).json({ error: 'Reminder not found' });
+      const updates = {};
 
-      const reminders = (user.reminders ?? []).map((r) => {
-        if (r.id !== reminderId) return r;
-        return {
-          ...r,
-          ...(message !== undefined ? { message: String(message).slice(0, 400) } : {}),
-          ...(timestamp !== undefined ? { timestamp: Number(timestamp) } : {}),
-        };
-      });
+      if (message !== undefined) {
+        if (typeof message !== 'string') {
+          return res.status(400).json({ error: 'message must be a string' });
+        }
+        updates.message = message.slice(0, 400);
+      }
 
-      await client.database.updateUser(userId, { reminders }, false);
+      if (timestamp !== undefined) {
+        const MAX_SECONDS = 63115209;
+        const nowTs = Math.floor(Date.now() / 1000);
+        const ts = Number(timestamp);
 
-      const updated = reminders.find((r) => r.id === reminderId);
-      if (updated && updated.timestamp !== existing.timestamp) {
+        if (!Number.isFinite(ts)) {
+          return res.status(400).json({ error: 'timestamp must be a number' });
+        }
+        if (ts - nowTs > MAX_SECONDS) {
+          return res.status(400).json({ error: 'Reminder cannot be more than 2 years in the future' });
+        }
+        if (ts <= nowTs + 59) {
+          return res.status(400).json({ error: 'Reminder must be at least 1 minute in the future' });
+        }
+
+        updates.timestamp = ts;
+      }
+
+      const result = await client.database.updateUserReminder(userId, reminderId, updates);
+      if (!result?.matchedCount) {
+        return res.status(404).json({ error: 'Reminder not found' });
+      }
+
+      if (updates.message !== undefined || updates.timestamp !== undefined) {
+        const fresh = await client.database.getUser(userId, false, true);
+        const updated = fresh?.reminders?.find((r) => r.id === reminderId);
+
         handleDeletedReminder(userId, reminderId);
-        handleNewReminder(userId, updated);
+        if (updated) handleNewReminder(userId, updated);
       }
 
       return res.json({ ok: true });
@@ -329,14 +351,11 @@ function usersRouter(client, apiKey) {
     try {
       const { userId, reminderId } = req.params;
 
-      const user = await client.database.getUser(userId, false);
-      if (!user) return res.status(404).json({ error: 'User not found' });
+      const result = await client.database.deleteUserReminder(userId, reminderId);
+      if (!result?.matchedCount) {
+        return res.status(404).json({ error: 'Reminder not found' });
+      }
 
-      const existing = (user.reminders ?? []).find((r) => r.id === reminderId);
-      if (!existing) return res.status(404).json({ error: 'Reminder not found' });
-
-      const reminders = (user.reminders ?? []).filter((r) => r.id !== reminderId);
-      await client.database.updateUser(userId, { reminders }, false);
       handleDeletedReminder(userId, reminderId);
       return res.json({ ok: true });
     } catch (err) {

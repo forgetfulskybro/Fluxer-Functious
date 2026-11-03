@@ -12,6 +12,7 @@ const pollsRouter = require('./routes/polls');
 const usersRouter = require('./routes/users');
 const channelsRouter = require('./routes/channels');
 const themeRouter = require('./routes/theme');
+const translationsRouter = require('./routes/translations');
 
 function createApiServer(client) {
   const app = express();
@@ -19,10 +20,10 @@ function createApiServer(client) {
   const apiKey = process.env.API_KEY;
   const allowedOrigin = process.env.WEBSITE_URL || 'http://localhost:3000';
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
   app.use(cors({
     origin: allowedOrigin,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   }));
 
   app.get('/health', (_req, res) => {
@@ -36,6 +37,7 @@ function createApiServer(client) {
   app.use('/api/guilds/:guildId/tempchannels', tempChannelsRouter(client, apiKey));
   app.use('/api/guilds/:guildId/reactionroles', reactionRolesRouter(client, apiKey));
   app.use('/api/users', usersRouter(client, apiKey));
+  app.use('/api/translations', translationsRouter(client, apiKey));
   app.use('/api/channels', channelsRouter(client, apiKey));
   app.use('/api/guilds/:guildId/theme', themeRouter(client, apiKey));
 

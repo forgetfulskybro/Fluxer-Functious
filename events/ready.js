@@ -5,6 +5,7 @@ const { startCron: startFluxerList } = require("../functions/updateFluxerList");
 const { startCron: startPollsCron } = require("../functions/checkPolls");
 const { startBirthdayCheck } = require("../functions/checkBirthdays");
 const { loadIndex } = require("../functions/checkReactionReminders");
+const { loadIndex: loadTagIndex } = require("../functions/tagIndex");
 const { startReminderCron } = require("../functions/checkReminders");
 const checkVoiceStates = require("../functions/checkVoiceStates");
 const checkManage = require("../functions/checkManage");
@@ -27,6 +28,7 @@ module.exports = async (client) => {
   startTimedRolesCron(client);
   startReminderCron(client);
   await loadIndex(client);
+  await loadTagIndex(client);
   startScheduledCron(client);
   startGiveawayCron(client);
   startBirthdayCheck(client);

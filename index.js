@@ -43,7 +43,17 @@ if (process.env.VANTA && process.env.VANTA !== "null" && process.env.VANTA.trim(
   client.vanta = new Proxy({}, { get: () => noop });
 }
 client.database = new DatabaseHandler(process.env.MONGODB);
-client.database.connectToDatabase();
+client.database
+  .connectToDatabase()
+  .then(() => client.translate.loadFromDatabase(client.database))
+  .then((result) => {
+    if (result && result !== 'Success') {
+      console.log(color("%", `%4[Translation_Handler]%7 :: Database translations not loaded: ${result}%c`));
+    }
+  })
+  .catch((err) => {
+    console.log(color("%", `%4[Translation_Handler]%7 :: Database translations not loaded: ${err.message}%c`));
+  });
 client.database.cacheSweeper(client);
 client.database.guildSweeper(client);
 client.sentry = Sentry;

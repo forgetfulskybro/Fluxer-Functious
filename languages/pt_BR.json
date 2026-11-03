@@ -18,6 +18,8 @@
       "duplicate": "Existem funções duplicadas em sua mensagem, por favor, remova-as e tente novamente",
       "positions": "Existem cargos com posições mais altas (posição) do que o meu cargo mais alto na sua mensagem, por favor, remova-os e tente novamente",
       "fix": "Se você sabe que o bot tem um cargo maior que o do seu cargo, você pode corrigir isso facilmente, dando/removendo uma permissão aleatória do papel do bot.",
+      "noBotRole": "I couldn't find my highest role. Make sure I have a role assigned in this community.",
+      "noMessage": "I couldn't find the original message to edit. It may have been deleted.",
       "stop": "Para parar este cargo colecionador, envie ` papéis{prefix}parada`\nEsta mensagem será eliminada em 3 segundos."
     },
     "messageReactionAdd": {
@@ -200,6 +202,8 @@
       "helpCreating": "Criando Etiquetas",
       "helpExampleScript": "Exemplo (script):",
       "helpUsing": "Usando Etiquetas",
+      "helpTrigger": "\n**Triggers**: `{prefix}tags trigger <name>` runs the tag when only the name is sent. When you turn a tag into a Trigger word, the bot will use the tag's name as the word that is triggered and will reply with its tag.",
+      "helpReplySource": "\n**Anywhere trigger:** `{prefix}tags anytrigger <name>` runs the tag whenever its name appears anywhere in a message, not just on its own.\n\nReply to a message when using a tag to make `$message` point to the replied message.",
       "helpManaging": "Gerenciando",
       "helpScriptContext": "Contexto de script",
       "helpScriptContextDesc": "• `$user`, `$channel`, `$message`, `$guild`\n• `args` (matriz de argumentos)\n• Idioma cheio: variáveis, funções, laços, incorporações, aleatórias, regex, datas…",
@@ -216,7 +220,25 @@
       "reactTypeOrCancel": "React com o tipo que você deseja, ou ❌ para cancelar.",
       "editContentTitle": "Editar conteúdo - {name}",
       "listItem": "**{n}.** {name} - Usos {uses} ({emoji})",
-      "specifyTypeHint": "Para scripts, prefere:\n`{prefix}tags adicionam mytag script`\n```\n// seu código aqui\n```"
+      "specifyTypeHint": "Para scripts, prefere:\n`{prefix}tags adicionam mytag script`\n```\n// seu código aqui\n```",
+      "triggerTitle": "Trigger Word",
+      "triggerWord": "Trigger word",
+      "triggerBots": "Bot trigger words",
+      "triggerUsage": "Usage: `{prefix}tags trigger <name> on|off`\nOr: `{prefix}tags trigger bots on|off`",
+      "triggerTagStatus": "`{name}` is **{state}** as a trigger word.",
+      "triggerTagAlready": "`{name}` is already **{state}** as a trigger word.",
+      "triggerTagEnabled": "`{name}` is now a **trigger word**. Sending its name on its own will run it.",
+      "triggerTagDisabled": "`{name}` is no longer a trigger word. Use `{prefix}tag {name}` instead.",
+      "triggerBotsStatus": "Bot trigger words are **{state}**.",
+      "triggerBotsAlready": "Bot trigger words are already **{state}**.",
+      "triggerBotsEnabled": "Bots can now use trigger words.",
+      "triggerBotsDisabled": "Bots can no longer use trigger words.",
+      "invalidOption": "Invalid option. Use `on` or `off`.",
+      "anyTriggerWord": "Anywhere trigger",
+      "anyTriggerUsage": "Usage: `{prefix}tags anytrigger <name> [on|off]`",
+      "anyTriggerTagAlready": "`{name}` is already **{state}** as an anywhere trigger.",
+      "anyTriggerTagEnabled": "`{name}` will now run whenever its name appears anywhere in a message.",
+      "anyTriggerTagDisabled": "`{name}` will no longer run when its name appears in a message."
     },
     "schedule": {
       "description": "Agende as mensagens a serem enviadas no horário especificado.",
@@ -432,7 +454,8 @@
       "loadingManageChannel": "Criando canal de menu",
       "loadingManageMessage": "Criar mensagem de menu",
       "resetting": "Canais temporários",
-      "usingCategory": "Usando categoria existente"
+      "usingCategory": "Usando categoria existente",
+      "processing": "Processing setup..."
     },
     "timezone": {
       "description": "Permite configurar o fuso horário convertendo em sua comunidade onde se alguém tem o fuso horário definido, isso reage à sua mensagem, e se o autor reage a isso, converte o seu tempo em um timestamp.",
@@ -666,6 +689,7 @@
       "someRoleErrorsAdd": "Funções de entrada duplicadas que você forneceu:",
       "someRoleErrorsRemove": "Papéis de entrada removidos que você forneceu:",
       "noTimeOption": "Nenhum tempo foi fornecido. Por favor, forneça uma hora, ex: `{time:10m}`",
+      "invalidTime": "That time is invalid. Please provide a valid time, e.g. `{time:10m}`",
       "timedRoles": "**Cargos temporizados**\nEssas configurações de sub-comando cronometraram cargos em que ele adiciona papéis aos usuários após um período de tempo específico.",
       "stickyTitle": "Papéis Fixos",
       "joinTitle": "Juntar Papéis",

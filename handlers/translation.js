@@ -35,17 +35,10 @@ class TranslationHandler {
 
         this.baseLanguage = BASE_LANGUAGE;
         this.translations = {};
+        this.staticTranslations = {};
         this.progress = new Map();
 
-        for (const l of this.availableLanguages) {
-            try {
-                const data = require(`../languages/${l}.json`);
-                if (!data) continue;
-                this.initLanguage(l, data);
-            } catch (err) {
-                console.error(color("%", `%b[Translation_Handler]%7 :: Failed to load %e${l}%7: ${err.message}`));
-            }
-        }
+        this.loadStaticLanguages();
 
         console.log(color("%", `%b[Translation_Handler]%7 :: Loaded %e${this.availableLanguages.length} %7languages`));
     }
@@ -76,6 +69,102 @@ class TranslationHandler {
     initLanguage(key, language) {
         this.translations[key] = language;
         this.progress.delete(key);
+    }
+
+    loadStaticLanguages() {
+        this.translations = {};
+        this.progress.clear();
+        this.staticTranslations = this.staticTranslations ?? {};
+
+        for (const l of this.availableLanguages) {
+            try {
+                const data = require(`../languages/${l}.json`);
+                if (!data) continue;
+                this.staticTranslations[l] = data;
+                this.initLanguage(l, this.clone(data));
+            } catch (err) {
+                console.error(color("%", `%b[Translation_Handler]%7 :: Failed to load %e${l}%7: ${err.message}`));
+            }
+        }
+    }
+
+    clone(value) {
+        return JSON.parse(JSON.stringify(value));
+    }
+
+    setPath(object, key, value) {
+        const parts = key.split('.');
+        let current = object;
+
+        for (let i = 0; i < parts.length - 1; i++) {
+            const part = parts[i];
+            if (!current[part] || typeof current[part] !== 'object') {
+                current[part] = /^\d+$/.test(parts[i + 1]) ? [] : {};
+            }
+            current = current[part];
+        }
+
+        current[parts[parts.length - 1]] = value;
+    }
+
+    async loadFromDatabase(database) {
+        const model = database?.translationModel;
+        if (!model) return 'Translation database is not available';
+
+        let docs;
+        try {
+            docs = await model.find({ status: 'approved' }).lean();
+        } catch (err) {
+            return err.message || 'Failed to read translations from the database';
+        }
+
+        if (!Array.isArray(docs)) docs = [];
+
+        const baseStrings = this.flatten(this.staticTranslations[this.baseLanguage] ?? {});
+        const byLanguage = new Map();
+
+        for (const doc of docs) {
+            if (!doc || typeof doc.language !== 'string' || typeof doc.key !== 'string') continue;
+            if (doc.language === this.baseLanguage) continue;
+            if (!this.availableLanguages.includes(doc.language)) continue;
+            if (!Object.prototype.hasOwnProperty.call(baseStrings, doc.key)) continue;
+
+            if (!byLanguage.has(doc.language)) byLanguage.set(doc.language, []);
+            byLanguage.get(doc.language).push(doc);
+        }
+
+        this.translations = {};
+        this.progress.clear();
+
+        for (const language of this.availableLanguages) {
+            const merged = this.clone(this.staticTranslations[language] ?? {});
+
+            for (const doc of byLanguage.get(language) ?? []) {
+                const english = baseStrings[doc.key];
+
+                if (typeof english !== 'string') continue;
+
+                if (doc.base && doc.base !== english) {
+                    this.setPath(merged, doc.key, english);
+                    continue;
+                }
+
+                if (typeof doc.value !== 'string' || doc.value.trim().length === 0) {
+                    this.setPath(merged, doc.key, english);
+                    continue;
+                }
+
+                this.setPath(merged, doc.key, doc.value);
+            }
+
+            this.initLanguage(language, merged);
+        }
+
+        if (docs.length > 0) {
+            console.log(color("%", `%b[Translation_Handler]%7 :: Loaded %e${docs.length} %7approved translations from the database`));
+        }
+
+        return "Success";
     }
 
     checkRegex(value) {
@@ -266,20 +355,16 @@ class TranslationHandler {
             .join(separator);
     }
 
-    reload() {
-        this.translations = {};
-        this.progress.clear();
-        for (const l of this.availableLanguages) {
-            try {
-                const d = require(`../languages/${l}.json`);
+    async reload(database) {
+        this.availableLanguages = this.discoverLanguages();
+        this.aliases = this.buildAliases();
+        this.names = this.buildNames();
+        this.loadStaticLanguages();
 
-                if (!d) continue;
-
-                this.initLanguage(l, d);
-            } catch (e) {
-                return e.message;
-            }
+        if (database) {
+            return this.loadFromDatabase(database);
         }
+
         return "Success";
     }
 
@@ -288,26 +373,39 @@ class TranslationHandler {
         const l = this.getLanguage(language);
         const p = path.split('.');
         let c = null;
+        let found = true;
 
         if (p.length > 0) {
             for (const i of p) {
                 try {
                     if (!c) {
-                        if (!l.hasOwnProperty(i)) break;
+                        if (!l.hasOwnProperty(i)) {
+                            found = false;
+                            break;
+                        }
                         c = l[i];
                     } else {
-                        if (!c.hasOwnProperty(i)) break;
+                        if (!c.hasOwnProperty(i)) {
+                            found = false;
+                            break;
+                        }
                         c = c[i];
                     }
                 } catch (err) {
+                    found = false;
                     break;
                 }
             }
         } else {
-            return `Unknown translation: ${language} | ${path}`;;
+            found = false;
         }
 
-        if (!c) return `Unknown translation: ${language} | ${path}`;;
+        if (!found || c === null || c === undefined) {
+            if (language !== this.baseLanguage) {
+                return this.get(this.baseLanguage, path, data);
+            }
+            return `Unknown translation: ${language} | ${path}`;
+        }
 
         if (data) {
             try {

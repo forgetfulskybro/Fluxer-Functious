@@ -14,6 +14,7 @@ module.exports = class DatabaseHandler {
     this.userModel = require("../models/users");
     this.pollModel = require("../models/polls");
     this.giveawayModel = require("../models/giveaways");
+    this.translationModel = require("../models/translations");
     this.connectionString = connectionString;
   }
 
@@ -29,6 +30,8 @@ module.exports = class DatabaseHandler {
   cacheSweeper(client) {
     const interval = setInterval(
       () => {
+        if (!client?.isReady?.()) return;
+
         const guilds = [...this.cache.keys()];
         for (const gid of guilds) {
           if (!client?.guilds?.has(gid)) {
@@ -49,10 +52,24 @@ module.exports = class DatabaseHandler {
 
     const interval = setInterval(
       async () => {
+        if (!client?.isReady?.() || typeof client.user?.fetchGuilds !== "function") {
+          return;
+        }
+
+        let activeGuildIds;
+        try {
+          const activeGuilds = await client.user.fetchGuilds();
+          activeGuildIds = new Set(
+            activeGuilds.map((guild) => String(guild.id)),
+          );
+        } catch {
+          return;
+        }
+
         try {
           const guilds = await this.guildModel.find({}, { id: 1 }).lean();
           for (const g of guilds) {
-            if (!client?.guilds?.has(g?.id)) {
+            if (!activeGuildIds.has(String(g?.id))) {
               this.cache.delete(g?.id);
               await this.deleteGuild(g?.id).catch(() => {});
               await delay(3000);
@@ -108,17 +125,58 @@ module.exports = class DatabaseHandler {
   }
 
   async updateUser(userId, data = {}, createIfNotFound = false) {
-    let oldData = await this.getUser(userId, createIfNotFound);
+    const oldData = await this.getUser(userId, createIfNotFound);
+    if (!oldData) return null;
 
-    if (oldData) {
-      if (oldData?._doc) oldData = oldData?._doc;
+    const updates = { ...data };
+    delete updates._id;
+    delete updates.__v;
+    delete updates.userId;
 
-      data = { ...oldData, ...data };
-      this.setBounded(this.userCache, userId, data, this.userCacheMax);
+    if (Object.keys(updates).length === 0) return null;
+    const result = await this.userModel.updateOne(
+      { userId },
+      { $set: updates },
+    );
 
-      return this.userModel.updateOne({ userId }, data);
-    }
-    return null;
+    if (result.matchedCount) this.userCache.delete(userId);
+    return result;
+  }
+
+  async addUserReminder(userId, reminder) {
+    const result = await this.userModel.updateOne(
+      { userId },
+      { $push: { reminders: reminder } },
+    );
+
+    if (result.matchedCount) this.userCache.delete(userId);
+    return result;
+  }
+
+  async updateUserReminder(userId, reminderId, updates = {}) {
+    const $set = {};
+    if (updates.message !== undefined) $set['reminders.$.message'] = updates.message;
+    if (updates.timestamp !== undefined) $set['reminders.$.timestamp'] = updates.timestamp;
+
+    if (Object.keys($set).length === 0) return null;
+
+    const result = await this.userModel.updateOne(
+      { userId, 'reminders.id': reminderId },
+      { $set },
+    );
+
+    if (result.matchedCount) this.userCache.delete(userId);
+    return result;
+  }
+
+  async deleteUserReminder(userId, reminderId) {
+    const result = await this.userModel.updateOne(
+      { userId, 'reminders.id': reminderId },
+      { $pull: { reminders: { id: reminderId } } },
+    );
+
+    if (result.matchedCount) this.userCache.delete(userId);
+    return result;
   }
 
   async deleteUser(userId, onlyCache = false) {

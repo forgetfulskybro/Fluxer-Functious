@@ -18,6 +18,8 @@
       "duplicate": "Il y a des rôles en double dans votre message, veuillez les supprimer et réessayer",
       "positions": "Il y a des rôles avec des rangs plus élevés (position) que mon rôle le plus élevé dans votre message, veuillez les supprimer et réessayer",
       "fix": "Si vous savez que le bot a un rôle plus élevé que vos rôles fournis, vous pouvez facilement corriger cela en donnant/retirant une permission aléatoire du rôle du bot.",
+      "noBotRole": "I couldn't find my highest role. Make sure I have a role assigned in this community.",
+      "noMessage": "I couldn't find the original message to edit. It may have been deleted.",
       "stop": "Pour arrêter ce collecteur de rôles de réaction, envoyez `{prefix}rôles stop`\nCe message se supprimera dans 3 secondes."
     },
     "messageReactionAdd": {
@@ -200,6 +202,8 @@
       "helpCreating": "Création de balises",
       "helpExampleScript": "Exemple (script) :",
       "helpUsing": "Utiliser des balises",
+      "helpTrigger": "\n**Triggers**: `{prefix}tags trigger <name>` runs the tag when only the name is sent. When you turn a tag into a Trigger word, the bot will use the tag's name as the word that is triggered and will reply with its tag.",
+      "helpReplySource": "\n**Anywhere trigger:** `{prefix}tags anytrigger <name>` runs the tag whenever its name appears anywhere in a message, not just on its own.\n\nReply to a message when using a tag to make `$message` point to the replied message.",
       "helpManaging": "Gestion en cours",
       "helpScriptContext": "Contexte du script",
       "helpScriptContextDesc": "• `$user`, `$channel`, `$message`, `$guild`\n• `args` (tableau d'arguments)\n• Langue complète : variables, fonctions, boucles, incorporations, aléatoire, regex, dates…",
@@ -216,7 +220,25 @@
       "reactTypeOrCancel": "Réagissez avec le type que vous voulez, ou ❌ pour annuler.",
       "editContentTitle": "Modifier le contenu - {name}",
       "listItem": "**{n}.** {name} - {uses} utilise ({emoji})",
-      "specifyTypeHint": "Pour les scripts, préférez :\n` Les tags{prefix}ajoutent mytag script`\n```\n// votre code ici\n```"
+      "specifyTypeHint": "Pour les scripts, préférez :\n` Les tags{prefix}ajoutent mytag script`\n```\n// votre code ici\n```",
+      "triggerTitle": "Trigger Word",
+      "triggerWord": "Trigger word",
+      "triggerBots": "Bot trigger words",
+      "triggerUsage": "Usage: `{prefix}tags trigger <name> on|off`\nOr: `{prefix}tags trigger bots on|off`",
+      "triggerTagStatus": "`{name}` is **{state}** as a trigger word.",
+      "triggerTagAlready": "`{name}` is already **{state}** as a trigger word.",
+      "triggerTagEnabled": "`{name}` is now a **trigger word**. Sending its name on its own will run it.",
+      "triggerTagDisabled": "`{name}` is no longer a trigger word. Use `{prefix}tag {name}` instead.",
+      "triggerBotsStatus": "Bot trigger words are **{state}**.",
+      "triggerBotsAlready": "Bot trigger words are already **{state}**.",
+      "triggerBotsEnabled": "Bots can now use trigger words.",
+      "triggerBotsDisabled": "Bots can no longer use trigger words.",
+      "invalidOption": "Invalid option. Use `on` or `off`.",
+      "anyTriggerWord": "Anywhere trigger",
+      "anyTriggerUsage": "Usage: `{prefix}tags anytrigger <name> [on|off]`",
+      "anyTriggerTagAlready": "`{name}` is already **{state}** as an anywhere trigger.",
+      "anyTriggerTagEnabled": "`{name}` will now run whenever its name appears anywhere in a message.",
+      "anyTriggerTagDisabled": "`{name}` will no longer run when its name appears in a message."
     },
     "schedule": {
       "description": "Planifier les messages à envoyer à un moment précis.",
@@ -432,7 +454,8 @@
       "loadingManageChannel": "Création d'un canal de menu",
       "loadingManageMessage": "Création du message du menu",
       "resetting": "Chaînes temporaires",
-      "usingCategory": "Utilisation de la catégorie existante"
+      "usingCategory": "Utilisation de la catégorie existante",
+      "processing": "Processing setup..."
     },
     "timezone": {
       "description": "Vous permet de configurer la conversion de fuseau horaire dans votre communauté où si quelqu'un a son fuseau horaire, il réagit à leur message, et si l'auteur réagit à cela, il convertit leur temps en timestamp.",
@@ -666,6 +689,7 @@
       "someRoleErrorsAdd": "Dupliquer les rôles que vous avez fournis :",
       "someRoleErrorsRemove": "Rôles de jointure que vous avez fournis :",
       "noTimeOption": "Aucune heure n'a été fournie. Veuillez fournir une heure, par exemple `{time:10m}`",
+      "invalidTime": "That time is invalid. Please provide a valid time, e.g. `{time:10m}`",
       "timedRoles": "**Rôles chronométrés**\nCette sous-commande configure des rôles chronométrés où elle ajoute des rôles aux utilisateurs après un certain temps.",
       "stickyTitle": "Rôles collants",
       "joinTitle": "Rejoindre les rôles",

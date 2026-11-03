@@ -5,6 +5,7 @@ const { EmbedBuilder } = require("@fluxerjs/core");
 const { parseTimeForUser, parseWatchTime } = require("../functions/reminderTime");
 const { addWatcher, removeWatchers, MAX_WATCHERS, WATCH_EMOJI, beginSelfSend, endSelfSend } = require("../functions/checkReactionReminders");
 const { buildFingerprint, buildSample, detectSourceType, attachNames, isMatchable } = require("../functions/messageSimilarity");
+const { isSourceToken, resolveSource } = require("../functions/messageSource");
 
 const EMBED_COLORS = {
   ERROR: "#FF0000",
@@ -21,8 +22,6 @@ const CONFIG = {
   MENTIONS: ["@here", "@everyone"]
 };
 
-const SNOWFLAKE_REGEX = /^\d{17,20}$/;
-const LINK_REGEX = /(\d{17,20})\/(\d{17,20})\/(\d{17,20})/;
 const CODE_CHARS_REGEX = /[`\\]/g;
 const DISPLAY_WHITESPACE_REGEX = /\s+/g;
 const CONFIRM_TIME_MS = 30000;
@@ -170,11 +169,7 @@ async function deleteReminder(userId, index, client) {
 
   handleDeletedReminder(userId, reminderToDelete.id);
 
-  await client.database.updateUser(
-    userId,
-    { reminders: userData.reminders.filter(r => r.id !== reminderToDelete.id) },
-    true
-  );
+  await client.database.deleteUserReminder(userId, reminderToDelete.id);
   return { success: true, deletedReminder: reminderToDelete, remainingCount: reminders.length - 1 };
 }
 
@@ -254,54 +249,11 @@ async function handleDelete(message, args, prefix, client, language, themeColor)
   });
 }
 
-function parseMessageLink(input) {
-  const match = String(input || "").match(LINK_REGEX);
-  if (!match) return null;
-  return { guildId: match[1], channelId: match[2], messageId: match[3] };
-}
-
-function isSourceToken(input) {
-  if (!input) return false;
-  return Boolean(parseMessageLink(input)) || SNOWFLAKE_REGEX.test(String(input).trim());
-}
-
 function isTextChannel(channel) {
   if (!channel) return false;
   if (typeof channel.isTextBased === "function" && !channel.isTextBased()) return false;
   if (channel.type === 4 || channel.type === 5) return false;
   return true;
-}
-
-async function fetchMessage(client, channelId, messageId) {
-  const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel?.messages?.fetch) return null;
-  const fetched = await channel.messages.fetch(messageId).catch(() => null);
-  if (!fetched) return null;
-  return { message: fetched, channel };
-}
-
-async function resolveSource(client, message, args) {
-  const reference = message.messageReference;
-  if (reference?.messageId) {
-    const replied = await fetchMessage(client, reference.channelId, reference.messageId);
-    if (replied) return replied;
-  }
-
-  const token = args[0];
-  if (!isSourceToken(token)) return null;
-
-  const link = parseMessageLink(token);
-  if (link) return fetchMessage(client, link.channelId, link.messageId);
-
-  const localChannel = await client.channels.fetch(message.channelId).catch(() => null);
-  if (localChannel?.messages?.fetch) {
-    const local = await localChannel.messages.fetch(String(token).trim()).catch(() => null);
-    if (local) return { message: local, channel: localChannel };
-  }
-
-  if (!message.channel?.messages?.fetch) return null;
-  const own = await message.channel.messages.fetch(String(token).trim()).catch(() => null);
-  return own ? { message: own, channel: message.channel } : null;
 }
 
 function watcherList(userData) {
@@ -641,9 +593,9 @@ async function handleCreate(message, args, prefix, isDM, client, language, theme
     });
   }
 
-  let userData = await client.database.getUser(message.author.id, false);
+  const userData = await client.database.getUser(message.author.id, true);
   if (!userData) {
-    userData = { userId: message.author.id, reminders: [] };
+    throw new Error("Failed to load user data for reminder");
   }
 
   const totalReminders = userData.reminders?.length || 0;
@@ -674,11 +626,7 @@ async function handleCreate(message, args, prefix, isDM, client, language, theme
       type: "dm",
     };
 
-    await client.database.updateUser(
-      message.author.id,
-      { reminders: [...(userData.reminders || []), newReminder] },
-      true
-    );
+    await client.database.addUserReminder(message.author.id, newReminder);
 
     handleNewReminder(message.author.id, newReminder);
   } else {
@@ -692,11 +640,7 @@ async function handleCreate(message, args, prefix, isDM, client, language, theme
       type: "guild",
     };
 
-    await client.database.updateUser(
-      message.author.id,
-      { reminders: [...(userData.reminders || []), newReminder] },
-      true
-    );
+    await client.database.addUserReminder(message.author.id, newReminder);
 
     handleNewReminder(message.author.id, newReminder);
 

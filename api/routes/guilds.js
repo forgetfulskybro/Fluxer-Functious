@@ -6,6 +6,7 @@ const {
   nextBirthdayTimestamp,
   buildBirthdayAnnouncement,
 } = require('../../functions/birthdayHelpers');
+const { refreshGuild: refreshTagIndex } = require('../../functions/tagIndex');
 
 function collectMembers(liveGuild) {
   if (!liveGuild) return [];
@@ -193,6 +194,7 @@ function guildsRouter(client, apiKey) {
         bypassRoles: guild.bypassRoles,
         timedRoles: guild.timedRoles,
         tags: guild.tags,
+        tagTriggerBots: guild.tagTriggerBots ?? false,
         scheduledMessages: guild.scheduledMessages,
         mediaChannels: guild.mediaChannels ?? [],
         userTimezones: guild.userTimezones,
@@ -216,6 +218,7 @@ function guildsRouter(client, apiKey) {
 
       const ALLOWED_FIELDS = [
         'prefix',
+        'tagTriggerBots',
         'language',
         'dm',
         'timezoneConvert',
@@ -244,6 +247,10 @@ function guildsRouter(client, apiKey) {
       const updates = {};
       for (const field of ALLOWED_FIELDS) {
         if (field in req.body) updates[field] = req.body[field];
+      }
+
+      if ('tagTriggerBots' in updates && typeof updates.tagTriggerBots !== 'boolean') {
+        return res.status(400).json({ error: 'tagTriggerBots must be a boolean' });
       }
 
       if ('birthdayBlacklist' in updates) {
@@ -281,6 +288,10 @@ function guildsRouter(client, apiKey) {
         existing,
         updates,
       });
+
+      if ('tags' in updates || 'tagTriggerBots' in updates) {
+        await refreshTagIndex(client, guildId);
+      }
 
       return res.json({ ok: true });
     } catch (err) {

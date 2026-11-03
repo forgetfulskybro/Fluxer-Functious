@@ -7,9 +7,16 @@ const errorHandler = require("../functions/errorHandler");
 const parseTime = require("../functions/parseTime");
 const manageVC = require("../functions/manageVC");
 const { checkMessage } = require("../functions/checkReactionReminders");
+const { checkTagMessage } = require("../functions/tagIndex");
 
 module.exports = async (client, message) => {
   checkMessage(client, message).catch(() => {});
+
+  if (client?.user?.id && message?.author?.id === client.user.id) return;
+  if (message?.author?.bot) {
+    checkTagMessage(client, message).catch(() => {});
+    return;
+  }
 
   if (!message?.channel || (!message.content && !message.attachments?.size) || message.author.bot) return;
   const MVC = client.manageVC.get(message.author.id); 
@@ -44,7 +51,10 @@ module.exports = async (client, message) => {
     }
   }
 
-  if (!isMention && !message.content.startsWith(db.prefix)) return;
+  if (!isMention && !message.content.startsWith(db.prefix)) {
+    await checkTagMessage(client, message, db).catch(() => {});
+    return;
+  }
   const mentionMatch = isMention && message.content.match(new RegExp(`^(<@!?${client.user.id}>)`));
   const rawPrefixLength = isMention ? mentionMatch[0].length : db.prefix.length;
   const afterPrefix = message.content.slice(rawPrefixLength);

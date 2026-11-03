@@ -18,6 +18,8 @@
       "duplicate": "هناك أدوار مكررة في رسالتك، يرجى إزالتها والمحاولة مرة أخرى",
       "positions": "هناك أدوار مع رتب أعلى (منصب) من أعلى دور لي في رسالتك، يرجى إزالتها والمحاولة مرة أخرى",
       "fix": "إذا كنت تعرف أن البوت له دور أعلى من أدوارك المقدمة، يمكنك بسهولة إصلاح هذا عن طريق منح/إزالة إذن عشوائي من دور البوت.",
+      "noBotRole": "I couldn't find my highest role. Make sure I have a role assigned in this community.",
+      "noMessage": "I couldn't find the original message to edit. It may have been deleted.",
       "stop": "لإيقاف جامع أدوار رد الفعل هذا، ارسل `أدوار{prefix}توقف`\nهذه الرسالة ستحذف نفسها في 3 ثوان."
     },
     "messageReactionAdd": {
@@ -200,6 +202,8 @@
       "helpCreating": "إنشاء العلامات",
       "helpExampleScript": "مثال (سكريبت):",
       "helpUsing": "استخدام العلامات",
+      "helpTrigger": "\n**Triggers**: `{prefix}tags trigger <name>` runs the tag when only the name is sent. When you turn a tag into a Trigger word, the bot will use the tag's name as the word that is triggered and will reply with its tag.",
+      "helpReplySource": "\n**Anywhere trigger:** `{prefix}tags anytrigger <name>` runs the tag whenever its name appears anywhere in a message, not just on its own.\n\nReply to a message when using a tag to make `$message` point to the replied message.",
       "helpManaging": "إدارة",
       "helpScriptContext": "سياق البرنامج النصي",
       "helpScriptContextDesc": "• '$user`, `$channel`, `$message`, `$guild`\n• `args` (مجموعة من الحججة)\n• اللغة الكاملة: المتغيرات، الدوال، الحلقات، التضمين، عشوائي، ريجكس، التواريخ…",
@@ -216,7 +220,25 @@
       "reactTypeOrCancel": "التفاعل مع النوع الذي تريده، أو ❌ لإلغائه.",
       "editContentTitle": "تحرير المحتوى - {name}",
       "listItem": "**{n}.** {name} - {uses} يستخدم ({emoji})",
-      "specifyTypeHint": "للنصوص النصية المفضلة:\n`{prefix}علامة تضيف mytag script`\n```\n// تعليماتك البرمجية هنا\n```"
+      "specifyTypeHint": "للنصوص النصية المفضلة:\n`{prefix}علامة تضيف mytag script`\n```\n// تعليماتك البرمجية هنا\n```",
+      "triggerTitle": "Trigger Word",
+      "triggerWord": "Trigger word",
+      "triggerBots": "Bot trigger words",
+      "triggerUsage": "Usage: `{prefix}tags trigger <name> on|off`\nOr: `{prefix}tags trigger bots on|off`",
+      "triggerTagStatus": "`{name}` is **{state}** as a trigger word.",
+      "triggerTagAlready": "`{name}` is already **{state}** as a trigger word.",
+      "triggerTagEnabled": "`{name}` is now a **trigger word**. Sending its name on its own will run it.",
+      "triggerTagDisabled": "`{name}` is no longer a trigger word. Use `{prefix}tag {name}` instead.",
+      "triggerBotsStatus": "Bot trigger words are **{state}**.",
+      "triggerBotsAlready": "Bot trigger words are already **{state}**.",
+      "triggerBotsEnabled": "Bots can now use trigger words.",
+      "triggerBotsDisabled": "Bots can no longer use trigger words.",
+      "invalidOption": "Invalid option. Use `on` or `off`.",
+      "anyTriggerWord": "Anywhere trigger",
+      "anyTriggerUsage": "Usage: `{prefix}tags anytrigger <name> [on|off]`",
+      "anyTriggerTagAlready": "`{name}` is already **{state}** as an anywhere trigger.",
+      "anyTriggerTagEnabled": "`{name}` will now run whenever its name appears anywhere in a message.",
+      "anyTriggerTagDisabled": "`{name}` will no longer run when its name appears in a message."
     },
     "schedule": {
       "description": "جدولة الرسائل التي سيتم إرسالها في وقت محدد.",
@@ -432,7 +454,8 @@
       "loadingManageChannel": "إنشاء قائمة القناة",
       "loadingManageMessage": "إنشاء رسالة القائمة",
       "resetting": "القنوات المؤقتة",
-      "usingCategory": "استخدام الفئة الحالية"
+      "usingCategory": "استخدام الفئة الحالية",
+      "processing": "Processing setup..."
     },
     "timezone": {
       "description": "يتيح لك إعداد المنطقة الزمنية للتحويل في مجتمعك حيث إذا كان شخص ما لديه تعيين المنطقة الزمنية. وهو يتفاعل مع رسالتهم، وإذا كان صاحب البلاغ يتفاعل مع ذلك، فإنه يحول وقتهم إلى طابع زمني.",
@@ -666,6 +689,7 @@
       "someRoleErrorsAdd": "تكرار أدوار الانضمام التي قمت بتقديمها:",
       "someRoleErrorsRemove": "خطأ في أدوار الانضمام التي قمت بتقديمها:",
       "noTimeOption": "لم يتم توفير أي وقت. يرجى تقديم وقت، على سبيل المثال `{time:10m}`",
+      "invalidTime": "That time is invalid. Please provide a valid time, e.g. `{time:10m}`",
       "timedRoles": "**وقت الرسم**\nهذا الأمر الفرعي يقوم بإعداد أدوار موقوتة حيث يضيف أدوار للمستخدمين بعد كمية محددة من الوقت.",
       "stickyTitle": "أدوار ملصقة",
       "joinTitle": "أدوار الانضمام",

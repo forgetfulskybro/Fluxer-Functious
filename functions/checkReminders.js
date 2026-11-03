@@ -62,14 +62,7 @@ async function sendDMReminderWithRetry(client, userId, message, createdAt, maxRe
 async function deleteReminderFromDB(userId, reminderId) {
     try {
         if (!clientRef || !clientRef.database) return;
-
-        const userData = await db.findOne({ userId });
-        if (!userData) return;
-
-        const updatedReminders = userData.reminders.filter(r => r.id !== reminderId);
-        if (updatedReminders.length !== userData.reminders.length) {
-            await clientRef.database.updateUser(userId, { reminders: updatedReminders }, true);
-        }
+        await clientRef.database.deleteUserReminder(userId, reminderId);
     } catch (err) {
     }
 }

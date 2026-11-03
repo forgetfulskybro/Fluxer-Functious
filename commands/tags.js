@@ -2,58 +2,9 @@ const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require('../functions/pagination');
 const { runTagSafe } = require('../interpreter/index');
 const { trackGuildUpdates } = require("../api/trackSettings");
-
-function toFluxerEmbed(data) {
-  if (!data || typeof data !== "object") return null;
-
-  const embed = new EmbedBuilder();
-
-  if (data.title) embed.setTitle(String(data.title).slice(0, 256));
-  if (data.description) embed.setDescription(String(data.description).slice(0, 4096));
-  if (data.url) embed.setURL(String(data.url));
-  if (data.timestamp) embed.setTimestamp(data.timestamp);
-
-  if (data.color != null) {
-    try {
-      embed.setColor(data.color);
-    } catch {
-    }
-  }
-
-  if (data.author) {
-    const a = data.author;
-    embed.setAuthor({
-      name: String(a.name || "").slice(0, 256),
-      url: a.url || undefined,
-      iconURL: a.icon_url || a.iconURL || undefined,
-    });
-  }
-
-  if (data.footer) {
-    const f = data.footer;
-    embed.setFooter({
-      text: String(f.text || "").slice(0, 2048),
-      iconURL: f.icon_url || f.iconURL || undefined,
-    });
-  }
-
-  if (data.thumbnail?.url) embed.setThumbnail(data.thumbnail.url);
-  if (data.image?.url) embed.setImage(data.image.url);
-
-  if (Array.isArray(data.fields)) {
-    for (const field of data.fields.slice(0, 25)) {
-      if (field?.name && field?.value) {
-        embed.addFields({
-          name: String(field.name).slice(0, 256),
-          value: String(field.value).slice(0, 1024),
-          inline: Boolean(field.inline),
-        });
-      }
-    }
-  }
-
-  return embed;
-}
+const { executeTag, buildTagContext, resolveTagSource } = require("../functions/tagExecution");
+const { refreshGuild } = require("../functions/tagIndex");
+const { parseMessageLink } = require("../functions/messageSource");
 
 function tokenizeArgs(text) {
   const args = [];
@@ -81,6 +32,24 @@ function extractCodeBlock(rest) {
 
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function sourceContent(source) {
+  const replied = source?.message;
+  if (!replied) return "";
+
+  const text = String(replied.content ?? "").trim();
+  if (text) return text;
+
+  const embeds = replied.embeds
+    ? [...(replied.embeds.values?.() ?? replied.embeds)]
+    : [];
+
+  return embeds
+    .map((embed) => String(embed?.description ?? "").trim())
+    .filter(Boolean)
+    .join("\n")
+    .trim();
 }
 
 function extractTagContent(message, prefix, tagName, tagType) {
@@ -156,7 +125,7 @@ function typeEmoji(type) {
   return "⚡";
 }
 
-module.exports = {
+const tagsModule = {
   config: {
     name: "tags",
     usage: "help",
@@ -170,112 +139,25 @@ module.exports = {
   },
 
   run: async (client, message, args, db) => {
-    const subcommand = args[0]?.toLowerCase();
+    const triggerAliases = ["trigger", "triggers", "triggerword", "triggerwords"];
+    const anyTriggerAliases = [
+      "anytrigger",
+      "anytriggers",
+      "anytriggerword",
+      "anytriggerwords",
+      "triggeranywhere",
+      "triggeranywhereword",
+      "anywheretrigger",
+      "anywheretriggerword",
+    ];
+    const rawSubcommand = args[0]?.toLowerCase();
+    const subcommand = triggerAliases.includes(rawSubcommand)
+      ? "trigger"
+      : anyTriggerAliases.includes(rawSubcommand)
+        ? "anytrigger"
+        : rawSubcommand;
     const prefix = db.prefix;
     const t = (key, vars) => client.translate.get(db.language, `Commands.tags.${key}`, vars);
-
-    const buildContext = (extraArgs = []) => ({
-      args: extraArgs,
-      user: {
-        id: message.author.id,
-        username: message.author.username,
-        discriminator: message.author.discriminator,
-        display_name: message.member?.displayName ?? message.author.username,
-        global_name: message.author.globalName,
-        avatar: message.author.displayAvatarURL({ dynamic: true }),
-        avatar_url: message.author.displayAvatarURL({ dynamic: true }),
-        bot: message.author.bot,
-      },
-      channel: {
-        id: message.channel.id,
-        name: message.channel.name,
-        type: message.channel.type,
-      },
-      message: {
-        id: message.id,
-        content: message.content,
-        createdTimestamp: message.createdTimestamp,
-      },
-      guild: message.guild
-        ? {
-            id: message.guild.id,
-            name: message.guild.name,
-            memberCount: message.guild.memberCount,
-            ownerId: message.guild.ownerId,
-          }
-        : null,
-    });
-
-    const executeTag = async (tag, remainingArgs = []) => {
-      tag.uses = (tag.uses || 0) + 1;
-      await client.database.updateGuild(message.guild.id, { tags: db.tags });
-
-      await trackGuildUpdates(client, {
-        guildId: message.guildId,
-        userId: message.author.id,
-        existing: db,
-        updates: { tags: db.tags },
-      });
-
-      if (tag.type === "text") {
-        return message.channel.send({ content: tag.content });
-      }
-
-      if (tag.type === "embed") {
-        const embed = new EmbedBuilder()
-          .setColor(tag.embedData?.color || db.theme)
-          .setDescription(tag.embedData?.description || "");
-        return message.channel.send({ embeds: [embed] });
-      }
-
-      if (tag.type === "script") {
-        const result = runTagSafe(tag.content, buildContext(remainingArgs));
-
-        if (!result.ok) {
-          return message.reply({
-            embeds: [makeScriptErrorEmbed(client, db, result.error, tag.content)],
-          });
-        }
-
-        const { text, embeds: rawEmbeds } = result.result;
-        const payload = {};
-
-        if (text && text.trim()) {
-          payload.content = text.slice(0, 2000);
-        }
-
-        if (rawEmbeds && rawEmbeds.length) {
-          const converted = rawEmbeds
-            .slice(0, 10)
-            .map(toFluxerEmbed)
-            .filter(Boolean);
-
-          if (converted.length) {
-            payload.embeds = converted;
-          }
-        }
-
-        if (!payload.content && !payload.embeds) {
-          return message.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setColor(db.theme)
-                .setDescription(t("noOutput")),
-            ],
-          });
-        }
-
-        return message.channel.send(payload);
-      }
-
-      return message.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor("#FF0000")
-            .setDescription(t("unknownType")),
-        ],
-      });
-    };
 
     switch (subcommand) {
       default:
@@ -296,7 +178,11 @@ module.exports = {
           }
 
           const remaining = tokenizeArgs(args.slice(1).join(" "));
-          return executeTag(tag, remaining);
+          const sourceArgs = parseMessageLink(remaining[0])
+            ? [remaining.shift()]
+            : [];
+
+          return executeTag(client, message, db, tag, remaining, { sourceArgs });
         }
 
       case "help": {
@@ -321,12 +207,17 @@ module.exports = {
               "```",
               `**${t("helpUsing")}**`,
               `\`${prefix}tags ${t("placeholders.name")} [args...]\``,
+              t("helpTrigger", { "prefix": db.prefix }),
+              t("helpReplySource", { prefix }),
               ``,
               `**${t("helpManaging")}**`,
               `\`${prefix}tags list\``,
               `\`${prefix}tags view ${t("placeholders.name")}\``,
               `\`${prefix}tags edit ${t("placeholders.name")}\``,
               `\`${prefix}tags remove ${t("placeholders.name")}\``,
+              `\`${prefix}tags trigger ${t("placeholders.name")} on|off\``,
+              `\`${prefix}tags anytrigger ${t("placeholders.name")} on|off\``,
+              `\`${prefix}tags trigger bots on|off\``,
               `**${t("helpScriptContext")}**`,
               t("helpScriptContextDesc"),
               ``,
@@ -336,13 +227,300 @@ module.exports = {
         return message.reply({ embeds: [embed] });
       }
 
+      case "trigger": {
+        const target = args[1];
+        const bots = target?.toLowerCase() === "bots";
+        const value = args[2]?.toLowerCase();
+
+        if (!target) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("triggerUsage", { prefix }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const truthy = ["on", "enable", "enabled", "true", "yes", "1"];
+        const falsy = ["off", "disable", "disabled", "false", "no", "0"];
+        const state = (bool) => (bool ? "on" : "off");
+
+        if (bots) {
+          if (!value) {
+            return message.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setColor(db.theme)
+                  .setTitle(t("triggerBots"))
+                  .setDescription(
+                    `${t("triggerBotsStatus", {
+                      state: state(db.tagTriggerBots === true),
+                    })}\n\n\`${prefix}tags trigger bots on|off\``
+                  ),
+              ],
+            });
+          }
+
+          if (!truthy.includes(value) && !falsy.includes(value)) {
+            return message.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription(
+                    `${t("invalidOption")}\n\`${prefix}tags trigger bots on|off\``
+                  )
+                  .setColor("#FF0000"),
+              ],
+            });
+          }
+
+          const enabled = truthy.includes(value);
+
+          if (db.tagTriggerBots === enabled) {
+            return message.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription(
+                    t("triggerBotsAlready", { state: state(enabled) })
+                  )
+                  .setColor(db.theme),
+              ],
+            });
+          }
+
+          await client.database.updateGuild(message.guild.id, {
+            tagTriggerBots: enabled,
+          });
+
+          await trackGuildUpdates(client, {
+            guildId: message.guildId,
+            userId: message.author.id,
+            existing: db,
+            updates: { tagTriggerBots: enabled },
+          });
+
+          db.tagTriggerBots = enabled;
+          await refreshGuild(client, message.guildId);
+
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  t(
+                    enabled
+                      ? "triggerBotsEnabled"
+                      : "triggerBotsDisabled"
+                  )
+                )
+                .setColor(db.theme),
+            ],
+          });
+        }
+
+        const triggerTag = db.tags?.find(
+          (tg) => tg.name.toLowerCase() === target.toLowerCase()
+        );
+
+        if (!triggerTag) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("notFound", { name: target }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        if (!value) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setColor(db.theme)
+                .setTitle(t("triggerTitle"))
+                .setDescription(
+                  `${t("triggerTagStatus", {
+                    name: triggerTag.name,
+                    state: state(triggerTag.trigger === true),
+                  })}\n\n\`${prefix}tags trigger ${triggerTag.name} on|off\``
+                ),
+            ],
+          });
+        }
+
+        if (!truthy.includes(value) && !falsy.includes(value)) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  `${t("invalidOption")}\n\`${prefix}tags trigger ${triggerTag.name} on|off\``
+                )
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const enabled = truthy.includes(value);
+
+        if ((triggerTag.trigger === true && triggerTag.anyTrigger !== true) === enabled) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  t("triggerTagAlready", {
+                    name: triggerTag.name,
+                    state: state(enabled),
+                  })
+                )
+                .setColor(db.theme),
+            ],
+          });
+        }
+
+        const updatedTags = db.tags.map((tg) =>
+          tg.name.toLowerCase() === triggerTag.name.toLowerCase()
+            ? enabled
+              ? { ...tg, trigger: true, anyTrigger: false }
+              : { ...tg, trigger: false }
+            : tg
+        );
+
+        await client.database.updateGuild(message.guild.id, {
+          tags: updatedTags,
+        });
+
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { tags: updatedTags },
+        });
+
+        triggerTag.trigger = enabled;
+        if (enabled) triggerTag.anyTrigger = false;
+        await refreshGuild(client, message.guildId);
+
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(
+                t(
+                  enabled
+                    ? "triggerTagEnabled"
+                    : "triggerTagDisabled",
+                  { name: triggerTag.name }
+                )
+              )
+              .setColor(db.theme),
+          ],
+        });
+      }
+
+      case "anytrigger": {
+        const target = args[1];
+        const value = args[2]?.toLowerCase();
+        const truthy = ["on", "enable", "enabled", "true", "yes", "1"];
+        const falsy = ["off", "disable", "disabled", "false", "no", "0"];
+        const state = (bool) => (bool ? "on" : "off");
+
+        if (!target) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("anyTriggerUsage", { prefix }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const anyTag = db.tags?.find(
+          (tg) => tg.name.toLowerCase() === target.toLowerCase()
+        );
+
+        if (!anyTag) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("notFound", { name: target }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        if (value && !truthy.includes(value) && !falsy.includes(value)) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  `${t("invalidOption")}\n\`${prefix}tags anytrigger ${anyTag.name} on|off\``
+                )
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const enabled = value ? truthy.includes(value) : true;
+
+        if ((anyTag.anyTrigger === true && anyTag.trigger !== true) === enabled) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  t("anyTriggerTagAlready", {
+                    name: anyTag.name,
+                    state: state(enabled),
+                  })
+                )
+                .setColor(db.theme),
+            ],
+          });
+        }
+
+        const updatedTags = db.tags.map((tg) =>
+          tg.name.toLowerCase() === anyTag.name.toLowerCase()
+            ? enabled
+              ? { ...tg, anyTrigger: true, trigger: false }
+              : { ...tg, anyTrigger: false }
+            : tg
+        );
+
+        await client.database.updateGuild(message.guild.id, {
+          tags: updatedTags,
+        });
+
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { tags: updatedTags },
+        });
+
+        anyTag.anyTrigger = enabled;
+        if (enabled) anyTag.trigger = false;
+        await refreshGuild(client, message.guildId);
+
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(
+                t(
+                  enabled
+                    ? "anyTriggerTagEnabled"
+                    : "anyTriggerTagDisabled",
+                  { name: anyTag.name }
+                )
+              )
+              .setColor(db.theme),
+          ],
+        });
+      }
+
       case "add": {
         if (!args[1]) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
                 .setDescription(
-                  `${t("provideName")}\n${t("usage")}: \`${prefix}tags add ${t("placeholders.name")} text|embed|script ${t("placeholders.content")}\``
+                  `${t("provideName")}\n${t("usage")}: \`${prefix}tags add ${t("placeholders.name")} text|embed|script [trigger] ${t("placeholders.content")}\``
                 )
                 .setColor("#FF0000"),
             ],
@@ -405,12 +583,19 @@ module.exports = {
           });
         }
 
-        const { content } = extractTagContent(
+        const extracted = extractTagContent(
           message,
           prefix,
           tagName,
           tagType
         );
+        let { content } = extracted;
+        const isTrigger = extracted.trigger;
+
+        if (!content.trim()) {
+          const source = await resolveTagSource(client, message);
+          content = sourceContent(source);
+        }
 
         if (!content.trim()) {
           return message.reply({
@@ -438,7 +623,7 @@ module.exports = {
         }
 
         if (tagType === "script") {
-          const check = runTagSafe(content, buildContext([]));
+          const check = runTagSafe(content, buildTagContext(client, message, db, null, []));
           if (!check.ok) {
             return message.reply({
               embeds: [makeScriptErrorEmbed(client, db, check.error, content)],
@@ -458,6 +643,8 @@ module.exports = {
           createdBy: message.author.id,
           createdAt: Date.now(),
           uses: 0,
+          trigger: isTrigger,
+          anyTrigger: false,
         };
 
         await client.database.updateGuild(message.guild.id, {
@@ -470,6 +657,8 @@ module.exports = {
           existing: db,
           updates: { tags: [...(db.tags || []), newTag] },
         });
+
+        await refreshGuild(client, message.guildId);
 
         return message.reply({
           embeds: [
@@ -547,6 +736,8 @@ module.exports = {
                 existing: db,
                 updates: { tags: updatedTags },
               });
+
+              await refreshGuild(client, message.guildId);
               
               await confirmMsg.edit({
                 embeds: [
@@ -706,6 +897,8 @@ module.exports = {
                   existing: db,
                   updates: { tags: updated },
                 });
+
+                await refreshGuild(client, message.guildId);
                 
                 await menuMsg.edit({
                   embeds: [
@@ -768,7 +961,7 @@ module.exports = {
                 if (fenced) newContent = fenced.code;
 
                 if (editingTag.type === "script") {
-                  const check = runTagSafe(newContent, buildContext([]));
+                  const check = runTagSafe(newContent, buildTagContext(client, message, db, null, []));
                   if (!check.ok) {
                     return m.reply({
                       embeds: [makeScriptErrorEmbed(client, db, check.error, newContent)],
@@ -794,6 +987,8 @@ module.exports = {
                   existing: db,
                   updates: { tags: updated },
                 });
+
+                await refreshGuild(client, message.guildId);
                 
                 await menuMsg.edit({
                   embeds: [
@@ -917,6 +1112,8 @@ module.exports = {
                   updates: { tags: updated },
                 });
 
+                await refreshGuild(client, message.guildId);
+
                 await menuMsg.removeAllReactions().catch(() => {});
                 await menuMsg.edit({
                   embeds: [
@@ -999,6 +1196,16 @@ module.exports = {
               inline: true,
             },
             {
+              name: t("triggerWord"),
+              value: viewTag.trigger === true ? "on" : "off",
+              inline: true,
+            },
+            {
+              name: t("anyTriggerWord"),
+              value: viewTag.anyTrigger === true ? "on" : "off",
+              inline: true,
+            },
+            {
               name: t("uses"),
               value: String(viewTag.uses || 0),
               inline: true,
@@ -1060,7 +1267,13 @@ module.exports = {
                 .map((tag, idx) =>
                   t("listItem", {
                     n: i + idx + 1,
-                    name: tag.name,
+                    name: [
+                      tag.name,
+                      tag.trigger === true ? "🔔" : null,
+                      tag.anyTrigger === true ? "🌐" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" "),
                     uses: tag.uses || 0,
                     emoji: typeEmoji(tag.type),
                   })
@@ -1083,3 +1296,5 @@ module.exports = {
     }
   },
 };
+
+module.exports = tagsModule;

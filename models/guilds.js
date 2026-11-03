@@ -31,6 +31,7 @@ const guilds = new Schema({
     managevc: { type: Boolean, default: false },
   },
   tags: { type: Array, default: [] },
+  tagTriggerBots: { type: Boolean, default: false },
   mediaChannels: { type: Array, default: [] },
   birthdayChannel: { type: String, default: null },
   birthdayRole: { type: String, default: null },

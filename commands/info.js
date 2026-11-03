@@ -22,7 +22,7 @@ module.exports = {
     ]);
 
     const unixstamp = client.functions.get("fetchTime")(
-      Math.floor(client.uptime),
+      Math.floor(process.uptime()),
       client,
       db.language,
       true

@@ -99,7 +99,7 @@ function reloadReactionHandler(client, name) {
   return createEmbed(`✅ Reloaded reaction handler: **${name}**.js`);
 }
 
-function reloadLanguages(client) {
+async function reloadLanguages(client) {
   const languagesPath = path.join(__dirname, PATHS[RELOAD_TYPES.LANGUAGES]);
   const languageFiles = fs.readdirSync(languagesPath).filter(file => file.endsWith('.json'));
 
@@ -107,11 +107,17 @@ function reloadLanguages(client) {
     clearModuleCache(path.join(languagesPath, file));
   }
 
-  if (typeof client.translate?.reload === 'function') {
-    client.translate.reload();
+  if (typeof client.translate?.reload !== 'function') {
+    throw new Error('Translation handler is not available');
   }
 
-  return createEmbed(`✅ Reloaded **${languageFiles.length}** language file${languageFiles.length === 1 ? '' : 's'}`);
+  const result = await client.translate.reload(client.database);
+  if (result && result !== 'Success') {
+    throw new Error(result);
+  }
+
+  const loaded = client.translate.availableLanguages?.length ?? languageFiles.length;
+  return createEmbed(`✅ Reloaded **${loaded}** language${loaded === 1 ? '' : 's'} from the database`);
 }
 
 const HANDLERS = {
@@ -255,7 +261,7 @@ async function processSingleReload(client, type, name, autoDetected = false) {
 
   if (type === RELOAD_TYPES.LANGUAGES) {
     try {
-      HANDLERS[type].handler(client);
+      await HANDLERS[type].handler(client);
       result.status = 'success';
       return result;
     } catch (e) {
@@ -307,7 +313,21 @@ async function Reload(client, message, type, names) {
 
   if (type === RELOAD_TYPES.LANGUAGES) {
     const result = await processSingleReload(client, type, 'languages', false);
-    results.push(result);
+
+    if (result.status !== 'success') {
+      return createEmbed(
+        `❌ ${result.error || 'Failed to reload languages'}`,
+        COLORS.ERROR,
+        'Reload Failed'
+      );
+    }
+
+    const loaded = client.translate?.availableLanguages?.length ?? 0;
+    return createEmbed(
+      `✅ Reloaded **${loaded}** language${loaded === 1 ? '' : 's'} from the database`,
+      COLORS.SUCCESS,
+      'Languages Reloaded'
+    );
   }
 
   for (const name of names) {

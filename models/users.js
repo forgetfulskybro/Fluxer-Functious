@@ -41,7 +41,16 @@ const userSchema = new Schema({
     ping: { type: Boolean, default: true },
     enabledGuilds: { type: [String], default: [] },
   },
+  translations: {
+    languages: { type: [String], default: [] },
+    requestedLanguages: { type: [String], default: [] },
+    proofreader: { type: Boolean, default: false },
+    developer: { type: Boolean, default: false },
+  },
 });
+
+userSchema.index({ "translations.languages": 1 });
+userSchema.index({ "translations.proofreader": 1 });
 
 userSchema.index({ "reactionReminders.channelId": 1 });
 userSchema.index({ "reactionReminders.guildId": 1 });
