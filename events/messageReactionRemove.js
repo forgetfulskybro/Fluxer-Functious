@@ -1,6 +1,7 @@
 const editCollectorHandler = require("../reactionHandlers/editCollector");
 const roleReactionHandler = require("../reactionHandlers/roleReaction");
 const collectorHandler = require("../reactionHandlers/collector");
+const customCollectorHandler = require("../reactionHandlers/customCollector");
 const giveawayHandler = require("../reactionHandlers/giveaway");
 const mediaRatingHandler = require("../reactionHandlers/mediaRating");
 const pollHandler = require("../reactionHandlers/poll");
@@ -33,6 +34,10 @@ module.exports = async (client, reaction) => {
     }
 
     if (!reactionMsg) return;
+
+    if (collector?.custom && collector.reactionMessageId === reaction.messageId) {
+        return customCollectorHandler(client, reaction, userId, collector, reactionChan, reactionMsg, emojiId, "remove");
+    }
 
     if (collector && 
         collector.messageId === reaction.messageId && 

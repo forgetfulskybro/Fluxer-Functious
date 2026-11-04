@@ -7,6 +7,7 @@ const { WATCH_EMOJI } = require("../functions/checkReactionReminders");
 const mediaRatingHandler = require("../reactionHandlers/mediaRating");
 const paginationHandler = require("../reactionHandlers/pagination");
 const collectorHandler = require("../reactionHandlers/collector");
+const customCollectorHandler = require("../reactionHandlers/customCollector");
 const giveawayHandler = require("../reactionHandlers/giveaway");
 const timezoneHandler = require("../reactionHandlers/timezone");
 const manageVC = require("../reactionHandlers/manageVC");
@@ -53,6 +54,13 @@ module.exports = async (client, reaction) => {
 
   if (reloadSelection && reloadSelection.messageId === reaction.messageId) {
     return reloadSelectionHandler(client, reaction, userId, reloadSelection, emojiId);
+  }
+
+  if (collector?.custom && (
+    collector.controlMessageId === reaction.messageId ||
+    collector.reactionMessageId === reaction.messageId
+  )) {
+    return customCollectorHandler(client, reaction, userId, collector, reactionChan, reactionMsg, emojiId, "add");
   }
 
   if (collector && (

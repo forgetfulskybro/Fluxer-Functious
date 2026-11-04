@@ -143,13 +143,13 @@ module.exports = async (client, msg) => {
             key: 'roles',
             action: 'delete',
             label: 'Reaction Role Panel',
-            value: null,
-            previous: {
-              msgId: msgId,
-              chanId: roles.chanId,
-              exclusive: roles.exclusive ?? null,
-              roles: roles.roles,
-            },
+            value: null,              previous: {
+                msgId: msgId,
+                chanId: roles.chanId,
+                exclusive: roles.exclusive ?? null,
+                roles: roles.roles,
+                custom: roles.custom === true,
+              },
           });
         }
 

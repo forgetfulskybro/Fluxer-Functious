@@ -8,6 +8,7 @@ const parseTime = require("../functions/parseTime");
 const manageVC = require("../functions/manageVC");
 const { checkMessage } = require("../functions/checkReactionReminders");
 const { checkTagMessage } = require("../functions/tagIndex");
+const { handleCustomRoleReply } = require("../functions/customRoleSetup");
 
 module.exports = async (client, message) => {
   checkMessage(client, message).catch(() => {});
@@ -34,7 +35,17 @@ module.exports = async (client, message) => {
 
   if (await checkMediaChannel(client, message, db)) return;
 
-  if (client.messageCollector.has(message.author.id) && client.messageCollector.get(message.author.id).channelId === message.channelId && !client.messageCollector.get(message.author.id).messageId)
+  const activeCollector = client.messageCollector.get(message.author.id);
+  if (
+    activeCollector?.custom &&
+    activeCollector.stage === 'roles' &&
+    activeCollector.channelId === message.channelId &&
+    !message.content.startsWith(db.prefix)
+  ) {
+    return await handleCustomRoleReply(client, message, db);
+  }
+
+  if (!activeCollector?.custom && activeCollector && activeCollector.channelId === message.channelId && !activeCollector.messageId)
     return await Collector(client, message, db);
 
   if (client.messageEdit.has(message.author.id) && client.messageEdit.get(message.author.id).channelId === message.channelId && !client.messageEdit.get(message.author.id).messageId)

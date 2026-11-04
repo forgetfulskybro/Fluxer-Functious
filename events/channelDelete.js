@@ -50,6 +50,7 @@ module.exports = async (client, channel) => {
           chanId: panel.chanId,
           exclusive: panel.exclusive ?? null,
           roles: panel.roles,
+          custom: panel.custom === true,
         },
       });
     }

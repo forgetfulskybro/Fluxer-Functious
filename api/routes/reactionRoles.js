@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { EmbedBuilder, PermissionFlags } = require('@fluxerjs/core');
 const { makeRequireApiKey } = require('../middleware');
 const { trackResource, actorFromReq } = require('../trackSettings');
-const { syncReactions } = require('../../functions/syncReactions');
+const { syncReactions, reactionKey } = require('../../functions/syncReactions');
 
 function reactionRolesRouter(client, apiKey) {
   const router = Router({ mergeParams: true });
@@ -24,6 +24,17 @@ function reactionRolesRouter(client, apiKey) {
       const message = await channel.messages.fetch(messageId).catch(() => null);
       if (!message) return res.status(404).json({ error: 'Message not found' });
 
+      if (entry.custom === true) {
+        return res.json({
+          ok: true,
+          content: String(message.content || message.embeds?.[0]?.description || ''),
+          type: 'custom',
+          useMention: false,
+          custom: true,
+          entry,
+        });
+      }
+
       const isContent = (message.content || '').length > 0;
       const rawText = isContent ? message.content : message.embeds?.[0]?.description || '';
       const { text, useMention } = reverseRolePlaceholders(rawText, entry.roles || []);
@@ -44,14 +55,27 @@ function reactionRolesRouter(client, apiKey) {
   router.post('/', requireApiKey, async (req, res) => {
     try {
       const { guildId } = req.params;
-      const { type = 'content', channelId, content, roles: roleMappings, exclusive, useMention } =
-        req.body || {};
+      const {
+        type = 'content',
+        channelId,
+        messageId: targetMessageId,
+        messageLink,
+        content,
+        roles: roleMappings,
+        exclusive,
+        useMention,
+        custom,
+      } = req.body || {};
+      const isCustom = custom === true;
 
-      if (!channelId || !content || !Array.isArray(roleMappings) || roleMappings.length === 0) {
-        return res.status(400).json({ error: 'channelId, content and at least one role mapping required' });
+      if (!Array.isArray(roleMappings) || roleMappings.length === 0) {
+        return res.status(400).json({ error: 'At least one role mapping required' });
       }
       if (roleMappings.length > 30) {
         return res.status(400).json({ error: 'Maximum 30 reactions per message' });
+      }
+      if (!isCustom && (!channelId || !content)) {
+        return res.status(400).json({ error: 'channelId and content are required' });
       }
 
       const liveGuild = client.guilds?.get(guildId);
@@ -63,12 +87,102 @@ function reactionRolesRouter(client, apiKey) {
         return res.status(400).json({ error: 'Maximum 30 reaction role messages reached' });
       }
 
+      const me = liveGuild.members.me ?? (await liveGuild.members.fetchMe());
+
+      if (isCustom) {
+        const parsedLink =
+          typeof messageLink === 'string'
+            ? /(\d{17,20})\/(\d{17,20})\/(\d{17,20})/.exec(messageLink)
+            : null;
+        const targetChannelId = parsedLink?.[2] || channelId;
+        const targetId = parsedLink?.[3] || targetMessageId;
+
+        if (!targetChannelId || !targetId) {
+          return res.status(400).json({ error: 'A channel and message ID, or a message link, is required' });
+        }
+
+        const channel = await client.channels.resolve(targetChannelId);
+        if (!channel || channel.type === 2 || channel.type === 4) {
+          return res.status(400).json({ error: 'Invalid text channel' });
+        }
+        if (channel.guildId && channel.guildId !== guildId) {
+          return res.status(400).json({ error: 'Channel is not in this guild' });
+        }
+
+        const perms = me.permissionsIn(channel);
+        if (!perms.has(PermissionFlags.AddReactions) || !perms.has(PermissionFlags.ViewChannel)) {
+          return res.status(403).json({ error: 'Bot missing Add Reactions / View Channel' });
+        }
+
+        const targetMessage = await channel.messages.fetch(String(targetId)).catch(() => null);
+        if (!targetMessage) return res.status(404).json({ error: 'Message not found' });
+        if (targetMessage.guildId && targetMessage.guildId !== guildId) {
+          return res.status(400).json({ error: 'Message is not in this guild' });
+        }
+
+        const { processedRoles, invalid, tooHigh } = processCustomMappings(
+          roleMappings,
+          liveGuild,
+          me
+        );
+        if (invalid.length) {
+          return res.status(400).json({ error: 'Unknown role(s)', detail: invalid.join(', ') });
+        }
+        if (tooHigh.length) {
+          return res.status(403).json({
+            error: 'Roles are above the bot highest role',
+            detail: tooHigh.join(', '),
+          });
+        }
+        if (!processedRoles.length) {
+          return res.status(400).json({ error: 'At least one valid role mapping required' });
+        }
+
+        const failed = await addCustomReactions(targetMessage, processedRoles);
+        const entry = {
+          msgId: targetMessage.id,
+          chanId: channel.id,
+          roles: processedRoles,
+          custom: true,
+          type: 'custom',
+          authorId: targetMessage.author?.id ?? null,
+          exclusive: exclusive ? true : null,
+        };
+
+        db.roles = db.roles || [];
+        const existingIndex = db.roles.findIndex((item) => item.msgId === targetMessage.id);
+        if (existingIndex === -1) {
+          db.roles.push(entry);
+        } else {
+          const previous = db.roles[existingIndex];
+          const newKeys = new Set(processedRoles.map((role) => reactionKey(role.emoji)));
+          for (const old of previous.roles || []) {
+            if (!old?.emoji || newKeys.has(reactionKey(old.emoji))) continue;
+            await targetMessage.removeReactionEmoji(old.emoji).catch(() => {});
+          }
+          db.roles[existingIndex] = entry;
+        }
+        await client.database.updateGuild(guildId, { roles: db.roles });
+
+        await trackResource(client, {
+          userId: actorFromReq(req),
+          groupId: guildId,
+          category: 'reactionroles',
+          key: 'roles',
+          action: 'create',
+          label: 'Custom Reaction Role Panel',
+          value: { ...entry },
+          previous: null,
+        });
+
+        return res.status(201).json({ ok: true, entry, failedReactions: failed });
+      }
+
       const channel = await client.channels.resolve(channelId);
       if (!channel || channel.type === 2 || channel.type === 4) {
         return res.status(400).json({ error: 'Invalid text channel' });
       }
 
-      const me = liveGuild.members.me ?? (await liveGuild.members.fetchMe());
       const perms = me.permissionsIn(channel);
       if (
         !perms.has(PermissionFlags.SendMessages) ||
@@ -171,6 +285,80 @@ function reactionRolesRouter(client, apiKey) {
         });
 
         return res.json({ ok: true, entry });
+      }
+
+      if (existing.custom === true) {
+        if (!Array.isArray(roleMappings) || roleMappings.length === 0) {
+          return res.status(400).json({ error: 'At least one role mapping required' });
+        }
+
+        const liveGuild = client.guilds?.get(guildId);
+        if (!liveGuild) return res.status(404).json({ error: 'Guild not found on bot' });
+
+        const channel = await client.channels.resolve(existing.chanId);
+        if (!channel) return res.status(400).json({ error: 'Channel no longer exists' });
+
+        const me = liveGuild.members.me ?? (await liveGuild.members.fetchMe());
+        const perms = me.permissionsIn(channel);
+        if (!perms.has(PermissionFlags.AddReactions)) {
+          return res.status(403).json({ error: 'Bot missing Add Reactions' });
+        }
+
+        const msg = await channel.messages.fetch(messageId).catch(() => null);
+        if (!msg) return res.status(404).json({ error: 'Fluxer message not found' });
+
+        const { processedRoles, invalid, tooHigh } = processCustomMappings(
+          roleMappings,
+          liveGuild,
+          me
+        );
+        if (invalid.length) {
+          return res.status(400).json({ error: 'Unknown role(s)', detail: invalid.join(', ') });
+        }
+        if (tooHigh.length) {
+          return res.status(403).json({
+            error: 'Roles are above the bot highest role',
+            detail: tooHigh.join(', '),
+          });
+        }
+        if (!processedRoles.length) {
+          return res.status(400).json({ error: 'At least one valid role mapping required' });
+        }
+
+        const newKeys = new Set(processedRoles.map((role) => reactionKey(role.emoji)));
+        for (const role of existing.roles || []) {
+          if (newKeys.has(reactionKey(role.emoji))) continue;
+          await msg.removeReactionEmoji(role.emoji).catch(() => {});
+        }
+
+        const failed = await addCustomReactions(msg, processedRoles);
+        const entry = {
+          ...existing,
+          roles: processedRoles,
+          custom: true,
+          type: 'custom',
+          exclusive: Object.prototype.hasOwnProperty.call(body, 'exclusive')
+            ? exclusive
+              ? true
+              : null
+            : existing.exclusive ?? null,
+        };
+
+        db.roles[idx] = entry;
+        await client.database.updateGuild(guildId, { roles: db.roles });
+
+        await trackResource(client, {
+          userId: actorFromReq(req),
+          groupId: guildId,
+          category: 'reactionroles',
+          key: 'roles',
+          action: 'update',
+          label: 'Custom Reaction Role Panel',
+          value: { ...entry },
+          previous: { ...existing },
+        });
+
+        return res.json({ ok: true, entry, failedReactions: failed });
       }
 
       if (!content || !Array.isArray(roleMappings) || roleMappings.length === 0) {
@@ -303,7 +491,13 @@ function reactionRolesRouter(client, apiKey) {
       try {
         const ch = await client.channels.resolve(entry.chanId);
         const msg = await ch?.messages?.fetch(messageId).catch(() => null);
-        await msg?.delete().catch(() => {});
+        if (entry.custom === true) {
+          for (const role of entry.roles || []) {
+            await msg?.removeReactionEmoji(role.emoji).catch(() => {});
+          }
+        } else {
+          await msg?.delete().catch(() => {});
+        }
       } catch {}
 
       const next = db.roles.filter((e) => e.msgId !== messageId);
@@ -322,6 +516,7 @@ function reactionRolesRouter(client, apiKey) {
           chanId: entry.chanId,
           exclusive: entry.exclusive ?? null,
           roles: entry.roles,
+          custom: entry.custom === true,
         },
       });
 
@@ -337,6 +532,71 @@ function reactionRolesRouter(client, apiKey) {
 
 function escapeRegex(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getGuildRole(guild, roleId) {
+  const roles = guild?.roles;
+  if (!roles) return null;
+  if (typeof roles.get === 'function') return roles.get(roleId) || null;
+  if (roles.cache?.get) return roles.cache.get(roleId) || null;
+  return null;
+}
+
+function processCustomMappings(roleMappings, liveGuild, me) {
+  const processedRoles = [];
+  const invalid = [];
+  const tooHigh = [];
+  const highest = [...(me?.roles?.cache?.values?.() ?? me?.roles?.values?.() ?? [])].reduce(
+    (current, role) => (role.position > current.position ? role : current),
+    { position: -1 }
+  );
+
+  for (let i = 0; i < (roleMappings || []).length; i++) {
+    const mapping = roleMappings[i];
+    const emoji = String(mapping?.emoji ?? '').trim();
+    const roleId = String(mapping?.role ?? '');
+    if (!emoji || !roleId) continue;
+
+    const role = getGuildRole(liveGuild, roleId);
+    if (!role) {
+      invalid.push(roleId);
+      continue;
+    }
+    if (highest.position >= 0 && role.position >= highest.position) {
+      tooHigh.push(role.name);
+      continue;
+    }
+
+    processedRoles.push({
+      emoji,
+      emojiKey: emojiKeyFrom(emoji),
+      role: roleId,
+      name: String(mapping?.name || role.name),
+      position: mapping?.position ?? i + 1,
+    });
+  }
+
+  return { processedRoles, invalid, tooHigh };
+}
+
+async function addCustomReactions(message, processedRoles) {
+  const present = new Set();
+  for (const reaction of message?.reactions ?? []) {
+    const identifier = reaction?.emojiIdentifier;
+    if (identifier) present.add(reactionKey(identifier));
+  }
+
+  const failed = [];
+  for (const role of processedRoles) {
+    if (present.has(reactionKey(role.emoji))) continue;
+    try {
+      await message.react(role.emoji);
+    } catch {
+      failed.push(role.emoji);
+    }
+  }
+
+  return failed;
 }
 
 function reverseRolePlaceholders(text, roleMappings) {

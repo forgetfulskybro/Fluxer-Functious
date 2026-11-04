@@ -10,7 +10,7 @@ const {
   readLanguageFile,
   flatten,
   languageMeta,
-  getBaseStrings,
+  getBaseStringsWithDocs,
   getStaticStrings,
   getLanguageData,
   getLanguageSummaries,
@@ -196,7 +196,7 @@ function translationsRouter(client, apiKey) {
         return res.status(400).json({ error: "No translation files were provided" });
       }
 
-      const baseStrings = getBaseStrings();
+      const baseStrings = await getBaseStringsWithDocs(client);
       const languages = [];
       const errors = [];
       let imported = 0;
@@ -231,6 +231,16 @@ function translationsRouter(client, apiKey) {
 
         const strings = flatten(parsed);
         const isBase = code === BASE_LANGUAGE;
+        const seedLanguages = isBase
+          ? discoverLanguages().filter((language) => language !== BASE_LANGUAGE)
+          : [];
+        const seedStaticStrings = new Map(
+          seedLanguages.map((language) => [
+            language,
+            getStaticStrings(language),
+          ]),
+        );
+        const importedBaseValues = [];
         const ops = [];
         let fileImported = 0;
 
@@ -261,6 +271,8 @@ function translationsRouter(client, apiKey) {
                   base: english,
                   status: "approved",
                   updatedBy: permissions.userId,
+                  translatedBy: permissions.userId,
+                  translatedAt: now,
                   updatedAt: now,
                   approvedAt: now,
                   editedAt: now,
@@ -270,6 +282,60 @@ function translationsRouter(client, apiKey) {
             },
           });
           fileImported++;
+
+          if (isBase) {
+            importedBaseValues.push([key, value]);
+            const previousBase = baseStrings[key];
+            const sourceChanged =
+              Object.prototype.hasOwnProperty.call(baseStrings, key) &&
+              previousBase !== value;
+
+            for (const language of seedLanguages) {
+              const staticStrings = seedStaticStrings.get(language);
+              const hasStaticValue = Object.prototype.hasOwnProperty.call(
+                staticStrings,
+                key,
+              );
+
+              if (!sourceChanged && hasStaticValue) {
+                continue;
+              }
+
+              const rawStaticValue = staticStrings[key];
+              const staticValue =
+                typeof rawStaticValue === "string" ? rawStaticValue : "";
+              const staticIsTranslated =
+                staticValue.trim() !== "" &&
+                staticValue !== previousBase &&
+                staticValue !== value;
+              const seedValue =
+                sourceChanged && staticIsTranslated ? staticValue : "";
+
+              ops.push({
+                updateOne: {
+                  filter: { language, key },
+                  update: {
+                    $setOnInsert: {
+                      value: seedValue,
+                      status: "pending",
+                      updatedBy: null,
+                      translatedBy: null,
+                      translatedAt: null,
+                      updatedAt: 0,
+                      approvedAt: null,
+                      editedAt: null,
+                      previous: null,
+                      notes: [],
+                    },
+                    $set: sourceChanged
+                      ? { base: value, status: "pending" }
+                      : { base: value },
+                  },
+                  upsert: true,
+                },
+              });
+            }
+          }
         }
 
         try {
@@ -279,6 +345,10 @@ function translationsRouter(client, apiKey) {
         } catch (err) {
           errors.push(`${name}: ${err.message}`);
           continue;
+        }
+
+        for (const [key, value] of importedBaseValues) {
+          baseStrings[key] = value;
         }
 
         imported += fileImported;
@@ -514,7 +584,7 @@ function translationsRouter(client, apiKey) {
         return res.status(400).json({ error: "Invalid bulk action" });
       }
 
-      const baseStrings = getBaseStrings();
+      const baseStrings = await getBaseStringsWithDocs(client);
       const staticStrings = getStaticStrings(code);
       const requestedKeys = Array.isArray(req.body?.keys)
         ? [...new Set(req.body.keys.map(String))]
@@ -569,6 +639,10 @@ function translationsRouter(client, apiKey) {
         };
 
         if (action === "approve") {
+          if (doc && !doc.translatedBy && doc.status === "pending") {
+            update.translatedBy = doc.updatedBy ?? null;
+            update.translatedAt = doc.editedAt ?? doc.updatedAt ?? null;
+          }
           update.approvedAt = now;
           if (doc && !doc.editedAt) update.editedAt = doc.updatedAt || null;
           update.previous = null;
@@ -654,7 +728,7 @@ function translationsRouter(client, apiKey) {
         return res.status(400).json({ error: "Translation is too long" });
       }
 
-      const baseStrings = getBaseStrings();
+      const baseStrings = await getBaseStringsWithDocs(client);
       if (!Object.prototype.hasOwnProperty.call(baseStrings, key)) {
         return res.status(404).json({ error: "String not found" });
       }
@@ -678,6 +752,8 @@ function translationsRouter(client, apiKey) {
         base: baseValue,
         status: "pending",
         updatedBy: permissions.userId,
+        translatedBy: permissions.userId,
+        translatedAt: now,
         updatedAt: now,
         editedAt: now,
       };
@@ -723,7 +799,7 @@ function translationsRouter(client, apiKey) {
         return res.status(403).json({ error: "Proofreader access required" });
       }
 
-      const baseStrings = getBaseStrings();
+      const baseStrings = await getBaseStringsWithDocs(client);
       if (!Object.prototype.hasOwnProperty.call(baseStrings, key)) {
         return res.status(404).json({ error: "String not found" });
       }
@@ -745,6 +821,10 @@ function translationsRouter(client, apiKey) {
 
       const previousUpdatedAt = doc.updatedAt;
       const now = Date.now();
+      if (!doc.translatedBy && doc.status === "pending") {
+        doc.translatedBy = doc.updatedBy ?? null;
+        doc.translatedAt = doc.editedAt ?? doc.updatedAt ?? null;
+      }
       doc.status = "approved";
       doc.base = String(baseStrings[key] ?? "");
       doc.updatedBy = permissions.userId;
@@ -775,7 +855,7 @@ function translationsRouter(client, apiKey) {
         return res.status(403).json({ error: "Proofreader access required" });
       }
 
-      const baseStrings = getBaseStrings();
+      const baseStrings = await getBaseStringsWithDocs(client);
       if (!Object.prototype.hasOwnProperty.call(baseStrings, key)) {
         return res.status(404).json({ error: "String not found" });
       }
@@ -813,6 +893,8 @@ function translationsRouter(client, apiKey) {
         doc.status = restoredStatus;
         doc.base = String(baseStrings[key] ?? "");
         doc.updatedBy = restorablePrevious.updatedBy ?? null;
+        doc.translatedBy = restorablePrevious.updatedBy ?? null;
+        doc.translatedAt = restorablePrevious.updatedAt ?? null;
         doc.updatedAt = restorablePrevious.updatedAt ?? 0;
         doc.approvedAt =
           restoredStatus === "approved"
@@ -823,6 +905,8 @@ function translationsRouter(client, apiKey) {
         doc.base = String(baseStrings[key] ?? "");
         doc.status = "pending";
         doc.updatedBy = permissions.userId;
+        doc.translatedBy = null;
+        doc.translatedAt = null;
         doc.updatedAt = Date.now();
         doc.approvedAt = null;
       }
@@ -862,7 +946,7 @@ function translationsRouter(client, apiKey) {
         return res.status(400).json({ error: "Note is too long" });
       }
 
-      const baseStrings = getBaseStrings();
+      const baseStrings = await getBaseStringsWithDocs(client);
       if (!Object.prototype.hasOwnProperty.call(baseStrings, key)) {
         return res.status(404).json({ error: "String not found" });
       }

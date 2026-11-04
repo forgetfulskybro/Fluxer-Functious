@@ -2,6 +2,8 @@ const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require("../functions/pagination");
 const { trackGuildUpdates, trackResource  } = require("../api/trackSettings");
 const { syncReactions } = require("../functions/syncReactions");
+const { startCustomSetup, resolveCustomTarget, cancelCustomSetup } = require("../functions/customRoleSetup");
+const { parseMessageLink, SNOWFLAKE_REGEX } = require("../functions/messageSource");
 
 const CHANNEL_MENTION_REGEX = /^<#(?<id>\d+)>/;
 const TYPE_OPTIONS = ["content", "embed"];
@@ -72,23 +74,30 @@ module.exports = {
             const embed = new EmbedBuilder()
               .setColor(db.theme)
               .setTitle(client.translate.get(db.language, "Commands.roles.view"))
-              .setDescription(`**${client.translate.get(db.language, "Commands.roles.explain")}**\n${client.translate.get(db.language, "Commands.roles.explain2", { "prefix": db.prefix })}\n\n**${client.translate.get(db.language, "Commands.roles.create")}**\n\`${db.prefix}roles ${client.translate.get(db.language, "Commands.roles.createExample", { "type": "content | embed" })}\`\n\n**${client.translate.get(db.language, "Commands.roles.editing")}**\n\`${db.prefix}roles edit [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.viewing")}**\n\`${db.prefix}roles view\`\n\n**${client.translate.get(db.language, "Commands.roles.deleting")}**\n\`${db.prefix}roles delete [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.reactionFix")}**\n${client.translate.get(db.language, "Commands.roles.reactionFixExplain")}\n\`${db.prefix}roles fix [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.dm")}**\n\`${db.prefix}roles dm\`\n\n**${client.translate.get(db.language, "Commands.roles.exclusiveTitle")}**\n${client.translate.get(db.language, "Commands.roles.exclusiveExplain")}\n\`${db.prefix}roles exclusive [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**Role Mentions**\nAdd \`{mention}\` to your message to use role mentions (<@&ID>) instead of role names when emojis are added. The \`{mention}\` text will be removed from the final message.`)
+              .setDescription(`**${client.translate.get(db.language, "Commands.roles.explain")}**\n${client.translate.get(db.language, "Commands.roles.explain2", { "prefix": db.prefix })}\n\n**${client.translate.get(db.language, "Commands.roles.create")}**\n\`${db.prefix}roles create ${client.translate.get(db.language, "Commands.roles.createExample", { "type": "content | embed | message link" })}\`\n\n**${client.translate.get(db.language, "Commands.roles.customTitle")}**\n${client.translate.get(db.language, "Commands.roles.customHelp", { "prefix": db.prefix })}\n\n**${client.translate.get(db.language, "Commands.roles.editing")}**\n\`${db.prefix}roles edit [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.viewing")}**\n\`${db.prefix}roles view\`\n\n**${client.translate.get(db.language, "Commands.roles.deleting")}**\n\`${db.prefix}roles delete [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.reactionFix")}**\n${client.translate.get(db.language, "Commands.roles.reactionFixExplain")}\n\`${db.prefix}roles fix [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.dm")}**\n\`${db.prefix}roles dm\`\n\n**${client.translate.get(db.language, "Commands.roles.exclusiveTitle")}**\n${client.translate.get(db.language, "Commands.roles.exclusiveExplain")}\n\`${db.prefix}roles exclusive [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.mentionTitle")}**\n${client.translate.get(db.language, "Commands.roles.mentionExplain", { "prefix": db.prefix })}`)
 
             clearCooldown(client, message.author.id);
             message.reply({ embeds: [embed] });
              break;
                 
-          case "stop":
-            if (!client.messageCollector.get(message.author.id)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notStarted")}`).setColor(`#FF0000`)] });
+          case "stop": {
+            const activeSetup = client.messageCollector.get(message.author.id);
+            if (!activeSetup) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notStarted")}`).setColor(`#FF0000`)] });
+            if (activeSetup.custom) {
+              await cancelCustomSetup(client, db, activeSetup, "stop");
+              clearCooldown(client, message.author.id);
+              return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.stopped")}`).setColor(db.theme)] });
+            }
             client.messageCollector.delete(message.author.id);
             message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.stopped")}`).setColor(db.theme)] });
-             break;
+            break;
+          }
              
           case "view":
             if (db.roles.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles", { cmd: `\`${db.prefix}roles\`` })}`).setColor(`#FF0000`)] });
             const pages = new Paginator({ timeout: 5 * 2e4, user: message.author.id, client: client })
             let data;
-            data = db.roles.map((msg, i) => `**ID**: ${msg.msgId}\n**${client.translate.get(db.language, "Commands.roles.roles")}**: ${msg.roles.length}${msg.exclusive ? `| **${client.translate.get(db.language, "Commands.roles.exclusiveView")}**: ${client.translate.get(db.language, "Commands.roles.on")}` : ''}\n[${client.translate.get(db.language, "Commands.roles.jump")}](https://fluxer.app/channels/${message.guildId}/${msg.chanId}/${msg.msgId})`);
+            data = db.roles.map((msg, i) => `**ID**: ${msg.msgId}\n**${client.translate.get(db.language, "Commands.roles.roles")}**: ${msg.roles.length}${msg.custom ? ` | **${client.translate.get(db.language, "Commands.roles.customLabel")}**` : ''}${msg.exclusive ? `| **${client.translate.get(db.language, "Commands.roles.exclusiveView")}**: ${client.translate.get(db.language, "Commands.roles.on")}` : ''}\n[${client.translate.get(db.language, "Commands.roles.jump")}](https://fluxer.app/channels/${message.guildId}/${msg.chanId}/${msg.msgId})`);
             data = Array.from({ length: Math.ceil(data.length / 3) }, (a, r) => data.slice(r * 3, r * 3 + 3));
             Math.ceil(data.length / 3);
             data = data.map(e => pages.add(new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.view")}\n\n${e.slice(0, 3).join("\n\n")}`).setColor(db.theme)))
@@ -105,13 +114,19 @@ module.exports = {
 
           try {
             const foundMsg = await (await client.channels.resolve(msg.chanId))?.messages?.fetch(msg.msgId);
-            foundMsg?.delete();
+            if (msg.custom) {
+              for (const role of msg.roles || []) {
+                await foundMsg?.removeReactionEmoji(role.emoji).catch(() => { });
+              }
+            } else {
+              foundMsg?.delete();
+            }
           } catch { };
             await client.database.updateGuild(message.guildId, { roles: db.roles.filter(e => e.msgId !== args[1]) });
 
             await trackResource(client, {
               userId: message.author.id,
-              groupId: guildId,
+              groupId: message.guildId,
               category: 'reactionroles',
               key: 'roles',
               action: 'delete',
@@ -122,6 +137,7 @@ module.exports = {
                 chanId: msg.chanId,
                 exclusive: msg.exclusive ?? null,
                 roles: msg.roles,
+                custom: msg.custom === true,
               },
             });
 
@@ -142,7 +158,7 @@ module.exports = {
               const foundFixMsg = await (await client.channels.resolve(reactMsg.chanId))?.messages?.fetch(reactMsg.msgId);
               if (!foundFixMsg) throw new Error("Reaction role message not found");
 
-              const { failed } = await syncReactions(foundFixMsg, (reactMsg.roles || []).map(r => r.emoji));
+              const { failed } = await syncReactions(foundFixMsg, (reactMsg.roles || []).map(r => r.emoji), { prune: reactMsg.custom !== true });
               if (failed.length) throw new Error(failed.join(", "));
             } catch {
               return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.reactionFixError")}`).setColor(`#FF0000`)] });
@@ -186,7 +202,7 @@ module.exports = {
 
             await trackResource(client, {
               userId: message.author.id,
-              groupId: guildId,
+              groupId: message.guildId,
               category: 'reactionroles',
               key: 'roles',
               action: 'update',
@@ -218,6 +234,16 @@ module.exports = {
                 const fetched = await (await client.channels.resolve(editMsg.chanId))?.messages?.fetch(editMsg.msgId).catch(() => null);
                 if (!fetched) {
                     return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });
+                }
+
+                if (editMsg.custom) {
+                    const targetChannel = await client.channels.resolve(editMsg.chanId);
+                    if (!targetChannel) {
+                        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });
+                    }
+                    const started = await startCustomSetup(client, message, db, fetched, targetChannel, editMsg);
+                    clearCooldown(client, message.author.id);
+                    return started;
                 }
 
                 const type = fetched.content.length > 0 ? "content" : "embed";
@@ -299,6 +325,37 @@ Color Roles:
                 }
                 if (db.roles.length > 12) {
                     return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.max")}`).setColor(`#FF0000`)] });
+                }
+
+                let firstArg = args[1];
+                let channelArg = null;
+                if (firstArg && CHANNEL_MENTION_REGEX.test(firstArg)) {
+                    const channelId = firstArg.match(CHANNEL_MENTION_REGEX).groups.id;
+                    channelArg = message.guild.channels.find((entry) => entry.id === channelId) || null;
+                    if (channelArg?.type === 2 || channelArg?.type === 4) channelArg = message.channel;
+                    if (!channelArg) {
+                        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validChannel")}: \`${db.prefix}roles <content | embed> <#channel>\``).setColor(`#FF0000`)] });
+                    }
+                    firstArg = args[2];
+                }
+
+                const typeArg = String(firstArg || "").toLowerCase();
+                const isTypeCreate = TYPE_OPTIONS.includes(typeArg);
+                const linkArg = parseMessageLink(firstArg);
+                const idArg = SNOWFLAKE_REGEX.test(String(firstArg || "")) ? String(firstArg) : null;
+                const replyTarget = message.messageReference?.messageId;
+                const wantsCustom = !isTypeCreate && Boolean(linkArg || idArg || (!firstArg && replyTarget));
+
+                if (wantsCustom) {
+                    const resolved = await resolveCustomTarget(client, message, firstArg, channelArg);
+                    if (!resolved || resolved.error || !resolved.message) {
+                        const key = resolved?.error === "guild" ? "customTargetGuild" : "customTargetNotFound";
+                        return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, `Commands.roles.${key}`)}`).setColor(`#FF0000`)] });
+                    }
+
+                    const started = await startCustomSetup(client, message, db, resolved.message, resolved.channel);
+                    clearCooldown(client, userId);
+                    return started;
                 }
 
                 let targetChannel = message.channel;

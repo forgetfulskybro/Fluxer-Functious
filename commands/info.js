@@ -21,8 +21,8 @@ module.exports = {
       UserDB.countDocuments({ "birthday.day": { $ne: null } }),
     ]);
 
-    const unixstamp = client.functions.get("fetchTime")(
-      Math.floor(process.uptime()),
+    const uptime = client.functions.get("fetchTime")(
+      Math.floor(process.uptime() * 1000),
       client,
       db.language,
       true
@@ -46,7 +46,7 @@ module.exports = {
         {
           name: `**${client.translate.get(db.language, "Commands.info.system")}**`,
           value: [
-            `> **${client.translate.get(db.language, "Commands.info.uptime")}**: \`${unixstamp}\``,
+            `> **${client.translate.get(db.language, "Commands.info.uptime")}**: \`${uptime}\``,
             `> **${client.translate.get(db.language, "Commands.info.ping")}**: \`${gatewayPing}ms\``,
             `> **${client.translate.get(db.language, "Commands.info.memory")}**: \`${memory} MB\``,
             `> **${client.translate.get(db.language, "Commands.info.database")}**: \`${dbPing}ms\``,

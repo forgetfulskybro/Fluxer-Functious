@@ -27,6 +27,8 @@ const translationSchema = new Schema({
   base: { type: String, default: "" },
   status: { type: String, enum: ["pending", "approved"], default: "pending" },
   updatedBy: { type: String, default: null },
+  translatedBy: { type: String, default: null },
+  translatedAt: { type: Number, default: null },
   updatedAt: { type: Number, default: 0 },
   approvedAt: { type: Number, default: null },
   editedAt: { type: Number, default: null },

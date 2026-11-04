@@ -83,6 +83,27 @@ function getBaseStrings() {
   return flatten(readLanguageFile(BASE_LANGUAGE) ?? {});
 }
 
+async function getBaseStringsWithDocs(client) {
+  const baseStrings = { ...getBaseStrings() };
+  let docs = [];
+
+  try {
+    docs = await client.database.translationModel
+      .find({ language: BASE_LANGUAGE, status: "approved" })
+      .lean();
+  } catch {
+    docs = [];
+  }
+
+  for (const doc of docs) {
+    if (!doc || typeof doc.key !== "string") continue;
+    if (typeof doc.value !== "string" || !doc.value.trim()) continue;
+    baseStrings[doc.key] = doc.value;
+  }
+
+  return baseStrings;
+}
+
 function getStaticStrings(code) {
   return flatten(readLanguageFile(code) ?? {});
 }
@@ -100,6 +121,8 @@ function serializeString(code, key, baseValue, staticStrings, docMap) {
       status: "approved",
       updatedAt: null,
       updatedBy: null,
+      translatedBy: null,
+      translatedAt: null,
       approvedAt: null,
       editedAt: null,
       previous: null,
@@ -126,6 +149,14 @@ function serializeString(code, key, baseValue, staticStrings, docMap) {
     status,
     updatedAt: doc?.updatedAt ?? null,
     updatedBy: doc?.updatedBy ?? null,
+    translatedBy:
+      doc?.translatedBy ??
+      (doc?.status !== "approved" ? doc?.updatedBy ?? null : null),
+    translatedAt:
+      doc?.translatedAt ??
+      (doc?.status !== "approved"
+        ? doc?.editedAt ?? doc?.updatedAt ?? null
+        : null),
     editedAt: doc?.editedAt ?? doc?.updatedAt ?? null,
     approvedAt:
       doc?.approvedAt ?? (status === "approved" ? doc?.updatedAt ?? null : null),
@@ -193,7 +224,7 @@ function summarize(strings) {
 async function getLanguageData(client, code) {
   if (!isLanguage(code)) return null;
 
-  const baseStrings = getBaseStrings();
+  const baseStrings = await getBaseStringsWithDocs(client);
   const staticStrings = code === BASE_LANGUAGE ? {} : getStaticStrings(code);
   let docs = [];
 
@@ -216,7 +247,7 @@ async function getLanguageData(client, code) {
 
 async function getLanguageSummaries(client) {
   const codes = discoverLanguages();
-  const baseStrings = getBaseStrings();
+  const baseStrings = await getBaseStringsWithDocs(client);
   let docs = [];
 
   try {
@@ -410,6 +441,7 @@ module.exports = {
   readLanguageFile,
   flatten,
   getBaseStrings,
+  getBaseStringsWithDocs,
   getStaticStrings,
   getLanguageData,
   getLanguageSummaries,

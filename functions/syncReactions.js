@@ -22,7 +22,7 @@ async function attempt(fn) {
   }
 }
 
-async function syncReactions(msg, emojis) {
+async function syncReactions(msg, emojis, options = {}) {
   const desired = new Map();
   for (const emoji of emojis ?? []) {
     const value = String(emoji ?? '').trim();
@@ -36,10 +36,12 @@ async function syncReactions(msg, emojis) {
   }
 
   const removed = [];
-  for (const [key, identifier] of present) {
-    if (desired.has(key)) continue;
-    if (!(await attempt(() => msg.removeReactionEmoji(identifier)))) {
-      removed.push(identifier);
+  if (options.prune !== false) {
+    for (const [key, identifier] of present) {
+      if (desired.has(key)) continue;
+      if (!(await attempt(() => msg.removeReactionEmoji(identifier)))) {
+        removed.push(identifier);
+      }
     }
   }
 
