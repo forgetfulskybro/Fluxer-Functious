@@ -108,6 +108,27 @@ function getStaticStrings(code) {
   return flatten(readLanguageFile(code) ?? {});
 }
 
+function clearLanguageFileCache() {
+  let files = [];
+  try {
+    files = fs.readdirSync(LANGUAGES_DIR).filter((file) => file.endsWith(".json"));
+  } catch {
+    return 0;
+  }
+
+  let cleared = 0;
+  for (const file of files) {
+    try {
+      const resolved = require.resolve(path.join(LANGUAGES_DIR, file));
+      if (require.cache[resolved]) {
+        delete require.cache[resolved];
+        cleared++;
+      }
+    } catch {}
+  }
+  return cleared;
+}
+
 function serializeString(code, key, baseValue, staticStrings, docMap) {
   const base = typeof baseValue === "string" ? baseValue : String(baseValue ?? "");
   const category = key.split(".")[0];
@@ -443,6 +464,7 @@ module.exports = {
   getBaseStrings,
   getBaseStringsWithDocs,
   getStaticStrings,
+  clearLanguageFileCache,
   getLanguageData,
   getLanguageSummaries,
   getPermissions,

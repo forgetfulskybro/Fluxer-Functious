@@ -12,6 +12,7 @@ const {
   languageMeta,
   getBaseStringsWithDocs,
   getStaticStrings,
+  clearLanguageFileCache,
   getLanguageData,
   getLanguageSummaries,
   getPermissions,
@@ -317,7 +318,7 @@ function translationsRouter(client, apiKey) {
                   update: {
                     $setOnInsert: {
                       value: seedValue,
-                      status: "pending",
+                      ...(!sourceChanged ? { status: "pending" } : {}),
                       updatedBy: null,
                       translatedBy: null,
                       translatedAt: null,
@@ -378,6 +379,32 @@ function translationsRouter(client, apiKey) {
       });
     } catch (err) {
       console.error("[API] POST /api/translations/import:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  router.post("/refresh", requireApiKey, async (req, res) => {
+    try {
+      const permissions = await requireUser(req, res);
+      if (!permissions) return;
+      if (!permissions.developer) {
+        return res.status(403).json({ error: "Developer access required" });
+      }
+
+      if (!client.translate || typeof client.translate.reload !== "function") {
+        return res
+          .status(503)
+          .json({ error: "Translation handler is not available" });
+      }
+
+      clearLanguageFileCache();
+      const result = await client.translate.reload(client.database);
+      if (result && result !== "Success") throw new Error(result);
+
+      const languages = await getLanguageSummaries(client);
+      return res.json({ ok: true, languages });
+    } catch (err) {
+      console.error("[API] POST /api/translations/refresh:", err);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
