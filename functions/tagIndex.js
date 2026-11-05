@@ -3,6 +3,10 @@ const color = require("./colorCodes");
 const { executeTag } = require("./tagExecution");
 
 const guildIndex = new Map();
+const triggerRateLimits = new Map();
+const TRIGGER_RATE_LIMIT_MAX = 4;
+const TRIGGER_RATE_LIMIT_WINDOW_MS = 5000;
+let lastTriggerRateLimitSweep = 0;
 
 function normalizeTag(raw) {
   if (!raw) return null;
@@ -67,6 +71,39 @@ function findTag(guildId, name) {
   if (!entry) return null;
   const key = String(name).toLowerCase();
   return entry.tags.get(key) || entry.anyTags.get(key) || null;
+}
+
+function sweepTriggerRateLimits(now) {
+  if (now - lastTriggerRateLimitSweep < TRIGGER_RATE_LIMIT_WINDOW_MS) return;
+  lastTriggerRateLimitSweep = now;
+
+  const cutoff = now - TRIGGER_RATE_LIMIT_WINDOW_MS;
+  for (const [key, timestamps] of triggerRateLimits) {
+    if (!timestamps.length || timestamps[timestamps.length - 1] <= cutoff) {
+      triggerRateLimits.delete(key);
+    }
+  }
+}
+
+function consumeTriggerRateLimit(guildId, userId, now = Date.now()) {
+  if (!guildId || !userId) return true;
+
+  sweepTriggerRateLimits(now);
+
+  const key = `${guildId}:${userId}`;
+  const cutoff = now - TRIGGER_RATE_LIMIT_WINDOW_MS;
+  const recent = (triggerRateLimits.get(key) ?? []).filter(
+    (timestamp) => timestamp > cutoff,
+  );
+
+  if (recent.length >= TRIGGER_RATE_LIMIT_MAX) {
+    triggerRateLimits.set(key, recent);
+    return false;
+  }
+
+  recent.push(now);
+  triggerRateLimits.set(key, recent);
+  return true;
 }
 
 async function refreshGuild(client, guildId) {
@@ -208,6 +245,7 @@ async function checkTagMessage(client, message, db = null) {
   }
 
   const liveTags = Array.isArray(guildData.tags) ? guildData.tags : [];
+  const triggeredBy = message.author?.id ?? message.authorId;
   const ranTags = new Set();
   const tagKey = (tag) => String(tag.id || tag.name).toLowerCase();
 
@@ -224,6 +262,7 @@ async function checkTagMessage(client, message, db = null) {
     }
 
     if (ranTags.has(tagKey(tag))) return false;
+    if (!consumeTriggerRateLimit(message.guildId, triggeredBy)) return false;
 
     try {
       await executeTag(client, message, guildData, liveTag, []);
@@ -242,7 +281,7 @@ async function checkTagMessage(client, message, db = null) {
   const exactCandidates = [...new Set([content, ...embedParts])];
 
   for (const candidate of exactCandidates) {
-    if (!candidate || /\s/.test(candidate)) continue;
+    if (!candidate) continue;
 
     const tag = entry.tags.get(candidate.toLowerCase());
     if (tag && !hasCommandConflict(client, candidate)) {

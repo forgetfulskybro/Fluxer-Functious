@@ -6,12 +6,59 @@ const { executeTag, buildTagContext, resolveTagSource } = require("../functions/
 const { refreshGuild } = require("../functions/tagIndex");
 const { parseMessageLink } = require("../functions/messageSource");
 
-function tokenizeArgs(text) {
-  const args = [];
+const TAG_TYPES = ["text", "embed", "script"];
+const TAG_NAME_MAX = 32;
+
+function tokenizeWithPositions(text) {
+  const tokens = [];
   const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
-  let m;
-  while ((m = re.exec(text))) args.push(m[1] ?? m[2] ?? m[3]);
-  return args;
+  let match;
+  while ((match = re.exec(String(text ?? "")))) {
+    tokens.push({
+      value: match[1] ?? match[2] ?? match[3],
+      start: match.index,
+      end: match.index + match[0].length,
+    });
+  }
+  return tokens;
+}
+
+function tokenizeArgs(text) {
+  return tokenizeWithPositions(text).map((token) => token.value);
+}
+
+function normalizeTagName(value) {
+  let name = String(value ?? "").trim();
+  const quoted =
+    (name.startsWith('"') && name.endsWith('"')) ||
+    (name.startsWith("'") && name.endsWith("'"));
+
+  if (quoted && name.length >= 2) name = name.slice(1, -1).trim();
+  return name.replace(/\s+/g, " ");
+}
+
+function isValidTagName(name) {
+  const length = normalizeTagName(name).length;
+  return length >= 1 && length <= TAG_NAME_MAX;
+}
+
+function findTagByName(tags, name) {
+  const key = normalizeTagName(name).toLowerCase();
+  if (!key) return null;
+
+  return (
+    (Array.isArray(tags) ? tags : []).find(
+      (tag) => normalizeTagName(tag?.name).toLowerCase() === key
+    ) ?? null
+  );
+}
+
+function resolveTagArgs(tags, tokens) {
+  for (let length = tokens.length; length >= 1; length--) {
+    const tag = findTagByName(tags, tokens.slice(0, length).join(" "));
+    if (tag) return { tag, rest: tokens.slice(length) };
+  }
+  return { tag: null, rest: tokens };
 }
 
 function extractCodeBlock(rest) {
@@ -30,8 +77,42 @@ function extractCodeBlock(rest) {
   };
 }
 
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function parseTagAdd(message, prefix) {
+  const content = String(message?.content ?? "");
+  const tokens = tokenizeWithPositions(content);
+  const commandNames = new Set([
+    "tag",
+    "tags",
+    `${prefix}tag`.toLowerCase(),
+    `${prefix}tags`.toLowerCase(),
+  ]);
+
+  const commandIndex = tokens.findIndex((token) =>
+    commandNames.has(token.value.toLowerCase())
+  );
+  if (commandIndex === -1) return null;
+  if (!["add", "create"].includes(tokens[commandIndex + 1]?.value.toLowerCase())) {
+    return null;
+  }
+
+  const nameParts = [];
+  let index = commandIndex + 2;
+  while (
+    index < tokens.length &&
+    !TAG_TYPES.includes(tokens[index].value.toLowerCase())
+  ) {
+    nameParts.push(tokens[index].value);
+    index++;
+  }
+
+  const name = normalizeTagName(nameParts.join(" "));
+  if (index >= tokens.length) return { name, type: null, rawContent: "" };
+
+  return {
+    name,
+    type: tokens[index].value.toLowerCase(),
+    rawContent: content.slice(tokens[index].end).trim(),
+  };
 }
 
 function sourceContent(source) {
@@ -50,34 +131,6 @@ function sourceContent(source) {
     .filter(Boolean)
     .join("\n")
     .trim();
-}
-
-function extractTagContent(message, prefix, tagName, tagType) {
-  const typeRegex = new RegExp(
-    `${escapeRegExp(prefix)}(?:tags|tag)\\s+add\\s+${escapeRegExp(tagName)}\\s+${escapeRegExp(tagType)}\\s*([\\s\\S]*)`,
-    "i"
-  );
-
-  const match = message.content.match(typeRegex);
-  if (!match) {
-    return { content: "", fenced: false };
-  }
-
-  const rest = match[1].trim();
-  const fenced = extractCodeBlock(rest);
-
-  if (fenced) {
-    return {
-      content: fenced.code,
-      fenced: true,
-      tail: fenced.tail,
-    };
-  }
-
-  return {
-    content: rest,
-    fenced: false,
-  };
 }
 
 function codeSnippet(code, line, col) {
@@ -151,33 +204,35 @@ const tagsModule = {
       "anywheretriggerword",
     ];
     const rawSubcommand = args[0]?.toLowerCase();
-    const subcommand = triggerAliases.includes(rawSubcommand)
-      ? "trigger"
-      : anyTriggerAliases.includes(rawSubcommand)
-        ? "anytrigger"
-        : rawSubcommand;
+    const subcommand =
+      rawSubcommand === "create"
+        ? "add"
+        : triggerAliases.includes(rawSubcommand)
+          ? "trigger"
+          : anyTriggerAliases.includes(rawSubcommand)
+            ? "anytrigger"
+            : rawSubcommand;
     const prefix = db.prefix;
     const t = (key, vars) => client.translate.get(db.language, `Commands.tags.${key}`, vars);
 
     switch (subcommand) {
       default:
         if (args[0]) {
-          const tagName = args[0];
-          const tag = db.tags?.find(
-            (tg) => tg.name.toLowerCase() === tagName.toLowerCase()
-          );
+          const tokens = tokenizeArgs(args.join(" "));
+          const { tag, rest: remaining } = resolveTagArgs(db.tags, tokens);
 
           if (!tag) {
             return message.reply({
               embeds: [
                 new EmbedBuilder()
-                  .setDescription(t("notFound", { name: tagName }))
+                  .setDescription(
+                    t("notFound", { name: tokens.join(" ") })
+                  )
                   .setColor("#FF0000"),
               ],
             });
           }
 
-          const remaining = tokenizeArgs(args.slice(1).join(" "));
           const sourceArgs = parseMessageLink(remaining[0])
             ? [remaining.shift()]
             : [];
@@ -192,9 +247,10 @@ const tagsModule = {
           .setDescription(
             [
               `**${t("helpCreating")}**`,
-              `\`${prefix}tags add ${t("placeholders.name")} text ${t("placeholders.content")}\``,
+              `\`${prefix}tags add "my tag" text ${t("placeholders.content")}\``,
               `\`${prefix}tags add ${t("placeholders.name")} embed ${t("placeholders.description")}\``,
               `\`${prefix}tags add ${t("placeholders.name")} script ${t("placeholders.codeBlock")}\``,
+              t("helpMultiWordNames", { prefix }),
               ``,
               `**${t("helpExampleScript")}**`,
               `\`${prefix}tags add greet script\``,
@@ -228,9 +284,10 @@ const tagsModule = {
       }
 
       case "trigger": {
-        const target = args[1];
+        const triggerTokens = tokenizeArgs(args.slice(1).join(" "));
+        const target = triggerTokens[0];
         const bots = target?.toLowerCase() === "bots";
-        const value = args[2]?.toLowerCase();
+        let value = bots ? triggerTokens[1]?.toLowerCase() : undefined;
 
         if (!target) {
           return message.reply({
@@ -317,15 +374,19 @@ const tagsModule = {
           });
         }
 
-        const triggerTag = db.tags?.find(
-          (tg) => tg.name.toLowerCase() === target.toLowerCase()
+        const { tag: triggerTag, rest: triggerRest } = resolveTagArgs(
+          db.tags,
+          triggerTokens
         );
+        value = triggerRest[0]?.toLowerCase();
 
         if (!triggerTag) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(t("notFound", { name: target }))
+                .setDescription(
+                  t("notFound", { name: triggerTokens.join(" ") })
+                )
                 .setColor("#FF0000"),
             ],
           });
@@ -416,8 +477,8 @@ const tagsModule = {
       }
 
       case "anytrigger": {
-        const target = args[1];
-        const value = args[2]?.toLowerCase();
+        const anyTokens = tokenizeArgs(args.slice(1).join(" "));
+        const target = anyTokens[0];
         const truthy = ["on", "enable", "enabled", "true", "yes", "1"];
         const falsy = ["off", "disable", "disabled", "false", "no", "0"];
         const state = (bool) => (bool ? "on" : "off");
@@ -432,15 +493,17 @@ const tagsModule = {
           });
         }
 
-        const anyTag = db.tags?.find(
-          (tg) => tg.name.toLowerCase() === target.toLowerCase()
+        const { tag: anyTag, rest: anyRest } = resolveTagArgs(
+          db.tags,
+          anyTokens
         );
+        const value = anyRest[0]?.toLowerCase();
 
         if (!anyTag) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(t("notFound", { name: target }))
+                .setDescription(t("notFound", { name: anyTokens.join(" ") }))
                 .setColor("#FF0000"),
             ],
           });
@@ -515,21 +578,23 @@ const tagsModule = {
       }
 
       case "add": {
-        if (!args[1]) {
+        const parsed = parseTagAdd(message, prefix);
+
+        if (!parsed?.name) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
                 .setDescription(
-                  `${t("provideName")}\n${t("usage")}: \`${prefix}tags add ${t("placeholders.name")} text|embed|script [trigger] ${t("placeholders.content")}\``
+                  `${t("provideName")}\n${t("usage")}: \`${prefix}tags add "my tag" text|embed|script ${t("placeholders.content")}\``
                 )
                 .setColor("#FF0000"),
             ],
           });
         }
 
-        const tagName = args[1];
+        const tagName = parsed.name;
 
-        if (/\s/.test(tagName) || tagName.length < 1 || tagName.length > 32) {
+        if (!isValidTagName(tagName)) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
@@ -539,7 +604,7 @@ const tagsModule = {
           });
         }
 
-        if (db.tags?.find((tg) => tg.name.toLowerCase() === tagName.toLowerCase())) {
+        if (findTagByName(db.tags, tagName)) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
@@ -559,7 +624,7 @@ const tagsModule = {
           });
         }
 
-        if (!args[2]) {
+        if (!parsed.type) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
@@ -572,8 +637,8 @@ const tagsModule = {
           });
         }
 
-        const tagType = args[2].toLowerCase();
-        if (!["text", "embed", "script"].includes(tagType)) {
+        const tagType = parsed.type;
+        if (!TAG_TYPES.includes(tagType)) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
@@ -583,14 +648,8 @@ const tagsModule = {
           });
         }
 
-        const extracted = extractTagContent(
-          message,
-          prefix,
-          tagName,
-          tagType
-        );
-        let { content } = extracted;
-        const isTrigger = extracted.trigger;
+        const fenced = extractCodeBlock(parsed.rawContent);
+        let content = fenced ? fenced.code : parsed.rawContent;
 
         if (!content.trim()) {
           const source = await resolveTagSource(client, message);
@@ -643,7 +702,7 @@ const tagsModule = {
           createdBy: message.author.id,
           createdAt: Date.now(),
           uses: 0,
-          trigger: isTrigger,
+          trigger: false,
           anyTrigger: false,
         };
 
@@ -670,7 +729,9 @@ const tagsModule = {
       }
 
       case "remove": {
-        if (!args[1]) {
+        const removeTokens = tokenizeArgs(args.slice(1).join(" "));
+
+        if (!removeTokens.length) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
@@ -682,22 +743,21 @@ const tagsModule = {
           });
         }
 
-        const tagToRemove = args[1];
-        const tagIndex = db.tags?.findIndex(
-          (tg) => tg.name.toLowerCase() === tagToRemove.toLowerCase()
-        );
+        const { tag: removedTag } = resolveTagArgs(db.tags, removeTokens);
 
-        if (tagIndex === -1 || tagIndex === undefined) {
+        if (!removedTag) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(t("notFound", { name: tagToRemove }))
+                .setDescription(
+                  t("notFound", { name: removeTokens.join(" ") })
+                )
                 .setColor("#FF0000"),
             ],
           });
         }
 
-        const removedTag = db.tags[tagIndex];
+        const tagIndex = db.tags.indexOf(removedTag);
 
         const confirmEmbed = new EmbedBuilder()
           .setColor(db.theme)
@@ -769,7 +829,9 @@ const tagsModule = {
       }
 
       case "edit": {
-        if (!args[1]) {
+        const editTokens = tokenizeArgs(args.slice(1).join(" "));
+
+        if (!editTokens.length) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
@@ -781,22 +843,19 @@ const tagsModule = {
           });
         }
 
-        const tagToEdit = args[1];
-        const editTagIndex = db.tags?.findIndex(
-          (tg) => tg.name.toLowerCase() === tagToEdit.toLowerCase()
-        );
+        const { tag: editingTag } = resolveTagArgs(db.tags, editTokens);
 
-        if (editTagIndex === -1 || editTagIndex === undefined) {
+        if (!editingTag) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(t("notFound", { name: tagToEdit }))
+                .setDescription(t("notFound", { name: editTokens.join(" ") }))
                 .setColor("#FF0000"),
             ],
           });
         }
 
-        const editingTag = db.tags[editTagIndex];
+        const editTagIndex = db.tags.indexOf(editingTag);
 
         const contentPreview =
           editingTag.type === "script" || editingTag.type === "text"
@@ -861,8 +920,8 @@ const tagsModule = {
               });
 
               nameCollector.on("collect", async (m) => {
-                const newName = m.content.trim();
-                if (/\s/.test(newName) || newName.length < 1 || newName.length > 32) {
+                const newName = normalizeTagName(m.content);
+                if (!isValidTagName(newName)) {
                   return m.reply({
                     embeds: [
                       new EmbedBuilder()
@@ -872,10 +931,11 @@ const tagsModule = {
                   });
                 }
                 if (
-                  db.tags.find(
+                  db.tags.some(
                     (tg) =>
-                      tg.name.toLowerCase() === newName.toLowerCase() &&
-                      tg.id !== editingTag.id
+                      tg !== editingTag &&
+                      normalizeTagName(tg.name).toLowerCase() ===
+                        newName.toLowerCase()
                   )
                 ) {
                   return m.reply({
@@ -1160,7 +1220,9 @@ const tagsModule = {
       }
 
       case "view": {
-        if (!args[1]) {
+        const viewTokens = tokenizeArgs(args.slice(1).join(" "));
+
+        if (!viewTokens.length) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
@@ -1172,15 +1234,13 @@ const tagsModule = {
           });
         }
 
-        const viewTag = db.tags?.find(
-          (tg) => tg.name.toLowerCase() === args[1].toLowerCase()
-        );
+        const { tag: viewTag } = resolveTagArgs(db.tags, viewTokens);
 
         if (!viewTag) {
           return message.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(t("notFound", { name: args[1] }))
+                .setDescription(t("notFound", { name: viewTokens.join(" ") }))
                 .setColor("#FF0000"),
             ],
           });
