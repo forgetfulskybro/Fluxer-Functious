@@ -193,6 +193,7 @@ function serializeString(code, key, baseValue, staticStrings, docMap) {
       id: note.id,
       userId: note.userId,
       text: note.text,
+      imageUrl: note.imageUrl ?? "",
       createdAt: note.createdAt,
     })),
   };
@@ -242,21 +243,8 @@ function summarize(strings) {
   };
 }
 
-async function getLanguageData(client, code) {
-  if (!isLanguage(code)) return null;
-
-  const baseStrings = await getBaseStringsWithDocs(client);
+function buildLanguageData(code, baseStrings, docs) {
   const staticStrings = code === BASE_LANGUAGE ? {} : getStaticStrings(code);
-  let docs = [];
-
-  if (code !== BASE_LANGUAGE) {
-    try {
-      docs = await client.database.translationModel.find({ language: code }).lean();
-    } catch {
-      docs = [];
-    }
-  }
-
   const strings = buildStrings(code, baseStrings, staticStrings, docs);
 
   return {
@@ -264,6 +252,26 @@ async function getLanguageData(client, code) {
     stats: summarize(strings),
     strings,
   };
+}
+
+async function getLanguageData(client, code) {
+  if (!isLanguage(code)) return null;
+
+  const docsPromise =
+    code === BASE_LANGUAGE
+      ? Promise.resolve([])
+      : Promise.resolve()
+          .then(() =>
+            client.database.translationModel.find({ language: code }).lean(),
+          )
+          .catch(() => []);
+
+  const [baseStrings, docs] = await Promise.all([
+    getBaseStringsWithDocs(client),
+    docsPromise,
+  ]);
+
+  return buildLanguageData(code, baseStrings, docs);
 }
 
 async function getLanguageSummaries(client) {
@@ -315,6 +323,7 @@ function normalizePermissions(raw, isOwner) {
     languages,
     requestedLanguages,
     proofreader: Boolean(source.proofreader) || isOwner,
+    moderator: Boolean(source.moderator) || isOwner,
     developer: Boolean(source.developer) || isOwner,
   };
 }
@@ -343,6 +352,11 @@ function canReview(permissions) {
   return Boolean(permissions.developer) || Boolean(permissions.proofreader);
 }
 
+function canModerate(permissions) {
+  if (!permissions) return false;
+  return Boolean(permissions.developer) || Boolean(permissions.moderator);
+}
+
 async function getTranslators(client) {
   const owners = (config.owners ?? []).map(String);
   const users = await client.database.userModel
@@ -351,6 +365,7 @@ async function getTranslators(client) {
         { "translations.languages.0": { $exists: true } },
         { "translations.requestedLanguages.0": { $exists: true } },
         { "translations.proofreader": true },
+        { "translations.moderator": true },
         { "translations.developer": true },
       ],
     })
@@ -415,6 +430,9 @@ async function getTranslators(client) {
       if (a.permissions.developer !== b.permissions.developer) {
         return a.permissions.developer ? -1 : 1;
       }
+      if (a.permissions.moderator !== b.permissions.moderator) {
+        return a.permissions.moderator ? -1 : 1;
+      }
       if (a.permissions.proofreader !== b.permissions.proofreader) {
         return a.permissions.proofreader ? -1 : 1;
       }
@@ -466,11 +484,13 @@ module.exports = {
   getStaticStrings,
   clearLanguageFileCache,
   getLanguageData,
+  buildLanguageData,
   getLanguageSummaries,
   getPermissions,
   normalizePermissions,
   canTranslate,
   canReview,
+  canModerate,
   isOwner,
   getTranslators,
   buildExportFile,

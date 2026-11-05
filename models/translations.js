@@ -4,7 +4,8 @@ const noteSchema = new Schema(
   {
     id: { type: String, required: true },
     userId: { type: String, required: true },
-    text: { type: String, required: true },
+    text: { type: String, default: "" },
+    imageUrl: { type: String, default: "" },
     createdAt: { type: Number, default: Date.now },
   },
   { _id: false },

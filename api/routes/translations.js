@@ -2,6 +2,7 @@ const { Router } = require("express");
 const { randomUUID } = require("crypto");
 const { makeRequireApiKey } = require("../middleware");
 const { createZip } = require("../../functions/createZip");
+const { validateImageUrl } = require("../../functions/validateImageUrl");
 const { getUserProfiles } = require("../../functions/userProfiles");
 const {
   BASE_LANGUAGE,
@@ -14,18 +15,29 @@ const {
   getStaticStrings,
   clearLanguageFileCache,
   getLanguageData,
+  buildLanguageData,
   getLanguageSummaries,
   getPermissions,
   normalizePermissions,
   canTranslate,
   canReview,
+  canModerate,
   isOwner,
   getTranslators,
   buildExportFile,
 } = require("../../functions/translationStore");
 
 const MAX_VALUE_LENGTH = 6000;
-const MAX_NOTE_LENGTH = 500;
+const MAX_NOTE_LENGTH = 2000;
+const BULK_WRITE_BATCH = 1000;
+const BULK_ACTIONS = new Set([
+  "approve",
+  "unreview",
+  "outdated",
+  "untranslated",
+  "seed",
+  "note",
+]);
 const PLACEHOLDER_PATTERN = /\{(\w+)\}/g;
 
 function placeholdersIn(value) {
@@ -57,6 +69,13 @@ function validatePlaceholders(baseValue, value) {
   return `Keep the English placeholders unchanged: ${details.join("; ")}.`;
 }
 
+function storedTranslationStatus(doc, value, english) {
+  if (!value.trim() || value === english) return "untranslated";
+  if (!doc) return "approved";
+  if (doc.base !== english) return "outdated";
+  return doc.status === "approved" ? "approved" : "pending";
+}
+
 function userIdFrom(req) {
   return String(req.headers["x-user-id"] ?? "").trim();
 }
@@ -77,6 +96,7 @@ function permissionsPayload(permissions) {
     languages: permissions.languages,
     requestedLanguages: permissions.requestedLanguages,
     proofreader: permissions.proofreader,
+    moderator: permissions.moderator,
     developer: permissions.developer,
   };
 }
@@ -126,6 +146,347 @@ function translationsRouter(client, apiKey) {
     });
   }
 
+  async function runBulkEdit(
+    req,
+    res,
+    permissions,
+    requestedLanguages,
+    primaryLanguage,
+  ) {
+    const action = String(req.body?.action ?? "");
+    if (!BULK_ACTIONS.has(action)) {
+      return res.status(400).json({ error: "Invalid bulk action" });
+    }
+
+    const languageCodes = [...new Set(requestedLanguages)].filter(
+      (code) => code !== BASE_LANGUAGE && isLanguage(code),
+    );
+    if (languageCodes.length === 0) {
+      return res.status(404).json({ error: "Language not found" });
+    }
+
+    let note = "";
+    let imageUrl = "";
+    if (action === "note") {
+      note = String(req.body?.note ?? "").trim();
+      if (note.length > MAX_NOTE_LENGTH) {
+        return res.status(400).json({ error: "Note is too long" });
+      }
+
+      try {
+        imageUrl = await validateImageUrl(req.body?.imageUrl);
+      } catch (error) {
+        return res.status(400).json({ error: error.message });
+      }
+
+      if (!note && !imageUrl) {
+        return res.status(400).json({ error: "Write a note first" });
+      }
+    }
+
+    const docsPromise = Promise.resolve()
+      .then(() =>
+        model.find({ language: { $in: languageCodes } }).lean(),
+      )
+      .catch(() => []);
+    const [baseStrings, existingDocs] = await Promise.all([
+      getBaseStringsWithDocs(client),
+      docsPromise,
+    ]);
+
+    const requestedKeys = Array.isArray(req.body?.keys)
+      ? [...new Set(req.body.keys.map(String))]
+      : Object.keys(baseStrings);
+    const keys = requestedKeys.filter(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(baseStrings, key) &&
+        typeof baseStrings[key] === "string",
+    );
+
+    if (keys.length === 0) {
+      return res.status(400).json({ error: "No strings selected" });
+    }
+
+    const docMap = new Map(
+      (Array.isArray(existingDocs) ? existingDocs : [])
+        .filter(
+          (doc) =>
+            doc &&
+            typeof doc.language === "string" &&
+            typeof doc.key === "string",
+        )
+        .map((doc) => [`${doc.language}\u0000${doc.key}`, doc]),
+    );
+    const ops = [];
+    const skippedByLanguage = new Map(
+      languageCodes.map((code) => [code, 0]),
+    );
+    const changedKeysByLanguage = new Map(
+      languageCodes.map((code) => [code, new Set()]),
+    );
+
+    for (const code of languageCodes) {
+      const staticStrings = getStaticStrings(code);
+      const skipped = skippedByLanguage;
+      const changedKeys = changedKeysByLanguage.get(code);
+
+      for (const key of keys) {
+        const english = String(baseStrings[key] ?? "");
+        if (!english.trim()) {
+          skipped.set(code, (skipped.get(code) ?? 0) + 1);
+          continue;
+        }
+
+        const doc = docMap.get(`${code}\u0000${key}`);
+        const stored = doc ? doc.value : staticStrings[key];
+        const value = typeof stored === "string" ? stored : "";
+        const status = storedTranslationStatus(doc, value, english);
+        const now = Date.now();
+
+        if (action === "note") {
+          const staticValue =
+            typeof staticStrings[key] === "string" ? staticStrings[key] : "";
+          const insertValue = doc ? value : staticValue;
+
+          ops.push({
+            updateOne: {
+              filter: { language: code, key },
+              update: {
+                $push: {
+                  notes: {
+                    id: randomUUID(),
+                    userId: permissions.userId,
+                    text: note,
+                    imageUrl,
+                    createdAt: now,
+                  },
+                },
+                $setOnInsert: {
+                  value: insertValue,
+                  base: english,
+                  status:
+                    insertValue.trim() && insertValue !== english
+                      ? "approved"
+                      : "pending",
+                  updatedAt: 0,
+                },
+              },
+              upsert: true,
+            },
+          });
+          changedKeys.add(key);
+          continue;
+        }
+
+        if (action === "seed") {
+          if (value === english || value.trim()) {
+            skipped.set(code, (skipped.get(code) ?? 0) + 1);
+            continue;
+          }
+
+          ops.push({
+            updateOne: {
+              filter: { language: code, key },
+              update: {
+                $set: {
+                  value: english,
+                  base: english,
+                  status: "pending",
+                  updatedBy: permissions.userId,
+                  updatedAt: now,
+                  editedAt: now,
+                  approvedAt: null,
+                  translatedBy: null,
+                  translatedAt: null,
+                  previous: null,
+                },
+              },
+              upsert: true,
+            },
+          });
+          changedKeys.add(key);
+          continue;
+        }
+
+        if (status === "untranslated") {
+          skipped.set(code, (skipped.get(code) ?? 0) + 1);
+          continue;
+        }
+        if (action === "approve" && status === "approved") {
+          skipped.set(code, (skipped.get(code) ?? 0) + 1);
+          continue;
+        }
+        if (action === "unreview" && status === "pending") {
+          skipped.set(code, (skipped.get(code) ?? 0) + 1);
+          continue;
+        }
+        if (action === "outdated" && status === "outdated") {
+          skipped.set(code, (skipped.get(code) ?? 0) + 1);
+          continue;
+        }
+        if (action === "approve" && validatePlaceholders(english, value)) {
+          skipped.set(code, (skipped.get(code) ?? 0) + 1);
+          continue;
+        }
+
+        let update;
+
+        if (action === "approve") {
+          update = {
+            value,
+            base: english,
+            status: "approved",
+            updatedBy: permissions.userId,
+            updatedAt: now,
+            approvedAt: now,
+            editedAt: doc?.editedAt ?? doc?.updatedAt ?? now,
+            previous: null,
+          };
+          if (doc && !doc.translatedBy && doc.status === "pending") {
+            update.translatedBy = doc.updatedBy ?? null;
+            update.translatedAt = doc.editedAt ?? doc.updatedAt ?? null;
+          }
+        } else if (action === "unreview") {
+          update = {
+            value,
+            base: english,
+            status: "pending",
+            updatedBy: permissions.userId,
+            updatedAt: now,
+            editedAt: doc?.editedAt ?? doc?.updatedAt ?? now,
+          };
+          if (!doc || doc.status === "approved") {
+            update.previous = {
+              value,
+              status: "approved",
+              updatedBy: doc?.updatedBy ?? null,
+              updatedAt: doc?.updatedAt ?? 0,
+            };
+          }
+        } else if (action === "outdated") {
+          update = {
+            value,
+            base: "",
+            status: doc?.status === "approved" ? "approved" : "pending",
+            updatedBy: permissions.userId,
+            updatedAt: now,
+            editedAt: now,
+          };
+        } else {
+          update = {
+            value: "",
+            base: english,
+            status: "pending",
+            updatedBy: permissions.userId,
+            updatedAt: now,
+            editedAt: now,
+            approvedAt: null,
+            translatedBy: null,
+            translatedAt: null,
+            previous: null,
+          };
+        }
+
+        ops.push({
+          updateOne: {
+            filter: { language: code, key },
+            update: { $set: update },
+            upsert: true,
+          },
+        });
+        changedKeys.add(key);
+      }
+    }
+
+    for (let i = 0; i < ops.length; i += BULK_WRITE_BATCH) {
+      await model.bulkWrite(ops.slice(i, i + BULK_WRITE_BATCH), {
+        ordered: false,
+      });
+    }
+
+    const changedKeyList = [
+      ...new Set(ops.map((entry) => entry.updateOne.filter.key)),
+    ];
+
+    if (changedKeyList.length > 0) {
+      try {
+        const changedDocs = await model
+          .find({
+            language: { $in: languageCodes },
+            key: { $in: changedKeyList },
+          })
+          .lean();
+        for (const doc of Array.isArray(changedDocs) ? changedDocs : []) {
+          if (
+            doc &&
+            typeof doc.language === "string" &&
+            typeof doc.key === "string"
+          ) {
+            docMap.set(`${doc.language}\u0000${doc.key}`, doc);
+          }
+        }
+      } catch {
+        const refreshed = await model
+          .find({ language: { $in: languageCodes } })
+          .lean()
+          .catch(() => []);
+        for (const doc of Array.isArray(refreshed) ? refreshed : []) {
+          if (
+            doc &&
+            typeof doc.language === "string" &&
+            typeof doc.key === "string"
+          ) {
+            docMap.set(`${doc.language}\u0000${doc.key}`, doc);
+          }
+        }
+      }
+    }
+
+    const docsByLanguage = new Map(
+      languageCodes.map((code) => [code, []]),
+    );
+    for (const doc of docMap.values()) {
+      if (docsByLanguage.has(doc.language)) {
+        docsByLanguage.get(doc.language).push(doc);
+      }
+    }
+
+    const dataByLanguage = new Map();
+    for (const code of languageCodes) {
+      dataByLanguage.set(
+        code,
+        buildLanguageData(code, baseStrings, docsByLanguage.get(code) ?? []),
+      );
+    }
+
+    const primary = languageCodes.includes(primaryLanguage)
+      ? primaryLanguage
+      : languageCodes[0];
+    const primaryData = dataByLanguage.get(primary);
+    const primaryChanged = changedKeysByLanguage.get(primary) ?? new Set();
+    const skipped = [...skippedByLanguage.values()].reduce(
+      (total, count) => total + count,
+      0,
+    );
+
+    return res.json({
+      ok: true,
+      action,
+      changed: ops.length,
+      skipped,
+      stats: primaryData?.stats ?? null,
+      strings: (primaryData?.strings ?? []).filter((entry) =>
+        primaryChanged.has(entry.key),
+      ),
+      languages: languageCodes.map((code) => ({
+        ...languageMeta(code),
+        changed: changedKeysByLanguage.get(code)?.size ?? 0,
+        skipped: skippedByLanguage.get(code) ?? 0,
+        stats: dataByLanguage.get(code)?.stats ?? null,
+      })),
+    });
+  }
+
   router.get("/", requireApiKey, async (_req, res) => {
     try {
       const languages = await getLanguageSummaries(client);
@@ -165,6 +526,7 @@ function translationsRouter(client, apiKey) {
         languages: approved,
         requestedLanguages,
         proofreader: Boolean(current.proofreader),
+        moderator: Boolean(current.moderator),
         developer: Boolean(current.developer),
       };
 
@@ -413,14 +775,248 @@ function translationsRouter(client, apiKey) {
     try {
       const permissions = await requireUser(req, res);
       if (!permissions) return;
-      if (!permissions.developer) {
-        return res.status(403).json({ error: "Developer access required" });
+      if (!canModerate(permissions)) {
+        return res.status(403).json({ error: "Moderator access required" });
       }
 
       const translators = await getTranslators(client);
       return res.json({ translators });
     } catch (err) {
       console.error("[API] GET /api/translations/translators:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  router.get("/translators/:userId/contributions", requireApiKey, async (req, res) => {
+    try {
+      const permissions = await requireUser(req, res);
+      if (!permissions) return;
+      if (!canModerate(permissions)) {
+        return res.status(403).json({ error: "Moderator access required" });
+      }
+
+      const targetId = String(req.params.userId ?? "");
+      if (!/^\d{17,20}$/.test(targetId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      const docsPromise = Promise.resolve()
+        .then(() =>
+          model.find({ language: { $ne: BASE_LANGUAGE } }).lean(),
+        )
+        .catch(() => []);
+      const [baseStrings, docs] = await Promise.all([
+        getBaseStringsWithDocs(client),
+        docsPromise,
+      ]);
+
+      const contributions = [];
+      for (const doc of Array.isArray(docs) ? docs : []) {
+        if (
+          !doc ||
+          typeof doc.language !== "string" ||
+          typeof doc.key !== "string"
+        ) {
+          continue;
+        }
+
+        const english = String(baseStrings[doc.key] ?? "");
+        const value = String(doc.value ?? "");
+        const translationAuthor =
+          doc.translatedBy ??
+          (doc.status !== "approved" ? doc.updatedBy ?? null : null);
+        const ownsTranslation =
+          Boolean(value.trim()) &&
+          value !== english &&
+          translationAuthor === targetId;
+        const notes = (Array.isArray(doc.notes) ? doc.notes : [])
+          .filter((note) => note && note.userId === targetId)
+          .map((note) => ({
+            id: note.id,
+            userId: note.userId,
+            text: note.text ?? "",
+            imageUrl: note.imageUrl ?? "",
+            createdAt: note.createdAt ?? 0,
+          }));
+
+        if (!ownsTranslation && notes.length === 0) continue;
+
+        contributions.push({
+          language: doc.language,
+          key: doc.key,
+          baseValue: english,
+          value,
+          status: storedTranslationStatus(doc, value, english),
+          updatedAt: doc.updatedAt ?? null,
+          translatedBy: doc.translatedBy ?? null,
+          updatedBy: doc.updatedBy ?? null,
+          ownsTranslation,
+          notes,
+        });
+      }
+
+      contributions.sort(
+        (a, b) =>
+          a.language.localeCompare(b.language) || a.key.localeCompare(b.key),
+      );
+
+      return res.json({ contributions });
+    } catch (err) {
+      console.error(
+        "[API] GET /api/translations/translators/:userId/contributions:",
+        err,
+      );
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  router.post("/translators/:userId/bulk-delete", requireApiKey, async (req, res) => {
+    try {
+      const permissions = await requireUser(req, res);
+      if (!permissions) return;
+      if (!canModerate(permissions)) {
+        return res.status(403).json({ error: "Moderator access required" });
+      }
+
+      const targetId = String(req.params.userId ?? "");
+      if (!/^\d{17,20}$/.test(targetId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      const action = String(req.body?.action ?? "");
+      if (action !== "notes" && action !== "translations") {
+        return res.status(400).json({ error: "Invalid bulk delete action" });
+      }
+
+      const items = [];
+      const seen = new Set();
+      const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
+      for (const raw of rawItems) {
+        const language = String(raw?.language ?? "");
+        const key = String(raw?.key ?? "");
+        if (
+          !language ||
+          !key ||
+          language === BASE_LANGUAGE ||
+          !isLanguage(language)
+        ) {
+          continue;
+        }
+
+        const itemKey = `${language}\u0000${key}`;
+        if (seen.has(itemKey)) continue;
+        seen.add(itemKey);
+        items.push({ language, key });
+      }
+
+      if (items.length === 0) {
+        return res.status(400).json({ error: "No contributions selected" });
+      }
+      if (items.length > 1000) {
+        return res
+          .status(400)
+          .json({ error: "Select no more than 1,000 contributions at once" });
+      }
+
+      const languageCodes = [...new Set(items.map((item) => item.language))];
+      const keys = [...new Set(items.map((item) => item.key))];
+      const docsPromise = Promise.resolve().then(() =>
+        model
+          .find({ language: { $in: languageCodes }, key: { $in: keys } })
+          .lean(),
+      );
+      const [baseStrings, docs] = await Promise.all([
+        getBaseStringsWithDocs(client),
+        docsPromise,
+      ]);
+
+      const docsByKey = new Map();
+      for (const doc of Array.isArray(docs) ? docs : []) {
+        if (
+          doc &&
+          typeof doc.language === "string" &&
+          typeof doc.key === "string"
+        ) {
+          docsByKey.set(`${doc.language}\u0000${doc.key}`, doc);
+        }
+      }
+
+      const now = Date.now();
+      const ops = [];
+      let removedNotes = 0;
+      let removedTranslations = 0;
+
+      for (const item of items) {
+        const doc = docsByKey.get(`${item.language}\u0000${item.key}`);
+        if (!doc) continue;
+
+        if (action === "notes") {
+          const count = (Array.isArray(doc.notes) ? doc.notes : []).filter(
+            (note) => note && note.userId === targetId,
+          ).length;
+          if (count === 0) continue;
+
+          removedNotes += count;
+          ops.push({
+            updateOne: {
+              filter: { _id: doc._id },
+              update: { $pull: { notes: { userId: targetId } } },
+            },
+          });
+          continue;
+        }
+
+        const english = String(baseStrings[item.key] ?? "");
+        const value = String(doc.value ?? "");
+        const translationAuthor =
+          doc.translatedBy ??
+          (doc.status !== "approved" ? doc.updatedBy ?? null : null);
+        const ownsTranslation =
+          Boolean(value.trim()) &&
+          value !== english &&
+          translationAuthor === targetId;
+        if (!ownsTranslation) continue;
+
+        removedTranslations += 1;
+        ops.push({
+          updateOne: {
+            filter: { _id: doc._id },
+            update: {
+              $set: {
+                value: "",
+                base: english,
+                status: "pending",
+                updatedBy: permissions.userId,
+                translatedBy: null,
+                translatedAt: null,
+                updatedAt: now,
+                approvedAt: null,
+                editedAt: now,
+                previous: null,
+              },
+            },
+          },
+        });
+      }
+
+      for (let i = 0; i < ops.length; i += BULK_WRITE_BATCH) {
+        await model.bulkWrite(ops.slice(i, i + BULK_WRITE_BATCH), {
+          ordered: false,
+        });
+      }
+
+      return res.json({
+        ok: true,
+        action,
+        removedNotes,
+        removedTranslations,
+        updated: ops.length,
+      });
+    } catch (err) {
+      console.error(
+        "[API] POST /api/translations/translators/:userId/bulk-delete:",
+        err,
+      );
       return res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -445,6 +1041,14 @@ function translationsRouter(client, apiKey) {
 
       const current = user.translations ?? {};
       const body = req.body ?? {};
+      const actorIsOwner = isOwner(permissions.userId);
+
+      if (!actorIsOwner && body.developer !== undefined) {
+        return res
+          .status(403)
+          .json({ error: "Only the owner can change developer access" });
+      }
+
       const languages = body.languages !== undefined
         ? languageListFrom(body.languages)
         : Array.isArray(current.languages)
@@ -456,6 +1060,11 @@ function translationsRouter(client, apiKey) {
         : body.proofreader !== undefined
           ? Boolean(body.proofreader)
           : Boolean(current.proofreader);
+      const moderator = owner
+        ? true
+        : body.moderator !== undefined
+          ? Boolean(body.moderator)
+          : Boolean(current.moderator);
       const developer = owner
         ? true
         : body.developer !== undefined
@@ -470,6 +1079,7 @@ function translationsRouter(client, apiKey) {
         languages,
         requestedLanguages,
         proofreader,
+        moderator,
         developer,
       };
 
@@ -511,6 +1121,11 @@ function translationsRouter(client, apiKey) {
 
       const user = await client.database.getUser(targetId, false);
       if (!user) return res.status(404).json({ error: "User not found" });
+      if (!isOwner(permissions.userId) && Boolean(user.translations?.developer)) {
+        return res
+          .status(403)
+          .json({ error: "Only the owner can remove developer access" });
+      }
 
       await client.database.updateUser(
         targetId,
@@ -519,6 +1134,7 @@ function translationsRouter(client, apiKey) {
             languages: [],
             requestedLanguages: [],
             proofreader: false,
+            moderator: false,
             developer: false,
           },
         },
@@ -603,113 +1219,38 @@ function translationsRouter(client, apiKey) {
         return res.status(404).json({ error: "Language not found" });
       }
       if (code === BASE_LANGUAGE) {
-        return res.status(400).json({ error: "The source language cannot be bulk edited" });
+        return res
+          .status(400)
+          .json({ error: "The source language cannot be bulk edited" });
       }
 
-      const action = String(req.body?.action ?? "");
-      if (action !== "approve" && action !== "unreview") {
-        return res.status(400).json({ error: "Invalid bulk action" });
-      }
-
-      const baseStrings = await getBaseStringsWithDocs(client);
-      const staticStrings = getStaticStrings(code);
-      const requestedKeys = Array.isArray(req.body?.keys)
-        ? [...new Set(req.body.keys.map(String))]
-        : Object.keys(baseStrings);
-      const keys = requestedKeys.filter(
-        (key) =>
-          Object.prototype.hasOwnProperty.call(baseStrings, key) &&
-          typeof baseStrings[key] === "string",
-      );
-
-      if (keys.length === 0) {
-        return res.status(400).json({ error: "No strings selected" });
-      }
-
-      let docs = [];
-      try {
-        docs = await model.find({ language: code }).lean();
-      } catch {
-        docs = [];
-      }
-      const docMap = new Map(
-        docs
-          .filter((doc) => doc && typeof doc.key === "string")
-          .map((doc) => [doc.key, doc]),
-      );
-
-      const ops = [];
-      let skipped = 0;
-
-      for (const key of keys) {
-        const english = String(baseStrings[key] ?? "");
-        const doc = docMap.get(key);
-        const stored = doc ? doc.value : staticStrings[key];
-        const value = typeof stored === "string" ? stored : "";
-
-        if (!value.trim() || value === english) {
-          skipped++;
-          continue;
-        }
-        if (action === "approve" && validatePlaceholders(english, value)) {
-          skipped++;
-          continue;
-        }
-
-        const now = Date.now();
-        const update = {
-          value,
-          base: english,
-          status: action === "approve" ? "approved" : "pending",
-          updatedBy: permissions.userId,
-          updatedAt: now,
-        };
-
-        if (action === "approve") {
-          if (doc && !doc.translatedBy && doc.status === "pending") {
-            update.translatedBy = doc.updatedBy ?? null;
-            update.translatedAt = doc.editedAt ?? doc.updatedAt ?? null;
-          }
-          update.approvedAt = now;
-          if (doc && !doc.editedAt) update.editedAt = doc.updatedAt || null;
-          update.previous = null;
-        } else if (!doc || doc.status === "approved") {
-          update.previous = {
-            value,
-            status: "approved",
-            updatedBy: doc?.updatedBy ?? null,
-            updatedAt: doc?.updatedAt ?? 0,
-          };
-        }
-
-        ops.push({
-          updateOne: {
-            filter: { language: code, key },
-            update: { $set: update },
-            upsert: true,
-          },
-        });
-      }
-
-      for (let i = 0; i < ops.length; i += 500) {
-        await model.bulkWrite(ops.slice(i, i + 500), { ordered: false });
-      }
-
-      const data = await getLanguageData(client, code);
-      const changedKeys = new Set(ops.map((entry) => entry.updateOne.filter.key));
-
-      return res.json({
-        ok: true,
-        action,
-        changed: ops.length,
-        skipped,
-        stats: data?.stats ?? null,
-        strings: (data?.strings ?? []).filter((entry) =>
-          changedKeys.has(entry.key),
-        ),
-      });
+      return runBulkEdit(req, res, permissions, [code], code);
     } catch (err) {
       console.error("[API] POST /api/translations/:language/bulk:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  router.post("/bulk", requireApiKey, async (req, res) => {
+    try {
+      const permissions = await requireUser(req, res);
+      if (!permissions) return;
+      if (!permissions.developer) {
+        return res.status(403).json({ error: "Developer access required" });
+      }
+
+      const codes = discoverLanguages().filter(
+        (code) => code !== BASE_LANGUAGE,
+      );
+      return runBulkEdit(
+        req,
+        res,
+        permissions,
+        codes,
+        String(req.body?.displayLanguage ?? ""),
+      );
+    } catch (err) {
+      console.error("[API] POST /api/translations/bulk:", err);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -812,6 +1353,63 @@ function translationsRouter(client, apiKey) {
     }
   });
 
+  router.delete("/:language/:key", requireApiKey, async (req, res) => {
+    try {
+      const permissions = await requireUser(req, res);
+      if (!permissions) return;
+
+      const code = String(req.params.language ?? "");
+      const key = String(req.params.key ?? "");
+      if (!isLanguage(code)) {
+        return res.status(404).json({ error: "Language not found" });
+      }
+      if (code === BASE_LANGUAGE) {
+        return res.status(400).json({ error: "The source language cannot be edited" });
+      }
+      if (!canModerate(permissions)) {
+        return res.status(403).json({ error: "Moderator access required" });
+      }
+
+      const baseStrings = await getBaseStringsWithDocs(client);
+      if (!Object.prototype.hasOwnProperty.call(baseStrings, key)) {
+        return res.status(404).json({ error: "String not found" });
+      }
+
+      const existing = await model.findOne({ language: code, key });
+      const currentValue = existing
+        ? String(existing.value ?? "")
+        : String(getStaticStrings(code)[key] ?? "");
+      if (!currentValue.trim()) {
+        return res.status(400).json({ error: "This string has no translation to remove" });
+      }
+
+      const now = Date.now();
+      await model.findOneAndUpdate(
+        { language: code, key },
+        {
+          $set: {
+            value: "",
+            base: String(baseStrings[key] ?? ""),
+            status: "pending",
+            updatedBy: permissions.userId,
+            translatedBy: null,
+            translatedAt: null,
+            updatedAt: now,
+            approvedAt: null,
+            editedAt: now,
+            previous: null,
+          },
+        },
+        { upsert: true, setDefaultsOnInsert: true },
+      );
+
+      return respondWithString(res, code, key);
+    } catch (err) {
+      console.error("[API] DELETE /api/translations/:language/:key:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   router.post("/:language/:key/approve", requireApiKey, async (req, res) => {
     try {
       const permissions = await requireUser(req, res);
@@ -821,6 +1419,9 @@ function translationsRouter(client, apiKey) {
       const key = String(req.params.key ?? "");
       if (!isLanguage(code)) {
         return res.status(404).json({ error: "Language not found" });
+      }
+      if (code === BASE_LANGUAGE) {
+        return res.status(400).json({ error: "The source language cannot be reviewed" });
       }
       if (!canReview(permissions)) {
         return res.status(403).json({ error: "Proofreader access required" });
@@ -877,6 +1478,9 @@ function translationsRouter(client, apiKey) {
       const key = String(req.params.key ?? "");
       if (!isLanguage(code)) {
         return res.status(404).json({ error: "Language not found" });
+      }
+      if (code === BASE_LANGUAGE) {
+        return res.status(400).json({ error: "The source language cannot be reviewed" });
       }
       if (!canReview(permissions)) {
         return res.status(403).json({ error: "Proofreader access required" });
@@ -968,9 +1572,19 @@ function translationsRouter(client, apiKey) {
       }
 
       const text = String(req.body?.text ?? "").trim();
-      if (!text) return res.status(400).json({ error: "Write a note first" });
       if (text.length > MAX_NOTE_LENGTH) {
         return res.status(400).json({ error: "Note is too long" });
+      }
+
+      let imageUrl = "";
+      try {
+        imageUrl = await validateImageUrl(req.body?.imageUrl);
+      } catch (error) {
+        return res.status(400).json({ error: error.message });
+      }
+
+      if (!text && !imageUrl) {
+        return res.status(400).json({ error: "Write a note first" });
       }
 
       const baseStrings = await getBaseStringsWithDocs(client);
@@ -983,6 +1597,7 @@ function translationsRouter(client, apiKey) {
         id: randomUUID(),
         userId: permissions.userId,
         text,
+        imageUrl,
         createdAt: Date.now(),
       });
       await doc.save();
@@ -1012,7 +1627,11 @@ function translationsRouter(client, apiKey) {
         return res.status(404).json({ error: "Note not found" });
       }
 
-      if (note.userId !== permissions.userId && !canReview(permissions)) {
+      if (
+        note.userId !== permissions.userId &&
+        !canReview(permissions) &&
+        !canModerate(permissions)
+      ) {
         return res.status(403).json({ error: "You can only delete your own notes" });
       }
 

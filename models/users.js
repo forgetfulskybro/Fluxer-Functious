@@ -45,13 +45,14 @@ const userSchema = new Schema({
     languages: { type: [String], default: [] },
     requestedLanguages: { type: [String], default: [] },
     proofreader: { type: Boolean, default: false },
+    moderator: { type: Boolean, default: false },
     developer: { type: Boolean, default: false },
   },
 });
 
 userSchema.index({ "translations.languages": 1 });
 userSchema.index({ "translations.proofreader": 1 });
-
+userSchema.index({ "translations.moderator": 1 });
 userSchema.index({ "reactionReminders.channelId": 1 });
 userSchema.index({ "reactionReminders.guildId": 1 });
 
