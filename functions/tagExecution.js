@@ -260,7 +260,7 @@ async function executeTag(client, message, db, tag, args = [], options = {}) {
       });
     }
 
-    const { text, embeds: rawEmbeds } = result.result;
+    const { text, embeds: rawEmbeds, reply } = result.result;
     const payload = {};
 
     if (text && text.trim()) {
@@ -282,7 +282,7 @@ async function executeTag(client, message, db, tag, args = [], options = {}) {
       });
     }
 
-    return message.channel.send(payload);
+    return reply ? message.reply(payload) : message.channel.send(payload);
   }
 
   return message.reply({

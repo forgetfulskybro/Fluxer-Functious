@@ -70,6 +70,7 @@ class OutputBuffer {
     this.parts = [];
     this.embedCount = 0;
     this.textLength = 0;
+    this.isReply = false;
   }
 
   valueToText(v) {
@@ -103,6 +104,11 @@ class OutputBuffer {
     if (chunks.length) this.pushText(chunks.join(' '));
   }
 
+  reply(values) {
+    this.isReply = true;
+    this.say(values);
+  }
+
   pushText(text) {
     if (!text) return;
     this.parts.push({ type: 'text', value: text });
@@ -115,7 +121,7 @@ class OutputBuffer {
   finish() {
     const text = this.parts.filter((p) => p.type === 'text').map((p) => p.value).join('\n');
     const embeds = this.parts.filter((p) => p.type === 'embed').map((p) => p.value);
-    return { parts: this.parts, text, embeds };
+    return { parts: this.parts, text, embeds, reply: this.isReply };
   }
 }
 

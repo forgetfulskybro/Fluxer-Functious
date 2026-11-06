@@ -463,6 +463,10 @@ function createStdlib(rt) {
     rt.output.say(args);
     return null;
   });
+  def('reply', (args) => {
+    rt.output.reply(args);
+    return null;
+  });
   def('echo', (args) => {
     rt.output.say(args);
     return null;
