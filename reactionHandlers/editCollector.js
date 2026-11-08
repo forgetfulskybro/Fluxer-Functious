@@ -1,8 +1,10 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
-const { trackResource, actorFromReq } = require('../api/trackSettings');
+const { trackResource } = require('../api/trackSettings');
 const explainCooldown = new Map();
 
 module.exports = async (client, message, userId, editCollector, reactionChan, reactionMsg, emojiId, event = "add") => {
+  const guildId = editCollector.guildId ?? message.reaction?.guildId ?? message.guildId;
+  if (!guildId) return;
   if (event === "add" && message.messageId === editCollector.oldMessageId && emojiId !== client.config.emojis.check && emojiId !== client.config.emojis.cross) {
     const cooldownKey = `${userId}_${editCollector.oldMessageId}`;
     const lastExplanation = explainCooldown.get(cooldownKey);
@@ -11,7 +13,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
     if (!lastExplanation || now - lastExplanation > 5000) {
       explainCooldown.set(cooldownKey, now);
 
-      const db = await client.database.getGuild(message.reaction.guildId);
+      const db = await client.database.getGuild(guildId);
       const botMessage = await reactionChan.messages.fetch(editCollector.messageId).catch(() => null);
       let explanation;
       if (botMessage) {
@@ -36,7 +38,8 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
   if (emojiId === client.config.emojis.check && editCollector.botMessage === reactionMsg?.id) {
     if (editCollector.roles.length > 0 || editCollector.rolesDone.length === 0 || editCollector.regex.length > 0) return;
 
-    const db = await client.database.getGuild(message.guildId);
+    const db = await client.database.getGuild(guildId);
+    const channelId = editCollector.channelId ?? message.channelId;
     const reactions = editCollector.rolesDone.map((e) => e.emoji);
     const oldMsg = await reactionChan?.messages?.fetch(editCollector.oldMessageId).catch(() => null);
     const msg = await reactionChan?.messages?.fetch(editCollector.messageId).catch(() => null);
@@ -68,14 +71,21 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
       }
 
       const oldEntry = db.roles.find((e) => e.msgId === oldMsg.id);
+      const entry = {
+        ...(oldEntry || {}),
+        msgId: oldMsg.id,
+        chanId: channelId,
+        roles: [...editCollector.rolesDone],
+      };
 
       db.roles = [
         ...db.roles.filter((e) => e.msgId !== editCollector.oldMessageId),
-        { msgId: oldMsg.id, chanId: message.channelId, roles: [...editCollector.rolesDone] },
+        entry,
       ];
 
-      await client.database.updateGuild(message.guildId, { roles: db.roles });
-      const entry = db.roles.find((e) => e.msgId === oldMsg.id);
+      const result = await client.database.updateGuild(guildId, { roles: db.roles });
+      if (!result || result.matchedCount === 0) throw new Error("Failed to save reaction role panel");
+
       await trackResource(client, {
         userId: userId,
         groupId: guildId,
@@ -86,21 +96,23 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
         value: {
           msgId: entry.msgId,
           chanId: entry.chanId,
-          exclusive: entry.exclusive,
+          exclusive: entry.exclusive ?? null,
           roles: entry.roles,
-          type: entry.type,
+          type: entry.type ?? editCollector.type,
         },
-        previous: {
-          msgId: oldEntry.msgId,
-          chanId: oldEntry.chanId,
-          exclusive: oldEntry.exclusive ?? null,
-          roles: oldEntry.roles,
-        },
+        previous: oldEntry
+          ? {
+              msgId: oldEntry.msgId,
+              chanId: oldEntry.chanId,
+              exclusive: oldEntry.exclusive ?? null,
+              roles: oldEntry.roles,
+            }
+          : null,
       });
       
       await msg.delete().catch(() => { });
       
-      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.app/channels/${message.guild.id}/${editCollector.channelId}/${editCollector.oldMessageId})` }))] }).catch(() => { });
+      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.app/channels/${guildId}/${channelId}/${editCollector.oldMessageId})` }))] }).catch(() => { });
     } catch (error) {
       reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`An error occured: ${error.message}`)] }).catch(() => { });
       console.error(error);
@@ -112,7 +124,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
   }
 
   if (emojiId === client.config.emojis.cross && editCollector.botMessage === reactionMsg?.id) {
-    const db = await client.database.getGuild(message.guildId);
+    const db = await client.database.getGuild(guildId);
 
     client.messageEdit.delete(userId);
     await reactionMsg?.delete({ silent: true }).catch(() => { });
@@ -129,7 +141,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
     if (!emoji) return;
 
     editCollector.rolesDone = editCollector.rolesDone.filter((e) => e.emoji !== emote);
-    editCollector.roles.unshift([emoji.role, { name: emoji.name }]);
+    editCollector.roles.unshift({ id: emoji.role, name: emoji.name });
     editCollector.regex.unshift(emoji.name);
 
     const newMsg = await client.channels

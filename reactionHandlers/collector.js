@@ -34,68 +34,91 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
 
   if (emojiId === client.config.emojis.check && collector.oldMessageId === reactionMsg.id) {
     if (collector.roles.length === 0 && collector.rolesDone.length > 0 && collector.regex.length === 0) {
-      const db = await client.database.getGuild(message.reaction.guildId);
+      if (collector.finalizing) return;
+
+      const guildId = collector.guildId ?? message.reaction?.guildId;
+      if (!guildId) return;
+
+      collector.finalizing = true;
+      let panelMessage = null;
+      let saved = false;
 
       try {
+        const db = await client.database.getGuild(guildId);
         const oldMsg = await reactionChan?.messages?.fetch(collector?.oldMessageId).catch(() => null);
         const msg = await reactionChan?.messages?.fetch(collector?.messageId).catch(() => null);
-
-        await oldMsg?.delete().catch(() => { });
-        await reactionMsg?.delete().catch(() => { });
+        if (!msg) throw new Error("Reaction role setup message not found");
 
         const targetChannelId = collector.targetChannelId || reactionMsg.channelId;
         const targetChannel = await client.channels.resolve(targetChannelId).catch(() => null);
+        if (!targetChannel) throw new Error("Reaction role target channel not found");
 
         const finalContent = collector.type === "content"
           ? { content: msg.content || "" }
           : { embeds: [new EmbedBuilder().setColor(db.theme).setDescription(msg.embeds?.[0]?.description || "")] };
 
-        targetChannel.send(finalContent).then(async m => {
-          await msg?.delete().catch(() => { });
+        panelMessage = await targetChannel.send(finalContent);
 
-          const sortedReactions = collector.rolesDone
-            .sort((a, b) => a.position - b.position)
-            .map(entry => entry.emoji);
+        const entry = {
+          msgId: panelMessage.id,
+          chanId: targetChannel.id,
+          roles: [...collector.rolesDone],
+          exclusive: null,
+          type: collector.type,
+          authorId: panelMessage.author?.id ?? client.user?.id ?? null,
+        };
 
-          for (const reaction of sortedReactions) {
-            await m.react(reaction).catch(() => { });
-          }
+        const freshDb = (await client.database.getGuild(guildId, false)) || db;
+        const existingRoles = Array.isArray(freshDb.roles) ? freshDb.roles : [];
+        const roles = [
+          ...existingRoles.filter((role) => role.msgId !== entry.msgId),
+          entry,
+        ];
+        const result = await client.database.updateGuild(guildId, { roles });
+        if (!result || result.matchedCount === 0) throw new Error("Failed to save reaction role panel");
+        saved = true;
 
-          db.roles.push({
-            msgId: m.id,
-            chanId: targetChannel.id,
-            roles: [...collector.rolesDone]
-          });
-          
-          await client.database.updateGuild(message.reaction.guildId, { roles: db.roles });
-          await trackResource(client, {
-            userId: userId,
-            groupId: message.reaction.guildId,
-            category: 'reactionroles',
-            key: 'roles',
-            action: 'create',
-            label: 'Reaction Role Panel',
-            value: {
-              msgId: m.msgId,
-              chanId: targetChannel.id,
-              exclusive: null,
-              roles: [...collector.rolesDone],
-              type: collector.type,
-            },
-            previous: null,
-          });
+        await oldMsg?.delete().catch(() => { });
+        await reactionMsg?.delete().catch(() => { });
+        await msg?.delete().catch(() => { });
 
-          if (targetChannel.id !== message.channelId) {
-            await reactionChan.send(client.translate.get(db.language, "Commands.roles.success", { channel: `<#${targetChannel.id}>` })).catch(() => { });
-          }
-        }).catch(err => {
-          console.error("[Collector] Error sending final message:", err);
+        const sortedReactions = [...collector.rolesDone]
+          .sort((a, b) => a.position - b.position)
+          .map(entry => entry.emoji);
+
+        for (const reaction of sortedReactions) {
+          await panelMessage.react(reaction).catch(() => { });
+        }
+
+        await trackResource(client, {
+          userId: userId,
+          groupId: guildId,
+          category: 'reactionroles',
+          key: 'roles',
+          action: 'create',
+          label: 'Reaction Role Panel',
+          value: entry,
+          previous: null,
         });
 
-        clearTimeout(client.messageCollector.get(userId)?.timeout);
-        return client.messageCollector.delete(userId);
+        if (targetChannel.id !== message.channelId) {
+          await reactionChan.send(client.translate.get(db.language, "Commands.roles.success", { channel: `<#${targetChannel.id}>` })).catch(() => { });
+        }
+
+        clearTimeout(collector.timeout);
+        if (client.messageCollector.get(userId) === collector) client.messageCollector.delete(userId);
+        return;
       } catch (e) {
-        console.error("[Collector] Error in check handler:", e);
+        console.error("[Collector] Error saving reaction role panel:", e);
+
+        if (saved) {
+          clearTimeout(collector.timeout);
+          if (client.messageCollector.get(userId) === collector) client.messageCollector.delete(userId);
+          return;
+        }
+
+        collector.finalizing = false;
+        if (panelMessage) await panelMessage.delete().catch(() => { });
       }
     }
     return;

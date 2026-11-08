@@ -252,6 +252,9 @@ module.exports = {
 
                 const channels = await message.guild.fetchChannels();
                 const targetChannel = channels.find(e => e.id === editMsg.chanId);
+                if (!targetChannel) {
+                    return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });
+                }
                 const isDifferentChannel = targetChannel.id !== message.channel.id;
 
                 const reactMentionLine = `\n\n${client.translate.get(db.language, "Commands.roles.reactMention")}`;
@@ -283,6 +286,7 @@ Color Roles:
                 client.messageEdit.set(userId, {
                     user: userId,
                     timeout: null,
+                    guildId: message.guildId,
                     oldMessageId: fetched.id,
                     botMessage: setupMsg.id,
                     messageId: null,
@@ -419,6 +423,7 @@ Color Roles:
                 client.messageCollector.set(userId, {
                   user: userId,
                   timeout: null,
+                  guildId: message.guildId,
                   oldMessageId: setupMsg.id,
                   botMessage: setupMsg.id,
                   messageId: null,
