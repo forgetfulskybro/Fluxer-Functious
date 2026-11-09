@@ -6,7 +6,7 @@ const DEFAULT_CONFIG = {
     permissionTitle: "Permission Error",
     defaultDescription: "An unexpected error occurred while running this command.",
     permissionFooter: "Please contact a server admin to resolve this issue.",
-    errorFooter: "Please join the support server and report to Sky about this issue: https://fluxer.gg/YnINU09E",
+    errorFooter: "Please join the support server and report to Sky about this issue: https://fluxer.gg/functious",
     rateLimitDescription: "The bot is currently being **Rate Limited**. Please try again in a moment.",
     plainTextFormat: "**{title}**\n{description}\n\n**What happened?**\n```{error}```\n\n{footer}"
   },
@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
     permissionTitle: "Permission Error",
     defaultDescription: "An unexpected error occurred while processing this event.",
     permissionFooter: "Please contact a server admin to resolve this issue.",
-    errorFooter: "Please join the support server and report to Sky about this issue: https://fluxer.gg/YnINU09E",
+    errorFooter: "Please join the support server and report to Sky about this issue: https://fluxer.gg/functious",
     silent: true
   },
   function: {

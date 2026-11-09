@@ -5,6 +5,7 @@ const { trackGuildUpdates } = require("../api/trackSettings");
 const { executeTag, buildTagContext, resolveTagSource } = require("../functions/tagExecution");
 const { refreshGuild } = require("../functions/tagIndex");
 const { parseMessageLink } = require("../functions/messageSource");
+const { dashboardHelpText } = require("../functions/dashboardHelp");
 
 const TAG_TYPES = ["text", "embed", "script"];
 const TAG_NAME_MAX = 32;
@@ -278,6 +279,8 @@ const tagsModule = {
               t("helpScriptContextDesc"),
               ``,
               t("learnMore"),
+              "",
+              dashboardHelpText(client, db, message.guildId, "tags"),
             ].join("\n")
           );
         return message.reply({ embeds: [embed] });

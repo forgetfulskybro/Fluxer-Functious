@@ -15,11 +15,15 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function snapshotChannel(channel, channelId) {
+function snapshotChannel(client, channel, channelId) {
+  const guildId = channel?.guildId ?? channel?.guild?.id ?? null;
+  const guild = channel?.guild ?? (guildId ? client.guilds?.get?.(guildId) : null);
   return {
     id: String(channel?.id ?? channelId),
     name: channel?.name ?? null,
     type: channel?.type ?? null,
+    guildId: guildId ? String(guildId) : null,
+    guildName: guild?.name ?? null,
   };
 }
 
@@ -65,7 +69,7 @@ async function processQueue(client) {
       try {
         const channel = await client.channels.resolve(channelId);
         if (channel) {
-          cache.set(channelId, { profile: snapshotChannel(channel, channelId), fetchedAt: Date.now() });
+          cache.set(channelId, { profile: snapshotChannel(client, channel, channelId), fetchedAt: Date.now() });
           failed.delete(channelId);
         } else {
           failed.set(channelId, Date.now());

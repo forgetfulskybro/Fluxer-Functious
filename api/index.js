@@ -7,6 +7,8 @@ const reactionRolesRouter = require('./routes/reactionRoles');
 const tempChannelsRouter = require('./routes/tempchannels');
 const giveawaysRouter = require('./routes/giveaways');
 const guildsRouter = require('./routes/guilds');
+const eventsRouter = require('./routes/events');
+const formsRouter = require('./routes/forms');
 const oauthRouter = require('./routes/oauth');
 const pollsRouter = require('./routes/polls');
 const usersRouter = require('./routes/users');
@@ -32,6 +34,8 @@ function createApiServer(client) {
 
   app.use('/api/oauth', oauthRouter(client, apiKey));
   app.use('/api/guilds', guildsRouter(client, apiKey));
+  app.use('/api/guilds/:guildId/events', eventsRouter(client, apiKey));
+  app.use('/api/guilds/:guildId/forms', formsRouter(client, apiKey));
   app.use('/api/guilds/:guildId/polls', pollsRouter(client, apiKey));
   app.use('/api/guilds/:guildId/giveaways', giveawaysRouter(client, apiKey));
   app.use('/api/guilds/:guildId/tempchannels', tempChannelsRouter(client, apiKey));

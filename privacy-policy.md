@@ -20,6 +20,7 @@ We do not use cookies, tracking pixels, or any form of user tracking.
   - **Giveaways**: Only the User IDs of people who enter a giveaway.
   - **Polls**: User IDs and publicly available avatar URLs fetched from Fluxer (to show who voted for each option).
   - **Timezone system**: User IDs paired with the timezone you set.
+  - **Forms**: Applicant and reviewer User IDs, answers submitted through a form, DM/channel IDs used to continue a draft, and the IDs of review messages. Form answers are only posted to the configured private review channel and are visible to that channel and authorized reviewers.
 
 - **Guild IDs** (Fluxer server IDs)  
   Stored for every server Functious is in, so it can remember per-server custom settings and command configurations.
@@ -34,6 +35,7 @@ We do not use cookies, tracking pixels, or any form of user tracking.
 - Timezone User IDs → to convert times correctly between users.  
 - Guild IDs → to apply server-specific settings (prefixes, roles, channels, etc.).  
 - Voice User IDs → to manage temporary voice channels (e.g., creating or deleting them based on who is present).
+- Form User IDs and answers → to deliver questions by DM, let authorized reviewers decide, and notify the applicant.
 
 ## 3. Data Retention & Automatic Deletion
 
@@ -43,10 +45,12 @@ All data is deleted as soon as it is no longer needed:
 - **Poll User IDs & avatar URLs** → automatically removed the moment the poll ends.  
 - **Temporary Voice Channel User IDs** → automatically removed the instant you leave the channel.  
 - **Guild settings** → kept only while Functious is still in the server (they are cleared if Functious leaves or settings are reset).
+- **Form submissions and answers** → kept while the form is configured. Running `forms delete <form> confirm` removes the form’s submissions and its review messages. Completed submissions are also retained for staff review until the form is deleted or the submission is withdrawn.
 
 ## 4. Your Right to Delete Your Data
 
 - **Timezone data**: You can remove your own User ID and timezone at any time by using Functious’ dedicated removal command (exact command name is shown in Functious’ help menu).  
+- **Form drafts**: Reply `cancel` in the form DM to withdraw an in-progress draft, or use `forms withdraw <submissionId>` to withdraw a draft or pending submission. Server managers can delete a form and its retained submissions with `forms delete <form> confirm`.
 - All other data (giveaways, polls, temporary voice) is **automatically deleted** on schedule - no manual action is required.
 
 ## 5. Data Storage & Security

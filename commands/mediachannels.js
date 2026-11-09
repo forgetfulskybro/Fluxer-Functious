@@ -1,5 +1,6 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const { trackGuildUpdates } = require("../api/trackSettings");
+const { dashboardHelpText } = require("../functions/dashboardHelp");
 
 const UPVOTE = "⬆️";
 const DOWNVOTE = "⬇️";
@@ -67,6 +68,8 @@ module.exports = {
       `\`${db.prefix}mc edit <#channel> [${t("editSame")}]\`\n`,
       `**${t("listChannels")}**`,
       `\`${db.prefix}mc list\``,
+      "",
+      dashboardHelpText(client, db, message.guildId, "media-channels"),
     ].join("\n");
 
     if (!sub || sub === "help") {

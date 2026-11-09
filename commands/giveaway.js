@@ -4,6 +4,7 @@ const dhms = require(`../functions/dhms`);
 const { handleNew, handleDelete } = require(`../functions/checkGiveaways`);
 const regex = new RegExp(/^channel:\s*(?:<#(\d+)>|#?([\w-]+)|(\d+))$/i);
 const { trackResource } = require('../api/trackSettings');
+const { dashboardHelpText } = require('../functions/dashboardHelp');
 
 module.exports = {
     config: {
@@ -24,7 +25,8 @@ module.exports = {
             `**Creating**\n\`${db.prefix}giveaway ${client.translate.get(db.language, "Commands.giveaway.creating")}\`\n\n` +
             `**Creating with settings**\n\`${db.prefix}giveaway 20m | 3 | A t-shirt | channel:#giveaways | dm:yes | ping:no | multiwin:no | image:https://...\`\n\n` +
             `**Deleting**\n\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\`\n\n` +
-            `**Rerolling**\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.input")}\``
+            `**Rerolling**\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.input")}\`` +
+            `\n\n${dashboardHelpText(client, db, message.guildId, "giveaways")}`
           )
           .setColor(db.theme)]
       });
@@ -88,7 +90,7 @@ module.exports = {
 
       const check = await Giveaways.findOne({ messageId: msgId });
       if (!check) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\n\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\``).setColor(`#FF0000`)] });
-      if (check.owner !== message.author.id) return message.reply({ content: client.translate.get(db.language, "Commands.giveaway.notOwner") });
+      if (check.owner !== message.author.id) return message.reply({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(client.translate.get(db.language, "Commands.giveaway.notOwner"))] });
 
       await Giveaways.findOneAndUpdate({ messageId: msgId }, { ended: true });
       handleDelete(msgId);

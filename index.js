@@ -62,7 +62,7 @@ setInterval(async () => {
   await Pings(client);
 }, 60_000);
 
-["observedVoiceUsers", "observedVoiceBots", "reactions", "paginate", "timeout", "polls", "used", "messageCollector", "messageEdit", "reloadSelection", "manageVC", "scheduleCollector"].forEach(x => client[x] = new Map());
+["observedVoiceUsers", "observedVoiceBots", "reactions", "paginate", "timeout", "polls", "used", "messageCollector", "messageEdit", "reloadSelection", "manageVC", "scheduleCollector", "stickyCollector"].forEach(x => client[x] = new Map());
 ["aliases", "commands", "event", "functions", "reactionHandlers"].forEach(x => client[x] = new Collection());
 ["command", "event", "function"].forEach(x => require(`./handlers/${x}`)(client));
 

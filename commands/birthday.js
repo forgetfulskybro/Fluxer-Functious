@@ -5,12 +5,18 @@ const {
   ordinal,
   validDay,
   nextBirthdayTimestamp,
-  buildBirthdayAnnouncement,
+  buildBirthdayAnnouncementPayload,
 } = require("../functions/birthdayHelpers");
 const UserDB = require("../models/users");
 const Paginator = require("../functions/pagination");
 const getRoles = require("../functions/getRoles");
 const { trackGuildUpdates, trackResource } = require("../api/trackSettings");
+const {
+  normalizeCommunityBirthday,
+  nextCommunityBirthdayTimestamp,
+  buildCommunityBirthdayPayload,
+} = require("../functions/communityBirthday");
+const { dashboardHelpText } = require("../functions/dashboardHelp");
 
 function userBirthdaySnapshot(userId, userData) {
   const bd = userData?.birthday;
@@ -117,7 +123,7 @@ function cmdTag(prefix, syntax) {
   return `\`${prefix}bday ${syntax}\``;
 }
 
-function buildHelpEmbed(client, db, prefix, isAdmin) {
+function buildHelpEmbed(client, db, prefix, isAdmin, guildId) {
   const lang = db.language;
   const t = (key, vars) => client.translate.get(lang, `Commands.birthday.${key}`, vars);
   const line = (syntax, desc) => `${cmdTag(prefix, syntax)} - ${desc}`;
@@ -150,9 +156,19 @@ function buildHelpEmbed(client, db, prefix, isAdmin) {
       line("list", t("helpList")),
       line("force <@user>", t("helpForce")),
       line("blacklist [@user | remove @user | clear]", t("helpBlacklist")),
-      line("message [withage <text> | noage <text> | reset]", t("helpMessage"))
+      line("message [withage <text> | noage <text> | reset]", t("helpMessage")),
+      line("server set <date> [year]", t("helpServerSet")),
+      line("server channel [#channel|clear]", t("helpServerChannel")),
+      line("server role [@role|clear]", t("helpServerRole")),
+      line("server message [<text>|reset]", t("helpServerMessage")),
+      line("server timezone <IANA>", t("helpServerTimezone")),
+      line("server preview", t("helpServerPreview")),
+      line("server enable|disable|clear", t("helpServerToggle")),
+      `> ${t("helpServerLeap")}`
     );
   }
+
+  lines.push(``, dashboardHelpText(client, db, guildId, "birthdays"));
 
   return new EmbedBuilder()
     .setColor(db.theme)
@@ -162,6 +178,42 @@ function buildHelpEmbed(client, db, prefix, isAdmin) {
 
 async function getUserData(userId, client) {
   return client.database.getUser(userId, true);
+}
+
+function buildCommunitySettingsEmbed(client, db, prefix) {
+  const lang = db.language;
+  const t = (key, vars) => client.translate.get(lang, `Commands.birthday.${key}`, vars);
+  const config = normalizeCommunityBirthday(db.communityBirthday);
+  const embed = new EmbedBuilder()
+    .setColor(db.theme)
+    .setTitle(t("serverTitle"));
+
+  if (!config.month || !config.day) {
+    return embed.setDescription(
+      t("serverNotSet", { cmd: cmdTag(prefix, "server set <date> [year]") })
+    );
+  }
+
+  const next = nextCommunityBirthdayTimestamp(
+    config.month,
+    config.day,
+    config.timezone
+  );
+  const date = `${ordinal(config.day, client, lang)} ${getMonthName(config.month - 1, client, lang)}`;
+  const channel = config.channelId || db.birthdayChannel;
+
+  return embed
+    .addFields(
+      { name: t("serverDate"), value: date, inline: true },
+      { name: t("serverYears"), value: config.year ? `${config.year} - ${new Date().getFullYear()}` : t("notSet"), inline: true },
+      { name: t("timeZone"), value: config.timezone, inline: true },
+      { name: t("announcementChannel"), value: channel ? `<#${channel}>` : t("notSet"), inline: true },
+      { name: t("birthdayRole"), value: config.roleId ? `<@&${config.roleId}>` : t("notSet"), inline: true },
+      { name: t("announcementPing"), value: config.ping ? t("enabled") : t("disabled"), inline: true },
+      { name: t("serverNext"), value: next ? `<t:${Math.floor(next / 1000)}:R> (<t:${Math.floor(next / 1000)}:f>)` : t("notSet"), inline: false },
+      { name: t("serverMessage"), value: config.message ? `> ${config.message.replace(/\n/g, "\n> ")}` : t("notSet"), inline: false }
+    )
+    .setFooter({ text: config.enabled ? t("enabled") : t("disabled") });
 }
 
 module.exports = {
@@ -185,7 +237,164 @@ module.exports = {
     const isAdmin = member?.permissions.has(PermissionFlags.ManageGuild) || client.config.owners.includes(message.author.id);
 
     if (!sub || sub === "help") {
-      return message.reply({ embeds: [buildHelpEmbed(client, db, prefix, isAdmin)] });
+      return message.reply({ embeds: [buildHelpEmbed(client, db, prefix, isAdmin, message.guildId)] });
+    }
+
+    if (sub === "server" || sub === "community") {
+      if (!isAdmin) {
+        return err(client.translate.get(db.language, "Commands.birthday.serverPerms"));
+      }
+
+      const action = (args[1] || "view").toLowerCase();
+      const existing = normalizeCommunityBirthday(db.communityBirthday);
+      const t = (key, vars) => client.translate.get(db.language, `Commands.birthday.${key}`, vars);
+
+      const saveConfig = async (nextConfig) => {
+        await client.database.updateGuild(message.guildId, { communityBirthday: nextConfig });
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { communityBirthday: nextConfig },
+        });
+      };
+
+      if (action === "view" || action === "settings") {
+        return message.reply({ embeds: [buildCommunitySettingsEmbed(client, db, prefix)] });
+      }
+
+      if (action === "set") {
+        const dateArgs = args.slice(2);
+        let year = null;
+        const last = dateArgs[dateArgs.length - 1];
+        if (dateArgs.length >= 2 && /^\d{4}$/.test(last || "")) {
+          year = Number.parseInt(last, 10);
+          dateArgs.pop();
+        }
+
+        const parsed = parseDate(dateArgs.join(" "), client, db.language);
+        if (!parsed) {
+          return err(t("serverInvalidDate", { cmd: cmdTag(prefix, "server set <date> [year]") }));
+        }
+        if (year != null && (year < 2000 || year > new Date().getFullYear())) {
+          return err(t("serverInvalidYear"));
+        }
+
+        const nextConfig = {
+          ...existing,
+          month: parsed.month,
+          day: parsed.day,
+          year: year ?? existing.year,
+          enabled: true,
+          channelId: existing.channelId || db.birthdayChannel || null,
+        };
+        await saveConfig(nextConfig);
+        const next = nextCommunityBirthdayTimestamp(parsed.month, parsed.day, nextConfig.timezone);
+        return ok(t("serverSet", {
+          date: `${ordinal(parsed.day, client, db.language)} ${getMonthName(parsed.month - 1, client, db.language)}`,
+          year: nextConfig.year ? ` (${nextConfig.year})` : "",
+          next: next ? `<t:${Math.floor(next / 1000)}:R>` : t("notSet"),
+        }));
+      }
+
+      if (action === "channel") {
+        const mention = args[2];
+        if (!mention) {
+          return ok(t("channelStatus", {
+            channel: existing.channelId || db.birthdayChannel ? `<#${existing.channelId || db.birthdayChannel}>` : t("notSet"),
+            cmdChannel: cmdTag(prefix, "server channel #channel"),
+          }));
+        }
+        if (mention.toLowerCase() === "clear" || mention.toLowerCase() === "none") {
+          await saveConfig({ ...existing, channelId: null });
+          return ok(t("serverChannelClear"));
+        }
+        const channelId = mention.replace(/[<#>]/g, "");
+        const channel = await client.channels.resolve(channelId).catch(() => null);
+        if (!channel || channel.type !== 0) return err(t("invalidChannel"));
+        await saveConfig({ ...existing, channelId: channel.id });
+        return ok(t("serverChannelSet", { channel: `<#${channel.id}>` }));
+      }
+
+      if (action === "role") {
+        const mention = args[2];
+        if (!mention) {
+          return ok(t("roleStatus", {
+            role: existing.roleId ? `<@&${existing.roleId}>` : t("notSet"),
+            cmdRole: cmdTag(prefix, "server role @role"),
+          }));
+        }
+        if (mention.toLowerCase() === "clear" || mention.toLowerCase() === "none") {
+          await saveConfig({ ...existing, roleId: null, ping: false });
+          return ok(t("serverRoleClear"));
+        }
+        const roleIds = await getRoles([mention], message, client, db, true, true, false);
+        if (!roleIds?.length) return;
+        await saveConfig({ ...existing, roleId: roleIds[0].id, ping: true });
+        return ok(t("serverRoleSet", { role: `<@&${roleIds[0].id}>` }));
+      }
+
+      if (action === "ping") {
+        await saveConfig({ ...existing, ping: !existing.ping });
+        return ok(t("serverPingSet", { status: !existing.ping ? t("on") : t("off") }));
+      }
+
+      if (action === "message" || action === "msg") {
+        const text = args.slice(2).join(" ").trim();
+        if (!text || text.toLowerCase() === "reset") {
+          await saveConfig({ ...existing, message: null });
+          return ok(t("serverMessageReset"));
+        }
+        if (text.length > 1000) return err(t("messageTooLong"));
+        await saveConfig({ ...existing, message: text });
+        return ok(t("serverMessageSet", { text: `> ${text.replace(/\n/g, "\n> ")}` }));
+      }
+
+      if (action === "timezone" || action === "tz") {
+        const timezone = args[2];
+        if (!timezone) return err(t("serverTimezoneUsage", { cmd: cmdTag(prefix, "server timezone <IANA>") }));
+        try {
+          new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
+        } catch {
+          return err(t("serverTimezoneInvalid"));
+        }
+        await saveConfig({ ...existing, timezone });
+        return ok(t("serverTimezoneSet", { timezone }));
+      }
+
+      if (action === "preview") {
+        if (!existing.month || !existing.day) {
+          return err(t("serverNotSet", { cmd: cmdTag(prefix, "server set <date> [year]") }));
+        }
+        const result = buildCommunityBirthdayPayload(client, db, message.guild, existing);
+        if (!result) return err(t("serverInvalidDate", { cmd: cmdTag(prefix, "server set <date> [year]") }));
+        return message.reply({
+          ...result.payload,
+          content: t("serverPreview"),
+          allowedMentions: { parse: [] },
+        });
+      }
+
+      if (action === "enable" || action === "disable") {
+        if (action === "enable" && (!existing.month || !existing.day)) {
+          return err(t("serverNotSet", { cmd: cmdTag(prefix, "server set <date> [year]") }));
+        }
+        await saveConfig({ ...existing, enabled: action === "enable" });
+        return ok(action === "enable" ? t("serverEnabled") : t("serverDisabled"));
+      }
+
+      if (action === "clear") {
+        await saveConfig({
+          ...normalizeCommunityBirthday(null),
+          channelId: null,
+          roleId: null,
+          message: null,
+          timezone: existing.timezone,
+        });
+        return ok(t("serverCleared"));
+      }
+
+      return message.reply({ embeds: [buildCommunitySettingsEmbed(client, db, prefix)] });
     }
 
     if (sub === "set" || sub === "edit") {
@@ -340,11 +549,26 @@ module.exports = {
       const member = message.guild?.members?.get(message.author.id)
         ?? { id: message.author.id, user: message.author, guild: message.guild };
 
-      const result = buildBirthdayAnnouncement(client, db, member, userData, message.guild?.name);
+      const result = buildBirthdayAnnouncementPayload(
+        client,
+        db,
+        member,
+        userData,
+        message.guild?.name
+      );
       const pingUser = userData.birthday?.ping ?? true;
-      const previewNote = `${client.translate.get(db.language, "Commands.birthday.preview")}\n\n${pingUser ? `<@${message.author.id}>` : ""}`;
+      const previewNote = client.translate.get(db.language, "Commands.birthday.preview");
 
-      return message.reply({ content: previewNote, embeds: [result.embed] });
+      return message.reply({
+        ...result.payload,
+        content: [
+          previewNote,
+          pingUser ? `<@${message.author.id}>` : "",
+          result.payload.content ?? "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+      });
     }
 
     if (sub === "ping") {
@@ -488,6 +712,13 @@ module.exports = {
           { name: client.translate.get(db.language, "Commands.birthday.announcementPing"), value: pingText, inline: true },
           { name: client.translate.get(db.language, "Commands.birthday.announcementChannel"), value: channelText, inline: true },
           { name: client.translate.get(db.language, "Commands.birthday.birthdayRole"), value: roleText, inline: true },
+          {
+            name: client.translate.get(db.language, "Commands.birthday.settingsCommunity"),
+            value: db.communityBirthday?.month
+              ? `${ordinal(db.communityBirthday.day, client, db.language)} ${getMonthName(db.communityBirthday.month - 1, client, db.language)}${db.communityBirthday.year ? ` (${db.communityBirthday.year})` : ""}`
+              : client.translate.get(db.language, "Commands.birthday.notSet"),
+            inline: true,
+          },
           { name: "\u200b", value: "\u200b", inline: true },
           { name: client.translate.get(db.language, "Commands.birthday.nextBirthday"), value: nextBirthdayText, inline: false }
         )
@@ -829,14 +1060,29 @@ module.exports = {
         : message.channel;
       if (!announceChannel) return err(client.translate.get(db.language, "Commands.birthday.noChannel", { cmdChannel: cmdTag(prefix, "channel #channel") }));
 
-      const result = buildBirthdayAnnouncement(client, db, targetMember, targetUserData, message.guild?.name);
+      const result = buildBirthdayAnnouncementPayload(
+        client,
+        db,
+        targetMember,
+        targetUserData,
+        message.guild?.name
+      );
       const pingUser = (db.birthdayPing ?? true) && (targetUserData.birthday.ping ?? true);
 
       if (db.birthdayRole) {
         await targetMember.addRole?.(db.birthdayRole).catch(() => {});
       }
 
-      await announceChannel.send({ content: pingUser ? `<@${targetId}>` : undefined, embeds: [result.embed] });
+      await announceChannel.send({
+        ...result.payload,
+        content:
+          (
+            [pingUser ? `<@${targetId}>` : "", result.payload.content ?? ""]
+              .filter(Boolean)
+              .join("\n") || undefined
+          )?.slice(0, 2000),
+        allowedMentions: { parse: ["users"] },
+      });
 
       client.database.updateUser(targetId, {
         birthday: { ...targetUserData.birthday, lastBirthday: new Date().getFullYear() },
@@ -863,6 +1109,6 @@ module.exports = {
       return;
     }
 
-    return message.reply({ embeds: [buildHelpEmbed(client, db, prefix, isAdmin)] });
+    return message.reply({ embeds: [buildHelpEmbed(client, db, prefix, isAdmin, message.guildId)] });
   },
 };

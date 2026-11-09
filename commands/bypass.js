@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const getRoles = require('../functions/getRoles');
 const { trackGuildUpdates } = require('../api/trackSettings');
+const { dashboardHelpField } = require('../functions/dashboardHelp');
 
 module.exports = {
   config: {
@@ -61,7 +62,8 @@ module.exports = {
               .setDescription(
                 `${client.translate.get(db.language, "Commands.bypass.explanation")}\n**${client.translate.get(db.language, "Commands.bypass.lockCommands")}**:\n\`${permCmds.join(", ")}\`\n\n**${client.translate.get(db.language, "Commands.bypass.adding")}**\n\`${db.prefix}bypass add [${client.translate.get(db.language, "Commands.bypass.rolename")}] | [${client.translate.get(db.language, "Commands.bypass.lockCommands")}, e.g. roles, giveaway]\`\n\n**${client.translate.get(db.language, "Commands.bypass.editing")}**\n\`${db.prefix}bypass edit [${client.translate.get(db.language, "Commands.bypass.rolename")}] | [${client.translate.get(db.language, "Commands.bypass.lockCommands")}, e.g. roles, giveaway]\`\n\n**${client.translate.get(db.language, "Commands.bypass.removing")}**\n\`${db.prefix}bypass remove [${client.translate.get(db.language, "Commands.bypass.rolename")}]\`\n\n**${client.translate.get(db.language, "Commands.bypass.viewing")}**\n\`${db.prefix}bypass view\`\n\n**${client.translate.get(db.language, "Commands.bypass.example")}**: \`${db.prefix}bypass add Moderator | giveaway, autoroles\``,
               )
-              .setColor(db.theme),
+              .setColor(db.theme)
+              .addFields(dashboardHelpField(client, db, message.guildId, "roles-permissions")),
           ],
         });
         break;

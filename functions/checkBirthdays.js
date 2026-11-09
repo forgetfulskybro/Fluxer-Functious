@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 const UserDB = require("../models/users");
 const GuildDB = require("../models/guilds");
-const { buildBirthdayAnnouncement } = require("./birthdayHelpers");
+const { buildBirthdayAnnouncementPayload } = require("./birthdayHelpers");
+const { stopCommunityBirthdayCheck } = require("./checkCommunityBirthdays");
 
 let clientRef = null;
 const birthdayQueue = new Map();
@@ -139,7 +140,7 @@ async function announceBirthday(userData, guildId, announceAt) {
     if (!member) return;
 
     const bday = userData.birthday;
-    const result = buildBirthdayAnnouncement(
+    const result = buildBirthdayAnnouncementPayload(
       clientRef,
       guildData,
       member,
@@ -148,9 +149,20 @@ async function announceBirthday(userData, guildId, announceAt) {
     );
 
     const pingUser = (guildData.birthdayPing ?? true) && (bday.ping ?? true);
+    const content =
+      [
+        pingUser ? `<@${userData.userId}>` : "",
+        result.payload.content ?? "",
+      ]
+        .filter(Boolean)
+        .join("\n")
+        .slice(0, 2000) || undefined;
 
-    const content = pingUser ? `<@${userData.userId}>` : undefined;
-    await channel.send({ content, embeds: [result.embed] });
+    await channel.send({
+      ...result.payload,
+      content: content || undefined,
+      allowedMentions: { parse: ["users"] },
+    });
 
     await clientRef.database.updateUser(userData.userId, {
       birthday: { ...userData.birthday, lastBirthday: currentYear },
@@ -297,6 +309,7 @@ function stopBirthdayCheck() {
     if (entry.timer) clearTimeout(entry.timer);
   }
   removalTimers.clear();
+  stopCommunityBirthdayCheck();
 
   clientRef = null;
 }

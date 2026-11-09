@@ -4,6 +4,8 @@ const { startCron: startGiveawayCron } = require("../functions/checkGiveaways");
 const { startCron: startFluxerList } = require("../functions/updateFluxerList");
 const { startCron: startPollsCron } = require("../functions/checkPolls");
 const { startBirthdayCheck } = require("../functions/checkBirthdays");
+const { startCommunityBirthdayCheck } = require("../functions/checkCommunityBirthdays");
+const { startEventCron } = require("../functions/checkEvents");
 const { loadIndex } = require("../functions/checkReactionReminders");
 const { loadIndex: loadTagIndex } = require("../functions/tagIndex");
 const { startReminderCron } = require("../functions/checkReminders");
@@ -32,6 +34,8 @@ module.exports = async (client) => {
   startScheduledCron(client);
   startGiveawayCron(client);
   startBirthdayCheck(client);
+  startCommunityBirthdayCheck(client);
+  startEventCron(client);
   await checkManage(client);
   await checkRoles(client);
   startPollsCron(client);

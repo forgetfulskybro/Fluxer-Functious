@@ -6,6 +6,7 @@ const { handleNew, handleDelete } = require("../functions/checkPolls");
 const Paginator = require(`../functions/pagination`);
 const createThread = require(`../functions/createThread`);
 const { trackResource } = require('../api/trackSettings');
+const { dashboardHelpText } = require('../functions/dashboardHelp');
 
 async function endPollEarly(client, poll, db) {
   try {
@@ -84,6 +85,8 @@ module.exports = {
           `\`${db.prefix}poll view\``,
           `\`${db.prefix}poll delete <number>\``,
           `\`${db.prefix}poll toggle\``,
+          "",
+          dashboardHelpText(client, db, message.guildId, "polls"),
         ].join("\n");
 
         return message.reply({ embeds: [new EmbedBuilder().setTitle(tr("polls")).setDescription(helpText).setColor(db.theme)] });

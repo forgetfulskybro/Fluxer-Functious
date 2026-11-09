@@ -26,6 +26,10 @@ const FIELD_META = {
   birthdayPing: { category: 'birthdays', label: 'Announcement Ping' },
   birthdayMessageWithAge: { category: 'birthdays', label: 'Birthday Message (With Age)' },
   birthdayMessageNoAge: { category: 'birthdays', label: 'Birthday Message (No Age)' },
+  communityBirthday: { category: 'birthdays', label: 'Community Birthday' },
+  events: { category: 'events', label: 'Events' },
+  forms: { category: 'forms', label: 'Forms' },
+  formSubmissions: { category: 'forms', label: 'Form Submission' },
 };
 
 const COLLECTION_META = {
@@ -67,6 +71,20 @@ const COLLECTION_META = {
             id: m.id ?? m.messageId ?? null,
             type: m.type ?? null,
             channelId: m.channelId ?? null,
+          }
+        : null,
+  },
+  stickies: {
+    category: 'scheduling',
+    singular: 'Sticky Message',
+    idOf: (s) => String(s?.id ?? ''),
+    snapshot: (s) =>
+      s
+        ? {
+            id: s.id ?? null,
+            channelId: s.channelId ?? null,
+            type: s.type ?? null,
+            enabled: s.enabled !== false,
           }
         : null,
   },

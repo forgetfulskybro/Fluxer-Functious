@@ -88,6 +88,26 @@ function buildBirthdayAnnouncement(client, db, member, userData, guildName) {
   return { custom, embed };
 }
 
+function buildBirthdayAnnouncementPayload(
+  client,
+  db,
+  member,
+  userData,
+  guildName
+) {
+  const result = buildBirthdayAnnouncement(
+    client,
+    db,
+    member,
+    userData,
+    guildName
+  );
+  return {
+    ...result,
+    payload: { embeds: [result.embed] },
+  };
+}
+
 module.exports = {
   EmbedBuilder,
   MONTH_DAYS,
@@ -96,4 +116,5 @@ module.exports = {
   validDay,
   nextBirthdayTimestamp,
   buildBirthdayAnnouncement,
+  buildBirthdayAnnouncementPayload,
 };

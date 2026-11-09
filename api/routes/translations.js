@@ -564,6 +564,9 @@ function translationsRouter(client, apiKey) {
       const errors = [];
       let imported = 0;
       let skipped = 0;
+      let added = 0;
+      let updated = 0;
+      let removed = 0;
 
       for (const file of files) {
         const name = String(file?.name ?? "");
@@ -593,6 +596,22 @@ function translationsRouter(client, apiKey) {
         }
 
         const strings = flatten(parsed);
+        const fileKeys = new Set(Object.keys(strings));
+        let existingDocs;
+        try {
+          existingDocs = await model
+            .find({ language: code })
+            .select({ key: 1, value: 1, base: 1, status: 1 })
+            .lean();
+        } catch (err) {
+          errors.push(`${name}: ${err.message}`);
+          continue;
+        }
+        const existingByKey = new Map(
+          existingDocs
+            .filter((doc) => doc && typeof doc.key === "string")
+            .map((doc) => [doc.key, doc]),
+        );
         const isBase = code === BASE_LANGUAGE;
         const seedLanguages = isBase
           ? discoverLanguages().filter((language) => language !== BASE_LANGUAGE)
@@ -606,6 +625,9 @@ function translationsRouter(client, apiKey) {
         const importedBaseValues = [];
         const ops = [];
         let fileImported = 0;
+        let fileAdded = 0;
+        let fileUpdated = 0;
+        let fileRemoved = 0;
 
         for (const [key, value] of Object.entries(strings)) {
           if (typeof value !== "string" || !value.trim()) {
@@ -622,6 +644,17 @@ function translationsRouter(client, apiKey) {
           ) {
             skipped++;
             continue;
+          }
+
+          const existing = existingByKey.get(key);
+          if (!existing) {
+            fileAdded++;
+          } else if (
+            existing.value !== value ||
+            existing.base !== english ||
+            existing.status !== "approved"
+          ) {
+            fileUpdated++;
           }
 
           const now = Date.now();
@@ -710,20 +743,46 @@ function translationsRouter(client, apiKey) {
           continue;
         }
 
+        const removedKeys = existingDocs
+          .map((doc) => doc.key)
+          .filter((key) => typeof key === "string" && !fileKeys.has(key));
+
+        if (removedKeys.length > 0) {
+          try {
+            const result = await model.deleteMany({
+              language: code,
+              key: { $in: removedKeys },
+            });
+            fileRemoved = result.deletedCount ?? 0;
+          } catch (err) {
+            errors.push(`${name}: ${err.message}`);
+          }
+        }
+
         for (const [key, value] of importedBaseValues) {
           baseStrings[key] = value;
         }
 
         imported += fileImported;
+        added += fileAdded;
+        updated += fileUpdated;
+        removed += fileRemoved;
         const meta = languageMeta(code);
         const existing = languages.find((entry) => entry.code === code);
-        if (existing) existing.strings += fileImported;
-        else {
+        if (existing) {
+          existing.strings += fileImported;
+          existing.added += fileAdded;
+          existing.updated += fileUpdated;
+          existing.removed += fileRemoved;
+        } else {
           languages.push({
             code,
             name: meta.name,
             native: meta.native,
             strings: fileImported,
+            added: fileAdded,
+            updated: fileUpdated,
+            removed: fileRemoved,
           });
         }
       }
@@ -735,6 +794,9 @@ function translationsRouter(client, apiKey) {
       return res.json({
         ok: true,
         strings: imported,
+        added,
+        updated,
+        removed,
         skipped,
         languages,
         errors,

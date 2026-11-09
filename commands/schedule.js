@@ -2,6 +2,7 @@ const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require("../functions/pagination");
 const checkScheduled = require("../functions/checkScheduledMessages");
 const { trackGuildUpdates } = require("../api/trackSettings");
+const { dashboardHelpField } = require("../functions/dashboardHelp");
 
 const CHANNEL_MENTION_REGEX = /^<#(?<id>\d+)>/;
 const SETUP_TIMEOUT = 600000;
@@ -53,6 +54,7 @@ module.exports = {
 ┕ \`${prefix}schedule delete <num>\` - ${client.translate.get(db.language, "Commands.schedule.delete")}
 ┕ \`${prefix}schedule stop\` - ${client.translate.get(db.language, "Commands.schedule.cancel")}`
                         )
+                        .addFields(dashboardHelpField(client, db, message.guildId, "schedules"))
                 );
 
                 pages.add(

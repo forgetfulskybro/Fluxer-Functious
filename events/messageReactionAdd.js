@@ -9,6 +9,8 @@ const paginationHandler = require("../reactionHandlers/pagination");
 const collectorHandler = require("../reactionHandlers/collector");
 const customCollectorHandler = require("../reactionHandlers/customCollector");
 const giveawayHandler = require("../reactionHandlers/giveaway");
+const eventHandler = require("../reactionHandlers/event");
+const formHandler = require("../reactionHandlers/form");
 const timezoneHandler = require("../reactionHandlers/timezone");
 const manageVC = require("../reactionHandlers/manageVC");
 const pollHandler = require("../reactionHandlers/poll");
@@ -47,6 +49,9 @@ module.exports = async (client, reaction) => {
   }
 
   if (!reactionMsg) return;
+
+  if (await eventHandler(client, reaction, userId, reactionMsg, "add")) return;
+  if (await formHandler(client, reaction, userId, reactionMsg, "add")) return;
 
   if (emojiId === WATCH_EMOJI) {
     return reminderReactionHandler(client, reaction, userId, reactionMsg, reactionChan);

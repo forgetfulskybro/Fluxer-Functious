@@ -54,7 +54,7 @@ function pollsRouter(client, apiKey) {
       const liveGuild = client.guilds?.get(guildId);
       if (!liveGuild) return res.status(404).json({ error: 'Guild not found on bot' });
 
-      const db = await client.database.getGuild(guildId, false);
+      const db = await client.database.getGuild(guildId, false, true);
       if (!db) return res.status(404).json({ error: 'Guild not found' });
 
       const activePollCount = (await client.database.getAllPolls()).filter(

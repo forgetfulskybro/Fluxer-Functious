@@ -41,7 +41,7 @@ module.exports = {
 
     if (names.length === 0 && type !== "languages") {
       const usageEmbed = new EmbedBuilder()
-        .setColor(db.theme)
+        .setColor("#FF0000")
         .setTitle("Reload Usage")
         .setDescription(
           `❌ Please provide at least one file name.\n\n**Auto-detect:** \`${db.prefix}reload <filename>\`\n**Specify type:** \`${db.prefix}reload <type> <filename>\`\n**Multiple files:** \`${db.prefix}reload <filename1>, <filename2>, ...\``
@@ -54,7 +54,13 @@ module.exports = {
       if (!result) return;
       return message.reply({ embeds: [result] });
     } catch (err) {
-      return message.reply({ content: `Error: ${err.message}` });
+      return message.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor("#FF0000")
+            .setDescription(`Error: ${err.message}`),
+        ],
+      });
     }
   }
 };

@@ -3,6 +3,7 @@ const Polls = require("../models/polls");
 const { stickyTimers } = require("../commands/mediachannels");
 const { trackGuildUpdates, trackResource } = require('../api/trackSettings');
 const { removeChannel } = require("../functions/checkReactionReminders");
+const { removeChannelStickies } = require("../functions/stickyMessages");
 
 const UNKNOWN = "Unknown (Deleted manually)";
 
@@ -73,6 +74,18 @@ module.exports = async (client, channel) => {
       updates: { mediaChannels: updatedMedia },
     });
   }
+
+  try {
+    const stickies = await removeChannelStickies(client, guildId, channel.id);
+    if (stickies) {
+      await trackGuildUpdates(client, {
+        guildId,
+        userId: UNKNOWN,
+        existing: db,
+        updates: { stickies },
+      });
+    }
+  } catch {}
 
   // if (db.config?.manage === channel.id) {
   //   try {

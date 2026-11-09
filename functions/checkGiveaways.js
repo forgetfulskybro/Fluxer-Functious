@@ -71,7 +71,7 @@ async function endGiveaway(client, giveawayData) {
   try {
     const endDate = Date.now();
     const channel = await client.channels.resolve(giveawayData.channelId);
-
+    const guild = client.guilds?.get(giveawayData.serverId) ?? null;
     removeFromQueue(giveawayData.messageId);
 
     const dmWinners = giveawayData.dmWinners ?? false;
@@ -91,6 +91,7 @@ async function endGiveaway(client, giveawayData) {
         { messageId: giveawayData.messageId },
         { ended: true, endDate },
       );
+
       await channel?.send({
         content: `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.noOne")} **${giveawayData.prize}**\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
       });
@@ -106,7 +107,6 @@ async function endGiveaway(client, giveawayData) {
       return;
     }
 
-    const guild = client.guilds?.get(giveawayData.serverId) ?? null;
     const pickedWinners = pickWinners(giveawayData, guild);
 
     await Giveaways.findOneAndUpdate(
@@ -126,9 +126,11 @@ async function endGiveaway(client, giveawayData) {
     const foundChannel = await client.channels.resolve(giveawayData.channelId);
     if (!foundChannel) return;
 
+    const winnerMentions = pickedWinners.map((w) => `<@${w.id}>`).join(", ");
+
     if (pingWinners) {
       await foundChannel.send({
-        content: `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")} ${pickedWinners.map((w) => `<@${w.id}>`).join(", ")}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon", { prize: `**${giveawayData.prize}**` })}\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
+        content: `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")} ${winnerMentions}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon", { prize: `**${giveawayData.prize}**` })}\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
       });
     }
 

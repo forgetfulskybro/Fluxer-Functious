@@ -1,4 +1,6 @@
 const { removeGuild } = require("../functions/checkReactionReminders");
+const Forms = require("../models/forms");
+const FormSubmissions = require("../models/formSubmissions");
 
 module.exports = async (client, guild) => {
   if (!guild?.id) return;
@@ -11,4 +13,8 @@ module.exports = async (client, guild) => {
   }
 
   removeGuild(client, guild.id, guild.name).catch(() => {});
+  await Promise.all([
+    Forms.deleteMany({ guildId: guild.id }).catch(() => {}),
+    FormSubmissions.deleteMany({ guildId: guild.id }).catch(() => {}),
+  ]);
 };

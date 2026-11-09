@@ -24,10 +24,14 @@ class Paginator {
   async start(channel) {
     if (!this.pages.length) return;
     const reactions = ["⏪", "⬅️", "➡️", "⏩"];
-    this.pages.forEach(
-      (e, i = 0) =>
-        (e.data.description = `${e.data.description}\n\nPage ${i + 1} / ${this.pages.length}`),
-    );
+    this.pages.forEach((e, i = 0) => {
+      const pageLabel = `Page ${i + 1} / ${this.pages.length}`;
+      const footer = e.data.footer ?? {};
+      e.data.footer = {
+        ...footer,
+        text: footer.text ? `${footer.text} • ${pageLabel}` : pageLabel,
+      };
+    });
 
     await channel.send({ embeds: [this.pages[0]] }).then(async (msg) => {
       this.client.paginate.set(this.user, {

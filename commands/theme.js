@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const { normalizeColor, hexToArgb } = require("../functions/color");
 const { trackGuildUpdates } = require("../api/trackSettings");
+const { dashboardHelpField } = require("../functions/dashboardHelp");
 const { recolorAvatar, recolorBanner } = require("../functions/avatarCanvas");
 
 module.exports = {
@@ -25,6 +26,7 @@ module.exports = {
         .setColor(db.theme)
         .setTitle("Theme Command Help")
         .setDescription(client.translate.get(db.language, "Commands.theme.helpDesc", { prefix: db.prefix, default: "default" }))
+        .addFields(dashboardHelpField(client, db, message.guildId, "configuration"))
 
       return message.reply({
         embeds: [helpEmbed],
@@ -39,7 +41,11 @@ module.exports = {
       hex = normalizeColor(input);
       if (!hex) {
         return message.reply({
-          content: client.translate.get(db.language, "Commands.theme.invalidColor", { prefix: db.prefix, default: "default" }),
+          embeds: [
+            new EmbedBuilder()
+              .setColor("#FF0000")
+              .setDescription(client.translate.get(db.language, "Commands.theme.invalidColor", { prefix: db.prefix, default: "default" })),
+          ],
           mentions: false,
         });
       }

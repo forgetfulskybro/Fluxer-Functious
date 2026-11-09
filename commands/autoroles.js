@@ -3,6 +3,7 @@ const getRoles = require('../functions/getRoles');
 const dhms = require('../functions/dhms');
 const fetchTime = require('../functions/fetchTime');
 const { trackGuildUpdates } = require('../api/trackSettings');
+const { dashboardHelpField } = require('../functions/dashboardHelp');
 
 module.exports = {
   config: {
@@ -29,6 +30,7 @@ module.exports = {
         .setTitle(client.translate.get(db.language, "Commands.autoroles.help"))
         .setDescription(`${client.translate.get(db.language, "Commands.autoroles.explanation")}\n\n${client.translate.get(db.language, "Commands.autoroles.view")}\n\`${db.prefix}autoroles view\`\n\n${client.translate.get(db.language, "Commands.autoroles.stickyRoles")}\n\`${db.prefix}autoroles sticky\`\n\n${client.translate.get(db.language, "Commands.autoroles.joinRoles")}\n\`${db.prefix}autoroles join add [${client.translate.get(db.language, "Commands.autoroles.roleNames")}, e.g. Member, Bot Updates]\`\n\`${db.prefix}autoroles join remove [${client.translate.get(db.language, "Commands.autoroles.roleNames")}, e.g. Member, Bot Updates]\`\n\n${client.translate.get(db.language, "Commands.autoroles.timedRoles")}\n\`${db.prefix}autoroles timed add [${client.translate.get(db.language, "Commands.autoroles.roleNames")}, e.g. Member, Color Roles] {time:25m}\`\n\`${db.prefix}autoroles timed remove [${client.translate.get(db.language, "Commands.autoroles.roleNames")}, e.g. Member, Color Roles]\``)
 
+      embed.addFields(dashboardHelpField(client, db, message.guildId, "roles-permissions"));
       message.reply({ embeds: [embed] });
       break;
 

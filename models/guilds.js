@@ -21,6 +21,8 @@ const guilds = new Schema({
   childChannel: { type: String, default: null },
   tempChannels: { type: Array, default: [] },
   scheduledMessages: { type: Array, default: [] },
+  stickies: { type: Array, default: [] },
+  commandSettings: { type: Array, default: [] },
   config: {
     channelName: { type: String, default: null },
     channelLimit: { type: Number, default: null },
@@ -39,6 +41,18 @@ const guilds = new Schema({
   birthdayBlacklist: { type: Array, default: [] },
   birthdayMessageWithAge: { type: String, default: null },
   birthdayMessageNoAge: { type: String, default: null },
+  communityBirthday: {
+    month: { type: Number, default: null },
+    day: { type: Number, default: null },
+    year: { type: Number, default: null },
+    enabled: { type: Boolean, default: false },
+    channelId: { type: String, default: null },
+    roleId: { type: String, default: null },
+    ping: { type: Boolean, default: false },
+    message: { type: String, default: null },
+    timezone: { type: String, default: "America/New_York" },
+    lastAnnouncedYear: { type: Number, default: null },
+  },
   birthdayPendingRemovals: {
     type: [{
       userId: { type: String },
