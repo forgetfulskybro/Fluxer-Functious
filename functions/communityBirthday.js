@@ -80,6 +80,22 @@ function validCommunityDate(month, day) {
     Number.isInteger(day) && day >= 1 && day <= MONTH_DAYS[month - 1];
 }
 
+function getGuildCreationDate(guild, timezone = DEFAULT_TIMEZONE) {
+  const timestamp = Number(guild?.createdTimestamp);
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
+
+  try {
+    const { year, month, day } = getTimeZoneParts(
+      new Date(timestamp),
+      timezone || DEFAULT_TIMEZONE
+    );
+    if (!validCommunityDate(month, day)) return null;
+    return { month, day, year };
+  } catch {
+    return null;
+  }
+}
+
 function communityDateForYear(year, month, day) {
   if (month === 2 && day === 29 && !isLeapYear(year)) return { month: 2, day: 28 };
   return { month, day };
@@ -216,6 +232,7 @@ module.exports = {
   getTimeZoneParts,
   zonedTimeToUtc,
   validCommunityDate,
+  getGuildCreationDate,
   communityDateForYear,
   nextCommunityBirthdayTimestamp,
   isCommunityBirthdayToday,

@@ -15,6 +15,7 @@ const {
   normalizeCommunityBirthday,
   nextCommunityBirthdayTimestamp,
   buildCommunityBirthdayPayload,
+  getGuildCreationDate,
 } = require("../functions/communityBirthday");
 const { dashboardHelpText } = require("../functions/dashboardHelp");
 
@@ -157,7 +158,7 @@ function buildHelpEmbed(client, db, prefix, isAdmin, guildId) {
       line("force <@user>", t("helpForce")),
       line("blacklist [@user | remove @user | clear]", t("helpBlacklist")),
       line("message [withage <text> | noage <text> | reset]", t("helpMessage")),
-      line("server set <date> [year]", t("helpServerSet")),
+      line("server set", t("helpServerSet")),
       line("server channel [#channel|clear]", t("helpServerChannel")),
       line("server role [@role|clear]", t("helpServerRole")),
       line("server message [<text>|reset]", t("helpServerMessage")),
@@ -190,7 +191,7 @@ function buildCommunitySettingsEmbed(client, db, prefix) {
 
   if (!config.month || !config.day) {
     return embed.setDescription(
-      t("serverNotSet", { cmd: cmdTag(prefix, "server set <date> [year]") })
+      t("serverNotSet", { cmd: cmdTag(prefix, "server set") })
     );
   }
 
@@ -264,35 +265,24 @@ module.exports = {
       }
 
       if (action === "set") {
-        const dateArgs = args.slice(2);
-        let year = null;
-        const last = dateArgs[dateArgs.length - 1];
-        if (dateArgs.length >= 2 && /^\d{4}$/.test(last || "")) {
-          year = Number.parseInt(last, 10);
-          dateArgs.pop();
-        }
-
-        const parsed = parseDate(dateArgs.join(" "), client, db.language);
-        if (!parsed) {
-          return err(t("serverInvalidDate", { cmd: cmdTag(prefix, "server set <date> [year]") }));
-        }
-        if (year != null && (year < 2000 || year > new Date().getFullYear())) {
-          return err(t("serverInvalidYear"));
+        const creation = getGuildCreationDate(message.guild, existing.timezone);
+        if (!creation) {
+          return err(t("serverCreationUnavailable"));
         }
 
         const nextConfig = {
           ...existing,
-          month: parsed.month,
-          day: parsed.day,
-          year: year ?? existing.year,
+          month: creation.month,
+          day: creation.day,
+          year: creation.year,
           enabled: true,
           channelId: existing.channelId || db.birthdayChannel || null,
         };
         await saveConfig(nextConfig);
-        const next = nextCommunityBirthdayTimestamp(parsed.month, parsed.day, nextConfig.timezone);
+        const next = nextCommunityBirthdayTimestamp(creation.month, creation.day, nextConfig.timezone);
         return ok(t("serverSet", {
-          date: `${ordinal(parsed.day, client, db.language)} ${getMonthName(parsed.month - 1, client, db.language)}`,
-          year: nextConfig.year ? ` (${nextConfig.year})` : "",
+          date: `${ordinal(creation.day, client, db.language)} ${getMonthName(creation.month - 1, client, db.language)}`,
+          year: ` (${creation.year})`,
           next: next ? `<t:${Math.floor(next / 1000)}:R>` : t("notSet"),
         }));
       }
@@ -364,10 +354,10 @@ module.exports = {
 
       if (action === "preview") {
         if (!existing.month || !existing.day) {
-          return err(t("serverNotSet", { cmd: cmdTag(prefix, "server set <date> [year]") }));
+          return err(t("serverNotSet", { cmd: cmdTag(prefix, "server set") }));
         }
         const result = buildCommunityBirthdayPayload(client, db, message.guild, existing);
-        if (!result) return err(t("serverInvalidDate", { cmd: cmdTag(prefix, "server set <date> [year]") }));
+        if (!result) return err(t("serverInvalidDate", { cmd: cmdTag(prefix, "server set") }));
         return message.reply({
           ...result.payload,
           content: t("serverPreview"),
@@ -377,7 +367,7 @@ module.exports = {
 
       if (action === "enable" || action === "disable") {
         if (action === "enable" && (!existing.month || !existing.day)) {
-          return err(t("serverNotSet", { cmd: cmdTag(prefix, "server set <date> [year]") }));
+          return err(t("serverNotSet", { cmd: cmdTag(prefix, "server set") }));
         }
         await saveConfig({ ...existing, enabled: action === "enable" });
         return ok(action === "enable" ? t("serverEnabled") : t("serverDisabled"));

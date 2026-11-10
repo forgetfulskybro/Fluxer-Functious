@@ -8,6 +8,7 @@ const {
   nextBirthdayTimestamp,
   buildBirthdayAnnouncementPayload,
 } = require('../../functions/birthdayHelpers');
+const { getGuildCreationDate } = require('../../functions/communityBirthday');
 const { refreshGuild: refreshTagIndex } = require('../../functions/tagIndex');
 const {
   MAX_STICKIES,
@@ -64,7 +65,7 @@ function cleanText(value, max) {
   return text ? text.slice(0, max) : null;
 }
 
-function sanitizeCommunityBirthday(raw, existing) {
+function sanitizeCommunityBirthday(raw, existing, guild) {
   if (raw == null) return { value: null };
   if (typeof raw !== 'object' || Array.isArray(raw)) {
     return { error: 'communityBirthday must be an object or null' };
@@ -78,9 +79,21 @@ function sanitizeCommunityBirthday(raw, existing) {
     return Number.isFinite(number) ? number : null;
   };
 
-  const month = toNumberOrNull(value('month'));
-  const day = toNumberOrNull(value('day'));
-  const year = toNumberOrNull(value('year'));
+  const timezoneInput = value('timezone') ?? 'UTC';
+  if (typeof timezoneInput !== 'string' || !timezoneInput.trim()) {
+    return { error: 'communityBirthday.timezone must be an IANA timezone' };
+  }
+  const timezone = timezoneInput.trim();
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format();
+  } catch {
+    return { error: 'communityBirthday.timezone must be an IANA timezone' };
+  }
+
+  const creation = getGuildCreationDate(guild, timezone);
+  const month = creation?.month ?? toNumberOrNull(value('month'));
+  const day = creation?.day ?? toNumberOrNull(value('day'));
+  const year = creation?.year ?? toNumberOrNull(value('year'));
   if ((month == null) !== (day == null)) {
     return { error: 'communityBirthday.month and day must both be set or both be null' };
   }
@@ -97,6 +110,11 @@ function sanitizeCommunityBirthday(raw, existing) {
     return { error: 'communityBirthday.year must be between 2000 and the current year' };
   }
 
+  const enabled = value('enabled') === true;
+  if (enabled && (month == null || day == null)) {
+    return { error: 'communityBirthday date could not be determined from the server creation date' };
+  }
+
   const channelId = value('channelId');
   if (channelId != null && !isSnowflake(channelId)) {
     return { error: 'communityBirthday.channelId must be a valid channel ID or null' };
@@ -104,16 +122,6 @@ function sanitizeCommunityBirthday(raw, existing) {
   const roleId = value('roleId');
   if (roleId != null && !isSnowflake(roleId)) {
     return { error: 'communityBirthday.roleId must be a valid role ID or null' };
-  }
-
-  const timezone = value('timezone') ?? 'UTC';
-  if (typeof timezone !== 'string' || !timezone.trim()) {
-    return { error: 'communityBirthday.timezone must be an IANA timezone' };
-  }
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format();
-  } catch {
-    return { error: 'communityBirthday.timezone must be an IANA timezone' };
   }
 
   const message = value('message');
@@ -126,12 +134,12 @@ function sanitizeCommunityBirthday(raw, existing) {
       month,
       day,
       year,
-      enabled: value('enabled') === true,
+      enabled,
       channelId: channelId ?? null,
       roleId: roleId ?? null,
       ping: value('ping') === true,
       message: typeof message === 'string' ? message.trim() || null : null,
-      timezone: timezone.trim(),
+      timezone,
       lastAnnouncedYear: toNumberOrNull(base.lastAnnouncedYear),
     },
   };
@@ -637,6 +645,7 @@ function guildsRouter(client, apiKey) {
         id: guild.id,
         name: liveGuild?.name ?? null,
         icon: liveGuild?.icon ?? null,
+        guildCreatedAt: Number(liveGuild?.createdTimestamp) || null,
         guildRoles,
         guildChannels,
         prefix: guild.prefix,
@@ -774,7 +783,8 @@ function guildsRouter(client, apiKey) {
       if ('communityBirthday' in updates) {
         const sanitized = sanitizeCommunityBirthday(
           updates.communityBirthday,
-          existing.communityBirthday
+          existing.communityBirthday,
+          client.guilds?.get(guildId)
         );
         if (sanitized.error) {
           return res.status(400).json({ error: sanitized.error });
@@ -822,7 +832,12 @@ function guildsRouter(client, apiKey) {
         await syncStickies(client, guildId, previousStickies, updates.stickies);
       }
 
-      return res.json({ ok: true });
+      return res.json({
+        ok: true,
+        ...('communityBirthday' in updates
+          ? { communityBirthday: updates.communityBirthday }
+          : {}),
+      });
     } catch (err) {
       console.error('[API] PATCH /api/guilds/:guildId:', err);
       return res.status(500).json({ error: 'Internal server error' });
