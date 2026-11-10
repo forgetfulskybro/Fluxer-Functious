@@ -12,6 +12,7 @@ const TYPE_OPTIONS = ["content", "embed"];
 const EMOJI_ESCAPE_REGEX = /[.*+?^${}()|[\]\\]/g;
 const SETUP_TIMEOUT = 600000;
 const COOLDOWN_MS = 7000;
+const MAX_RECREATE_TARGETS = 10;
 
 function escapeRegex(str) {
     return str.replace(EMOJI_ESCAPE_REGEX, '\\$&');
@@ -54,6 +55,71 @@ function extractRolesAndReplace(text, roles) {
 
 function clearCooldown(client, userId) {
     setTimeout(() => client.used.delete(`${userId}-roles`), COOLDOWN_MS);
+}
+
+function recreateErrorDescription(client, db, result) {
+    let key = "recreateSave";
+    let data = {};
+
+    switch (result.error) {
+        case "usage":
+            key = "recreateUsage";
+            data = { "prefix": db.prefix };
+            break;
+        case "notFound":
+            key = "recreateNotFound";
+            break;
+        case "guild":
+            key = "recreateGuild";
+            break;
+        case "notBot":
+            key = "recreateNotBot";
+            break;
+        case "noReactions":
+            key = "recreateNoReactions";
+            break;
+        case "noRoles":
+            key = "recreateNoRoles";
+            break;
+        case "tooMany":
+            key = "recreateTooMany";
+            data = { "max": result.max };
+            break;
+        case "unresolved":
+            key = "recreateUnresolved";
+            data = { "items": (result.items || []).join("\n") };
+            break;
+        case "missingReactions":
+            key = "recreateMissingReactions";
+            data = { "items": (result.items || []).join("\n") };
+            break;
+        case "missingRoles":
+            key = "recreateMissingRoles";
+            data = { "items": (result.items || []).join(" ") };
+            break;
+        case "tooHigh":
+            key = "recreateTooHigh";
+            data = { "roles": (result.roles || []).join(", ") };
+            break;
+        case "botMember":
+            key = "recreateBotMember";
+            break;
+    }
+
+    return client.translate.get(db.language, `Commands.roles.${key}`, data);
+}
+
+function recreateTargetLabel(target) {
+    const link = parseMessageLink(target);
+    if (link) return link.messageId;
+
+    const value = String(target ?? "").trim();
+    return (SNOWFLAKE_REGEX.test(value) ? value : value.slice(0, 50)).replace(/`/g, "") || "unknown";
+}
+
+function compactRecreateText(value, maxLength = 180) {
+    const text = String(value ?? "").replace(/\s+/g, " ").trim();
+    return text.length > maxLength ? `${text.slice(0, maxLength - 1).trimEnd()}…` : text;
 }
 
 module.exports = {
@@ -183,7 +249,9 @@ module.exports = {
           case "recreate": {
             if (!client.config.owners.includes(message.author.id)) return;
 
-            if (!args[1]) {
+            const targets = args.slice(1).join(" ").split(",").map((target) => target.trim()).filter(Boolean);
+
+            if (targets.length === 0) {
               return message.reply({
                 embeds: [
                   new EmbedBuilder()
@@ -193,78 +261,90 @@ module.exports = {
               });
             }
 
-            const result = await recreateReactionRoles(client, message, db, args[1]);
+            if (targets.length > MAX_RECREATE_TARGETS) {
+              clearCooldown(client, message.author.id);
+              return message.reply({
+                embeds: [
+                  new EmbedBuilder()
+                    .setColor("#FF0000")
+                    .setDescription(client.translate.get(db.language, "Commands.roles.recreateBatchLimit", {
+                      "max": MAX_RECREATE_TARGETS,
+                      "count": targets.length,
+                    })),
+                ],
+              });
+            }
 
-            if (!result.ok) {
-              let key = "recreateSave";
-              let data = {};
+            if (targets.length === 1) {
+              const result = await recreateReactionRoles(client, message, db, targets[0]);
 
-              switch (result.error) {
-                case "usage":
-                  key = "recreateUsage";
-                  data = { "prefix": db.prefix };
-                  break;
-                case "notFound":
-                  key = "recreateNotFound";
-                  break;
-                case "guild":
-                  key = "recreateGuild";
-                  break;
-                case "notBot":
-                  key = "recreateNotBot";
-                  break;
-                case "noReactions":
-                  key = "recreateNoReactions";
-                  break;
-                case "noRoles":
-                  key = "recreateNoRoles";
-                  break;
-                case "tooMany":
-                  key = "recreateTooMany";
-                  data = { "max": result.max };
-                  break;
-                case "unresolved":
-                  key = "recreateUnresolved";
-                  data = { "items": result.items.join("\n") };
-                  break;
-                case "missingReactions":
-                  key = "recreateMissingReactions";
-                  data = { "items": result.items.join("\n") };
-                  break;
-                case "missingRoles":
-                  key = "recreateMissingRoles";
-                  data = { "items": result.items.join(" ") };
-                  break;
-                case "tooHigh":
-                  key = "recreateTooHigh";
-                  data = { "roles": result.roles.join(", ") };
-                  break;
-                case "botMember":
-                  key = "recreateBotMember";
-                  break;
+              if (!result.ok) {
+                clearCooldown(client, message.author.id);
+                return message.reply({
+                  embeds: [
+                    new EmbedBuilder()
+                      .setColor("#FF0000")
+                      .setDescription(recreateErrorDescription(client, db, result)),
+                  ],
+                  allowedMentions: { parse: [] },
+                });
               }
 
               clearCooldown(client, message.author.id);
               return message.reply({
                 embeds: [
                   new EmbedBuilder()
-                    .setColor("#FF0000")
-                    .setDescription(client.translate.get(db.language, `Commands.roles.${key}`, data)),
+                    .setColor(db.theme)
+                    .setDescription(client.translate.get(db.language, "Commands.roles.recreateSuccess", {
+                      "count": result.count,
+                      "message": `[${result.entry.msgId}](${result.link})`,
+                    })),
                 ],
-                allowedMentions: { parse: [] },
               });
             }
+
+            const outcomes = [];
+            for (const target of targets) {
+              const result = await recreateReactionRoles(client, message, db, target);
+              outcomes.push({
+                target,
+                result,
+                reason: result.ok ? null : compactRecreateText(recreateErrorDescription(client, db, result)),
+              });
+            }
+
+            const successCount = outcomes.filter((outcome) => outcome.result.ok).length;
+            const lines = outcomes.map(({ target, result, reason }) => {
+              if (result.ok) {
+                return `✅ ${client.translate.get(db.language, "Commands.roles.recreateSuccess", {
+                  "count": result.count,
+                  "message": `[${result.entry.msgId}](${result.link})`,
+                })}`;
+              }
+
+              return client.translate.get(db.language, "Commands.roles.recreateBatchFailure", {
+                "target": `\`${recreateTargetLabel(target)}\``,
+                "reason": reason,
+              });
+            });
+
+            const color = successCount === outcomes.length
+              ? db.theme
+              : successCount === 0
+                ? "#FF0000"
+                : "#FFA500";
 
             clearCooldown(client, message.author.id);
             return message.reply({
               embeds: [
                 new EmbedBuilder()
-                  .setColor(db.theme)
-                  .setDescription(client.translate.get(db.language, "Commands.roles.recreateSuccess", {
-                    "count": result.count,
-                    "message": `[${result.entry.msgId}](${result.link})`,
-                  })),
+                  .setColor(color)
+                  .setDescription(`${client.translate.get(db.language, "Commands.roles.recreateBatchSummary", {
+                    "success": successCount,
+                    "total": outcomes.length,
+                  })}\n\n${lines.join("\n")}`),
               ],
+              allowedMentions: { parse: [] },
             });
           }
 
