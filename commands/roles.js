@@ -4,6 +4,7 @@ const { trackGuildUpdates, trackResource  } = require("../api/trackSettings");
 const { syncReactions } = require("../functions/syncReactions");
 const { startCustomSetup, resolveCustomTarget, cancelCustomSetup } = require("../functions/customRoleSetup");
 const { parseMessageLink, SNOWFLAKE_REGEX } = require("../functions/messageSource");
+const { recreateReactionRoles } = require("../functions/recreateReactionRoles");
 const { dashboardHelpField } = require("../functions/dashboardHelp");
 
 const CHANNEL_MENTION_REGEX = /^<#(?<id>\d+)>/;
@@ -78,6 +79,14 @@ module.exports = {
               .setDescription(`**${client.translate.get(db.language, "Commands.roles.explain")}**\n${client.translate.get(db.language, "Commands.roles.explain2", { "prefix": db.prefix })}\n\n**${client.translate.get(db.language, "Commands.roles.create")}**\n\`${db.prefix}roles create ${client.translate.get(db.language, "Commands.roles.createExample", { "type": "content | embed | message link" })}\`\n\n**${client.translate.get(db.language, "Commands.roles.customTitle")}**\n${client.translate.get(db.language, "Commands.roles.customHelp", { "prefix": db.prefix })}\n\n**${client.translate.get(db.language, "Commands.roles.editing")}**\n\`${db.prefix}roles edit [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.viewing")}**\n\`${db.prefix}roles view\`\n\n**${client.translate.get(db.language, "Commands.roles.deleting")}**\n\`${db.prefix}roles delete [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.reactionFix")}**\n${client.translate.get(db.language, "Commands.roles.reactionFixExplain")}\n\`${db.prefix}roles fix [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.dm")}**\n\`${db.prefix}roles dm\`\n\n**${client.translate.get(db.language, "Commands.roles.exclusiveTitle")}**\n${client.translate.get(db.language, "Commands.roles.exclusiveExplain")}\n\`${db.prefix}roles exclusive [${client.translate.get(db.language, "Commands.roles.msgId")} ID, e.g. ${message.id}]\`\n\n**${client.translate.get(db.language, "Commands.roles.mentionTitle")}**\n${client.translate.get(db.language, "Commands.roles.mentionExplain", { "prefix": db.prefix })}`)
 
             embed.addFields(dashboardHelpField(client, db, message.guildId, "reaction-roles"));
+
+            if (client.config.owners.includes(message.author.id)) {
+              embed.addFields({
+                name: `👑 ${client.translate.get(db.language, "Commands.roles.recreateTitle")}`,
+                value: client.translate.get(db.language, "Commands.roles.recreateHelp", { "prefix": db.prefix }),
+                inline: false,
+              });
+            }
 
             clearCooldown(client, message.author.id);
             message.reply({ embeds: [embed] });
@@ -171,6 +180,94 @@ module.exports = {
             message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.reactionFixSuccess", { "message": `[${args[1]}](https://fluxer.app/channels/${db.id}/${reactMsg.chanId}/${reactMsg.msgId})` })}`).setColor(db.theme)] });
             break;
           
+          case "recreate": {
+            if (!client.config.owners.includes(message.author.id)) return;
+
+            if (!args[1]) {
+              return message.reply({
+                embeds: [
+                  new EmbedBuilder()
+                    .setColor("#FF0000")
+                    .setDescription(client.translate.get(db.language, "Commands.roles.recreateUsage", { "prefix": db.prefix })),
+                ],
+              });
+            }
+
+            const result = await recreateReactionRoles(client, message, db, args[1]);
+
+            if (!result.ok) {
+              let key = "recreateSave";
+              let data = {};
+
+              switch (result.error) {
+                case "usage":
+                  key = "recreateUsage";
+                  data = { "prefix": db.prefix };
+                  break;
+                case "notFound":
+                  key = "recreateNotFound";
+                  break;
+                case "guild":
+                  key = "recreateGuild";
+                  break;
+                case "notBot":
+                  key = "recreateNotBot";
+                  break;
+                case "noReactions":
+                  key = "recreateNoReactions";
+                  break;
+                case "noRoles":
+                  key = "recreateNoRoles";
+                  break;
+                case "tooMany":
+                  key = "recreateTooMany";
+                  data = { "max": result.max };
+                  break;
+                case "unresolved":
+                  key = "recreateUnresolved";
+                  data = { "items": result.items.join("\n") };
+                  break;
+                case "missingReactions":
+                  key = "recreateMissingReactions";
+                  data = { "items": result.items.join("\n") };
+                  break;
+                case "missingRoles":
+                  key = "recreateMissingRoles";
+                  data = { "items": result.items.join(" ") };
+                  break;
+                case "tooHigh":
+                  key = "recreateTooHigh";
+                  data = { "roles": result.roles.join(", ") };
+                  break;
+                case "botMember":
+                  key = "recreateBotMember";
+                  break;
+              }
+
+              clearCooldown(client, message.author.id);
+              return message.reply({
+                embeds: [
+                  new EmbedBuilder()
+                    .setColor("#FF0000")
+                    .setDescription(client.translate.get(db.language, `Commands.roles.${key}`, data)),
+                ],
+                allowedMentions: { parse: [] },
+              });
+            }
+
+            clearCooldown(client, message.author.id);
+            return message.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setColor(db.theme)
+                  .setDescription(client.translate.get(db.language, "Commands.roles.recreateSuccess", {
+                    "count": result.count,
+                    "message": `[${result.entry.msgId}](${result.link})`,
+                  })),
+              ],
+            });
+          }
+
           case "dm":
           case "dms":
             const dms = db.dm;
