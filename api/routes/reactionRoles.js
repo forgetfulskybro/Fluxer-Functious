@@ -193,6 +193,9 @@ function reactionRolesRouter(client, apiKey) {
       }
 
       const { finalText, processedRoles } = buildMessageContent(content, roleMappings, useMention);
+      if (!processedRoles.length) {
+        return res.status(400).json({ error: 'At least one valid emoji and role mapping is required' });
+      }
 
       const payload =
         type === 'embed'
@@ -382,6 +385,9 @@ function reactionRolesRouter(client, apiKey) {
 
       const msgType = type || (msg.content?.length > 0 ? 'content' : 'embed');
       const { finalText, processedRoles } = buildMessageContent(content, roleMappings, useMention);
+      if (!processedRoles.length) {
+        return res.status(400).json({ error: 'At least one valid emoji and role mapping is required' });
+      }
 
       const payload =
         msgType === 'embed'

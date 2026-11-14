@@ -11,7 +11,6 @@ const { loadIndex: loadTagIndex } = require("../functions/tagIndex");
 const { startReminderCron } = require("../functions/checkReminders");
 const checkVoiceStates = require("../functions/checkVoiceStates");
 const checkManage = require("../functions/checkManage");
-const checkRoles = require("../functions/checkRoles");
 const color = require("../functions/colorCodes");
 
 module.exports = async (client) => {
@@ -37,7 +36,6 @@ module.exports = async (client) => {
   startCommunityBirthdayCheck(client);
   startEventCron(client);
   await checkManage(client);
-  await checkRoles(client);
   startPollsCron(client);
   startFluxerList(client);
 }
