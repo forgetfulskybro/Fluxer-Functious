@@ -104,7 +104,7 @@ module.exports = async (client, message, userId, db, emojiId, event = "add") => 
     if (pingWinners) {
       channel
         ?.send({
-          content: `${client.translate.get(lang, "Events.messageReactionAdd.congrats")} ${db.pickedWinners.map((w) => `<@${w.id}>`).join(", ")}! ${client.translate.get(lang, "Events.messageReactionAdd.youWon", { prize: `**${db.prize}**` })}\nhttps://fluxer.app/channels/${db.serverId}/${db.channelId}/${db.messageId}`,
+          content: `${client.translate.get(lang, "Events.messageReactionAdd.congrats")} ${db.pickedWinners.map((w) => `<@${w.id}>`).join(", ")}! ${client.translate.get(lang, "Events.messageReactionAdd.youWon", { prize: `**${db.prize}**` })}\nhttps://fluxer.com/channels/${db.serverId}/${db.channelId}/${db.messageId}`,
         })
         .catch(() => {});
     }
@@ -116,7 +116,7 @@ module.exports = async (client, message, userId, db, emojiId, event = "add") => 
           if (user) {
             const dm = await user.createDM();
             await dm.send(
-              `🎉 ${client.translate.get(lang, "Events.messageReactionAdd.congrats")}! ${client.translate.get(lang, "Events.messageReactionAdd.youWon", { prize: `**${db.prize}**` })}\nhttps://fluxer.app/channels/${db.serverId}/${db.channelId}/${db.messageId}`,
+              `🎉 ${client.translate.get(lang, "Events.messageReactionAdd.congrats")}! ${client.translate.get(lang, "Events.messageReactionAdd.youWon", { prize: `**${db.prize}**` })}\nhttps://fluxer.com/channels/${db.serverId}/${db.channelId}/${db.messageId}`,
             );
           }
         } catch {
@@ -147,7 +147,7 @@ module.exports = async (client, message, userId, db, emojiId, event = "add") => 
         ?.createDM()
         .then((dm) =>
           dm.send(
-            `${client.translate.get(lang, "Events.messageReactionRemove.left")} [${db.prize}](https://fluxer.app/channels/${db.serverId}/${db.channelId}/${db.messageId})!\n${client.translate.get(lang, "Events.messageReactionRemove.left2")} **${db.users.length}** ${client.translate.get(lang, "Events.messageReactionRemove.left3")}!`,
+            `${client.translate.get(lang, "Events.messageReactionRemove.left")} [${db.prize}](https://fluxer.com/channels/${db.serverId}/${db.channelId}/${db.messageId})!\n${client.translate.get(lang, "Events.messageReactionRemove.left2")} **${db.users.length}** ${client.translate.get(lang, "Events.messageReactionRemove.left3")}!`,
           ),
         )
         .catch(() => {});
@@ -175,7 +175,7 @@ module.exports = async (client, message, userId, db, emojiId, event = "add") => 
       ?.createDM()
       .then((dm) =>
         dm.send(
-          `${client.translate.get(lang, "Events.messageReactionAdd.joined")} [${db.prize}](https://fluxer.app/channels/${db.serverId}/${db.channelId}/${db.messageId})!${entryMsg}\n${client.translate.get(lang, "Events.messageReactionAdd.joined2")} **${db.users.length}** ${client.translate.get(lang, "Events.messageReactionAdd.joined3")}`,
+          `${client.translate.get(lang, "Events.messageReactionAdd.joined")} [${db.prize}](https://fluxer.com/channels/${db.serverId}/${db.channelId}/${db.messageId})!${entryMsg}\n${client.translate.get(lang, "Events.messageReactionAdd.joined2")} **${db.users.length}** ${client.translate.get(lang, "Events.messageReactionAdd.joined3")}`,
         ),
       )
       .catch(() => {});

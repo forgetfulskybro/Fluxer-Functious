@@ -183,7 +183,7 @@ module.exports = {
           embeds: [
             new EmbedBuilder()
               .setColor("#FF0000")
-              .setDescription(`${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [Manage Guild]\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`)]
+              .setDescription(`${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2", { permission: String(commandfile.config.permissions.name) })}: [Manage Guild]\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`)]
         });
         
         const toggle = db.timezoneConvert;

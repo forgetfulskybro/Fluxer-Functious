@@ -35,26 +35,23 @@ function buildEmbed(client, db, state, final = false) {
       else if (result.status === "fail") fail++;
       else skip++;
       lines.push(
-        `${STATUS_ICON[result.status] || "•"} **${checkLabel(client, db, id)}** - ${result.detail || ""}`
+        `${STATUS_ICON[result.status] || "•"} **${checkLabel(client, db, id)}**\n${result.detail || ""}`
       );
     } else if (!final && state.id === id) {
-      lines.push(`⏳ **${checkLabel(client, db, id)}** - ${t(client, db, "checking")}`);
+      lines.push(`⏳ **${checkLabel(client, db, id)}**\n${t(client, db, "checking")}`);
     } else {
-      lines.push(`▫️ **${checkLabel(client, db, id)}** - ${t(client, db, "pending")}`);
+      lines.push(`▫️ **${checkLabel(client, db, id)}**\n${t(client, db, "pending")}`);
     }
   }
 
   const summary = final
-    ? [
-        "",
-        t(client, db, "summary", { ok, warn, fail, skip }),
-      ].join("\n")
+    ? `\n\n${t(client, db, "summary", { ok, warn, fail, skip })}`
     : "";
 
   return new EmbedBuilder()
     .setColor(fail ? "#FF0000" : warn ? "#F0B232" : db.theme)
     .setTitle(t(client, db, "title"))
-    .setDescription(`${lines.join("\n")}${summary}`.slice(0, 4096))
+    .setDescription(`${lines.join("\n\n")}${summary}`.slice(0, 4096))
 }
 
 module.exports = {

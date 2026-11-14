@@ -153,8 +153,9 @@ module.exports = async (client, msg) => {
           });
         }
 
-        guild.roles = guild.roles.filter((r) => r.msgId !== msgId);
-        await guild.save().catch(() => null);
+        await client.database
+          .updateGuildAtomic(guild.id, { $pull: { roles: { msgId } } })
+          .catch(() => null);
       }
     })(),
   ]);

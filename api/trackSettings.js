@@ -16,7 +16,6 @@ const FIELD_META = {
   tempChannels: { category: 'tempchannels', label: 'Temp Channels' },
   scheduledMessages: { category: 'scheduling', label: 'Scheduled Messages' },
   tags: { category: 'tags', label: 'Tags' },
-  tagTriggerBots: { category: 'tags', label: 'Bot Trigger Words' },
   roles: { category: 'reactionroles', label: 'Reaction Roles' },
   mediaChannels: { category: 'mediachannels', label: 'Media Channels' },
   giveaway: { category: 'giveaways', label: 'Giveaway' },
@@ -43,6 +42,10 @@ const COLLECTION_META = {
             name: t.name ?? null,
             description: t.description ?? t.content ?? null,
             type: t.type ?? null,
+            trigger: t.trigger === true,
+            anyTrigger: t.anyTrigger === true,
+            triggerBots: t.triggerBots !== false,
+            triggerContent: t.triggerContent ?? 'both',
           }
         : null,
   },

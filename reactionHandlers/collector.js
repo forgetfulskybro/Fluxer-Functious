@@ -68,13 +68,9 @@ module.exports = async (client, message, userId, collector, reactionChan, reacti
           authorId: panelMessage.author?.id ?? client.user?.id ?? null,
         };
 
-        const freshDb = (await client.database.getGuild(guildId, false)) || db;
-        const existingRoles = Array.isArray(freshDb.roles) ? freshDb.roles : [];
-        const roles = [
-          ...existingRoles.filter((role) => role.msgId !== entry.msgId),
-          entry,
-        ];
-        const result = await client.database.updateGuild(guildId, { roles });
+        const result = await client.database.updateGuildAtomic(guildId, {
+          $push: { roles: entry },
+        });
         if (!result || result.matchedCount === 0) throw new Error("Failed to save reaction role panel");
         saved = true;
 

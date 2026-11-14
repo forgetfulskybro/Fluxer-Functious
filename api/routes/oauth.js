@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const { makeRequireApiKey } = require('../middleware');
 
-const FLUXER_API = 'https://api.fluxer.app/v1';
+const FLUXER_API = 'https://fluxer.com/api/v1';
 
 function oauthRouter(_client, apiKey) {
   const router = Router();
@@ -25,7 +25,7 @@ function oauthRouter(_client, apiKey) {
 
       const tokenRes = await fetch(`${FLUXER_API}/oauth2/token`, {
         method: 'POST',
-        headers: { Origin: 'https://api.fluxer.app' },
+        headers: { Origin: 'https://fluxer.com/api' },
         body,
       });
 

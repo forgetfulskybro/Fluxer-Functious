@@ -148,7 +148,7 @@ module.exports = {
 
             if (client.config.owners.includes(message.author.id)) {
               embed.addFields({
-                name: `👑 ${client.translate.get(db.language, "Commands.roles.recreateTitle")}`,
+                name: client.translate.get(db.language, "Commands.roles.recreateTitle"),
                 value: client.translate.get(db.language, "Commands.roles.recreateHelp", { "prefix": db.prefix }),
                 inline: false,
               });
@@ -175,7 +175,7 @@ module.exports = {
             if (db.roles.length === 0) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.noRoles", { cmd: `\`${db.prefix}roles\`` })}`).setColor(`#FF0000`)] });
             const pages = new Paginator({ timeout: 5 * 2e4, user: message.author.id, client: client })
             let data;
-            data = db.roles.map((msg, i) => `**ID**: ${msg.msgId}\n**${client.translate.get(db.language, "Commands.roles.roles")}**: ${msg.roles.length}${msg.custom ? ` | **${client.translate.get(db.language, "Commands.roles.customLabel")}**` : ''}${msg.exclusive ? `| **${client.translate.get(db.language, "Commands.roles.exclusiveView")}**: ${client.translate.get(db.language, "Commands.roles.on")}` : ''}\n[${client.translate.get(db.language, "Commands.roles.jump")}](https://fluxer.app/channels/${message.guildId}/${msg.chanId}/${msg.msgId})`);
+            data = db.roles.map((msg, i) => `**ID**: ${msg.msgId}\n**${client.translate.get(db.language, "Commands.roles.roles")}**: ${msg.roles.length}${msg.custom ? ` | **${client.translate.get(db.language, "Commands.roles.customLabel")}**` : ''}${msg.exclusive ? `| **${client.translate.get(db.language, "Commands.roles.exclusiveView")}**: ${client.translate.get(db.language, "Commands.roles.on")}` : ''}\n[${client.translate.get(db.language, "Commands.roles.jump")}](https://fluxer.com/channels/${message.guildId}/${msg.chanId}/${msg.msgId})`);
             data = Array.from({ length: Math.ceil(data.length / 3) }, (a, r) => data.slice(r * 3, r * 3 + 3));
             Math.ceil(data.length / 3);
             data = data.map(e => pages.add(new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.view")}\n\n${e.slice(0, 3).join("\n\n")}`).setColor(db.theme)))
@@ -200,7 +200,7 @@ module.exports = {
               foundMsg?.delete();
             }
           } catch { };
-            await client.database.updateGuild(message.guildId, { roles: db.roles.filter(e => e.msgId !== args[1]) });
+            await client.database.updateGuildAtomic(message.guildId, { $pull: { roles: { msgId: args[1] } } });
 
             await trackResource(client, {
               userId: message.author.id,
@@ -243,7 +243,7 @@ module.exports = {
             }
             
             clearCooldown(client, message.author.id);
-            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.reactionFixSuccess", { "message": `[${args[1]}](https://fluxer.app/channels/${db.id}/${reactMsg.chanId}/${reactMsg.msgId})` })}`).setColor(db.theme)] });
+            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.reactionFixSuccess", { "message": `[${args[1]}](https://fluxer.com/channels/${db.id}/${reactMsg.chanId}/${reactMsg.msgId})` })}`).setColor(db.theme)] });
             break;
           
           case "recreate": {
@@ -371,14 +371,12 @@ module.exports = {
             if (!exclusiveMsg) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.notFound")}`).setColor(`#FF0000`)] });
 
             const isExclusive = exclusiveMsg.exclusive ?? false;
-            const updatedExclusiveRoles = db.roles.map(e => {
-              if (e.msgId === args[1]) {
-                return { ...e, exclusive: isExclusive ? null : true };
-              }
-              return e;
-            });
 
-            await client.database.updateGuild(message.guildId, { roles: updatedExclusiveRoles });
+            await client.database.updateGuildAtomic(
+              message.guildId,
+              { $set: { 'roles.$.exclusive': isExclusive ? null : true } },
+              { 'roles.msgId': args[1] }
+            );
 
             await trackResource(client, {
               userId: message.author.id,
@@ -392,7 +390,7 @@ module.exports = {
             });
             
             clearCooldown(client, message.author.id);
-            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.exclusiveSuccess", { "message": `[${args[1]}](https://fluxer.app/channels/${db.id}/${exclusiveMsg.chanId}/${exclusiveMsg.msgId})`, "option": `**${isExclusive ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**` })}`).setColor(db.theme)] });
+            message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.roles.exclusiveSuccess", { "message": `[${args[1]}](https://fluxer.com/channels/${db.id}/${exclusiveMsg.chanId}/${exclusiveMsg.msgId})`, "option": `**${isExclusive ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**` })}`).setColor(db.theme)] });
             break;
 
             case "edit": {

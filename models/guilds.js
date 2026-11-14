@@ -1,5 +1,27 @@
 const { Schema, model } = require("mongoose");
 
+const tagSchema = new Schema(
+  {
+    id: { type: String },
+    name: { type: String },
+    type: { type: String },
+    content: { type: String, default: null },
+    embedData: { type: Schema.Types.Mixed, default: null },
+    createdBy: { type: String },
+    createdAt: { type: Number },
+    uses: { type: Number, default: 0 },
+    trigger: { type: Boolean, default: false },
+    anyTrigger: { type: Boolean, default: false },
+    triggerBots: { type: Boolean, default: true },
+    triggerContent: {
+      type: String,
+      enum: ["messages", "embeds", "both"],
+      default: "both",
+    },
+  },
+  { _id: false, strict: false }
+);
+
 const guilds = new Schema({
   id: { type: String },
   prefix: { type: String, default: "f!" },
@@ -32,8 +54,7 @@ const guilds = new Schema({
     manageMessage: { type: String, nullable: true, default: null },
     managevc: { type: Boolean, default: false },
   },
-  tags: { type: Array, default: [] },
-  tagTriggerBots: { type: Boolean, default: false },
+  tags: { type: [tagSchema], default: [] },
   mediaChannels: { type: Array, default: [] },
   birthdayChannel: { type: String, default: null },
   birthdayRole: { type: String, default: null },

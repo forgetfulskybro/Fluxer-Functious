@@ -224,7 +224,7 @@
       "triggerTitle": "Trigger Word",
       "triggerWord": "Trigger word",
       "triggerBots": "Bot trigger words",
-      "triggerUsage": "Usage: `{prefix}tags trigger <name> on|off`\nOr: `{prefix}tags trigger bots on|off`",
+      "triggerUsage": "Usage: `{prefix}tags trigger <name> on|off`",
       "triggerTagStatus": "`{name}` is **{state}** as a trigger word.",
       "triggerTagAlready": "`{name}` is already **{state}** as a trigger word.",
       "triggerTagEnabled": "`{name}` is now a **trigger word**. Sending its name on its own will run it.",

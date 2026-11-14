@@ -2,10 +2,11 @@ const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Paginator = require('../functions/pagination');
 const { runTagSafe } = require('../interpreter/index');
 const { trackGuildUpdates } = require("../api/trackSettings");
-const { executeTag, buildTagContext, resolveTagSource } = require("../functions/tagExecution");
+const { executeTag, buildTagContext, resolveTagSource, parseTagEmbedData } = require("../functions/tagExecution");
 const { refreshGuild } = require("../functions/tagIndex");
 const { parseMessageLink } = require("../functions/messageSource");
 const { dashboardHelpText } = require("../functions/dashboardHelp");
+const { parseTriggerContent, normalizeTriggerContent } = require("../functions/tagOptions");
 
 const TAG_TYPES = ["text", "embed", "script"];
 const TAG_NAME_MAX = 32;
@@ -60,6 +61,16 @@ function resolveTagArgs(tags, tokens) {
     if (tag) return { tag, rest: tokens.slice(length) };
   }
   return { tag: null, rest: tokens };
+}
+
+function sameTag(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.id && b.id) return String(a.id) === String(b.id);
+  return (
+    normalizeTagName(a.name).toLowerCase() ===
+    normalizeTagName(b.name).toLowerCase()
+  );
 }
 
 function extractCodeBlock(rest) {
@@ -179,6 +190,17 @@ function typeEmoji(type) {
   return "⚡";
 }
 
+function triggerContentLabel(client, db, value) {
+  const normalized = normalizeTriggerContent(value);
+  const key =
+    normalized === "messages"
+      ? "contentMessages"
+      : normalized === "embeds"
+        ? "contentEmbeds"
+        : "contentBoth";
+  return client.translate.get(db.language, `Commands.tags.${key}`);
+}
+
 const tagsModule = {
   config: {
     name: "tags",
@@ -204,6 +226,15 @@ const tagsModule = {
       "anywheretrigger",
       "anywheretriggerword",
     ];
+    const botTriggerAliases = [
+      "bots",
+      "bot",
+      "bottrigger",
+      "bottriggers",
+      "triggerbot",
+      "triggerbots",
+    ];
+    const contentAliases = ["content", "contents", "triggercontent", "source"];
     const rawSubcommand = args[0]?.toLowerCase();
     const subcommand =
       rawSubcommand === "create"
@@ -212,7 +243,11 @@ const tagsModule = {
           ? "trigger"
           : anyTriggerAliases.includes(rawSubcommand)
             ? "anytrigger"
-            : rawSubcommand;
+            : botTriggerAliases.includes(rawSubcommand)
+              ? "bottrigger"
+              : contentAliases.includes(rawSubcommand)
+                ? "content"
+                : rawSubcommand;
     const prefix = db.prefix;
     const t = (key, vars) => client.translate.get(db.language, `Commands.tags.${key}`, vars);
 
@@ -250,6 +285,7 @@ const tagsModule = {
               `**${t("helpCreating")}**`,
               `\`${prefix}tags add "my tag" text ${t("placeholders.content")}\``,
               `\`${prefix}tags add ${t("placeholders.name")} embed ${t("placeholders.description")}\``,
+              t("helpEmbedJson", { prefix }),
               `\`${prefix}tags add ${t("placeholders.name")} script ${t("placeholders.codeBlock")}\``,
               t("helpMultiWordNames", { prefix }),
               ``,
@@ -266,6 +302,7 @@ const tagsModule = {
               `\`${prefix}tags ${t("placeholders.name")} [args...]\``,
               t("helpTrigger", { "prefix": db.prefix }),
               t("helpReplySource", { prefix }),
+              t("helpCustomize", { prefix }),
               ``,
               `**${t("helpManaging")}**`,
               `\`${prefix}tags list\``,
@@ -274,7 +311,8 @@ const tagsModule = {
               `\`${prefix}tags remove ${t("placeholders.name")}\``,
               `\`${prefix}tags trigger ${t("placeholders.name")} on|off\``,
               `\`${prefix}tags anytrigger ${t("placeholders.name")} on|off\``,
-              `\`${prefix}tags trigger bots on|off\``,
+              `\`${prefix}tags bots ${t("placeholders.name")} on|off\``,
+              `\`${prefix}tags content ${t("placeholders.name")} messages|embeds|both\``,
               `**${t("helpScriptContext")}**`,
               t("helpScriptContextDesc"),
               ``,
@@ -289,8 +327,8 @@ const tagsModule = {
       case "trigger": {
         const triggerTokens = tokenizeArgs(args.slice(1).join(" "));
         const target = triggerTokens[0];
-        const bots = target?.toLowerCase() === "bots";
-        let value = bots ? triggerTokens[1]?.toLowerCase() : undefined;
+
+        let value;
 
         if (!target) {
           return message.reply({
@@ -305,77 +343,6 @@ const tagsModule = {
         const truthy = ["on", "enable", "enabled", "true", "yes", "1"];
         const falsy = ["off", "disable", "disabled", "false", "no", "0"];
         const state = (bool) => (bool ? "on" : "off");
-
-        if (bots) {
-          if (!value) {
-            return message.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setColor(db.theme)
-                  .setTitle(t("triggerBots"))
-                  .setDescription(
-                    `${t("triggerBotsStatus", {
-                      state: state(db.tagTriggerBots === true),
-                    })}\n\n\`${prefix}tags trigger bots on|off\``
-                  ),
-              ],
-            });
-          }
-
-          if (!truthy.includes(value) && !falsy.includes(value)) {
-            return message.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription(
-                    `${t("invalidOption")}\n\`${prefix}tags trigger bots on|off\``
-                  )
-                  .setColor("#FF0000"),
-              ],
-            });
-          }
-
-          const enabled = truthy.includes(value);
-
-          if (db.tagTriggerBots === enabled) {
-            return message.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription(
-                    t("triggerBotsAlready", { state: state(enabled) })
-                  )
-                  .setColor(db.theme),
-              ],
-            });
-          }
-
-          await client.database.updateGuild(message.guild.id, {
-            tagTriggerBots: enabled,
-          });
-
-          await trackGuildUpdates(client, {
-            guildId: message.guildId,
-            userId: message.author.id,
-            existing: db,
-            updates: { tagTriggerBots: enabled },
-          });
-
-          db.tagTriggerBots = enabled;
-          await refreshGuild(client, message.guildId);
-
-          return message.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  t(
-                    enabled
-                      ? "triggerBotsEnabled"
-                      : "triggerBotsDisabled"
-                  )
-                )
-                .setColor(db.theme),
-            ],
-          });
-        }
 
         const { tag: triggerTag, rest: triggerRest } = resolveTagArgs(
           db.tags,
@@ -580,6 +547,229 @@ const tagsModule = {
         });
       }
 
+      case "bottrigger": {
+        const botTokens = tokenizeArgs(args.slice(1).join(" "));
+        const truthy = ["on", "enable", "enabled", "true", "yes", "1"];
+        const falsy = ["off", "disable", "disabled", "false", "no", "0"];
+        const state = (bool) => (bool ? "on" : "off");
+
+        if (!botTokens.length) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("botTriggerUsage", { prefix }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const { tag: botTag, rest: botRest } = resolveTagArgs(
+          db.tags,
+          botTokens
+        );
+        const value = botRest[0]?.toLowerCase();
+
+        if (!botTag) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("notFound", { name: botTokens.join(" ") }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const current = botTag.triggerBots !== false;
+
+        if (!value) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setColor(db.theme)
+                .setTitle(t("botTrigger"))
+                .setDescription(
+                  [
+                    t("botTriggerTagStatus", {
+                      name: botTag.name,
+                      state: state(current),
+                    }),
+                    "",
+                    `\`${prefix}tags bots ${botTag.name} on|off\``,
+                  ].join("\n")
+                ),
+            ],
+          });
+        }
+
+        if (!truthy.includes(value) && !falsy.includes(value)) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  `${t("invalidOption")}\n\`${prefix}tags bots ${botTag.name} on|off\``
+                )
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const enabled = truthy.includes(value);
+
+        if (current === enabled) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  t("botTriggerTagAlready", {
+                    name: botTag.name,
+                    state: state(enabled),
+                  })
+                )
+                .setColor(db.theme),
+            ],
+          });
+        }
+
+        const updatedTags = db.tags.map((tg) =>
+          sameTag(tg, botTag) ? { ...tg, triggerBots: enabled } : tg
+        );
+
+        await client.database.updateGuild(message.guild.id, {
+          tags: updatedTags,
+        });
+
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { tags: updatedTags },
+        });
+
+        botTag.triggerBots = enabled;
+        await refreshGuild(client, message.guildId);
+
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(
+                `${t(
+                  enabled ? "botTriggerEnabled" : "botTriggerDisabled",
+                  { name: botTag.name }
+                )}`
+              )
+              .setColor(db.theme),
+          ],
+        });
+      }
+
+      case "content": {
+        const contentTokens = tokenizeArgs(args.slice(1).join(" "));
+
+        if (!contentTokens.length) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("contentUsage", { prefix }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const { tag: contentTag, rest: contentRest } = resolveTagArgs(
+          db.tags,
+          contentTokens
+        );
+        const value = contentRest[0]?.toLowerCase();
+
+        if (!contentTag) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  t("notFound", { name: contentTokens.join(" ") })
+                )
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const current = normalizeTriggerContent(contentTag.triggerContent);
+
+        if (!value) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setColor(db.theme)
+                .setTitle(t("contentLabel"))
+                .setDescription(
+                  `${t("contentStatus", {
+                    name: contentTag.name,
+                    content: triggerContentLabel(client, db, current),
+                  })}\n\n\`${prefix}tags content ${contentTag.name} messages|embeds|both\``
+                ),
+            ],
+          });
+        }
+
+        const next = parseTriggerContent(value);
+
+        if (!next) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("contentInvalid", { prefix }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        if (current === next) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  t("contentAlready", {
+                    name: contentTag.name,
+                    content: triggerContentLabel(client, db, next),
+                  })
+                )
+                .setColor(db.theme),
+            ],
+          });
+        }
+
+        const updatedTags = db.tags.map((tg) =>
+          sameTag(tg, contentTag) ? { ...tg, triggerContent: next } : tg
+        );
+
+        await client.database.updateGuild(message.guild.id, {
+          tags: updatedTags,
+        });
+
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { tags: updatedTags },
+        });
+
+        contentTag.triggerContent = next;
+        await refreshGuild(client, message.guildId);
+
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(
+                t("contentSet", {
+                  name: contentTag.name,
+                  content: triggerContentLabel(client, db, next),
+                })
+              )
+              .setColor(db.theme),
+          ],
+        });
+      }
+
       case "add": {
         const parsed = parseTagAdd(message, prefix);
 
@@ -671,7 +861,7 @@ const tagsModule = {
           });
         }
 
-        const limits = { text: 2000, embed: 4096, script: 12000 };
+        const limits = { text: 2000, embed: 6000, script: 12000 };
         if (content.length > limits[tagType]) {
           return message.reply({
             embeds: [
@@ -693,20 +883,40 @@ const tagsModule = {
           }
         }
 
+        let embedData = null;
+        if (tagType === "embed") {
+          const parsedEmbed = parseTagEmbedData(content, db.theme);
+          if (parsedEmbed.error) {
+            return message.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription(
+                    t(
+                      parsedEmbed.error === "invalidJson"
+                        ? "embedJsonInvalid"
+                        : "provideContent"
+                    )
+                  )
+                  .setColor("#FF0000"),
+              ],
+            });
+          }
+          embedData = parsedEmbed.value;
+        }
+
         const newTag = {
           id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           name: tagName,
           type: tagType,
           content: tagType === "text" || tagType === "script" ? content : null,
-          embedData:
-            tagType === "embed"
-              ? { description: content, color: db.theme }
-              : null,
+          embedData,
           createdBy: message.author.id,
           createdAt: Date.now(),
           uses: 0,
           trigger: false,
           anyTrigger: false,
+          triggerBots: true,
+          triggerContent: "both",
         };
 
         await client.database.updateGuild(message.guild.id, {
@@ -978,7 +1188,7 @@ const tagsModule = {
 
               const currentContent =
                 editingTag.type === "embed"
-                  ? (editingTag.embedData?.description || "")
+                  ? JSON.stringify(editingTag.embedData ?? {}, null, 2)
                   : (editingTag.content || "");
 
               const maxPreview = 3400;
@@ -998,7 +1208,9 @@ const tagsModule = {
                       [
                         editingTag.type === "script"
                           ? t("replyNewScript")
-                          : t("replyNewContent"),
+                          : editingTag.type === "embed"
+                            ? t("replyNewEmbed")
+                            : t("replyNewContent"),
                         "",
                         `**${t("currentContent")}:**`,
                         "```" + lang,
@@ -1035,6 +1247,18 @@ const tagsModule = {
                 const updated = [...db.tags];
                 if (editingTag.type === "text" || editingTag.type === "script") {
                   updated[editTagIndex].content = newContent;
+                } else if (newContent.trim().startsWith("{")) {
+                  const parsedEmbed = parseTagEmbedData(newContent, db.theme);
+                  if (parsedEmbed.error) {
+                    return m.reply({
+                      embeds: [
+                        new EmbedBuilder()
+                          .setDescription(t("embedJsonInvalid"))
+                          .setColor("#FF0000"),
+                      ],
+                    });
+                  }
+                  updated[editTagIndex].embedData = parsedEmbed.value;
                 } else {
                   updated[editTagIndex].embedData = {
                     ...(updated[editTagIndex].embedData || {}),
@@ -1269,6 +1493,16 @@ const tagsModule = {
               inline: true,
             },
             {
+              name: t("botTrigger"),
+              value: viewTag.triggerBots !== false ? "on" : "off",
+              inline: true,
+            },
+            {
+              name: t("contentLabel"),
+              value: triggerContentLabel(client, db, viewTag.triggerContent),
+              inline: true,
+            },
+            {
               name: t("uses"),
               value: String(viewTag.uses || 0),
               inline: true,
@@ -1297,10 +1531,35 @@ const tagsModule = {
               "\n```",
           });
         } else {
+          const data = viewTag.embedData || {};
+          if (data.title) {
+            viewEmbed.addFields({
+              name: t("titleField"),
+              value: String(data.title).substring(0, 256),
+            });
+          }
           viewEmbed.addFields({
             name: t("descriptionField"),
-            value: (viewTag.embedData?.description || "").substring(0, 1024) || "-",
+            value: (data.description || "").substring(0, 1024) || "-",
           });
+          if (data.author?.name) {
+            viewEmbed.addFields({
+              name: t("authorField"),
+              value: String(data.author.name).substring(0, 256),
+            });
+          }
+          if (data.footer?.text) {
+            viewEmbed.addFields({
+              name: t("footerField"),
+              value: String(data.footer.text).substring(0, 1024),
+            });
+          }
+          if (Array.isArray(data.fields) && data.fields.length) {
+            viewEmbed.addFields({
+              name: t("fieldsField"),
+              value: String(data.fields.length),
+            });
+          }
         }
 
         return message.reply({ embeds: [viewEmbed] });

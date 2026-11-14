@@ -233,7 +233,7 @@ function validateRoles(roles, guild, me) {
 function targetLink(message, fallbackGuildId = null) {
   const guildId = fallbackGuildId || message?.guildId || message?.guild?.id || '@me';
   const channelId = message?.channelId || message?.channel?.id || '';
-  return `https://fluxer.app/channels/${guildId}/${channelId}/${message?.id || ''}`;
+  return `https://fluxer.com/channels/${guildId}/${channelId}/${message?.id || ''}`;
 }
 
 function listRoles(roles) {
@@ -512,7 +512,7 @@ async function finalizeCustomSetup(client, session, userId, db, suppliedRoles = 
     }
   }
 
-  const freshDb = (await client.database.getGuild(session.guildId, false)) || db;
+  const freshDb = (await client.database.getGuild(session.guildId, false, true)) || db;
   const existing = (freshDb.roles || []).find((entry) => entry.msgId === targetMessage.id);
   const newKeys = new Set(pairs.map((pair) => reactionKey(pair.emoji)));
   for (const previous of existing?.roles || []) {
@@ -530,11 +530,17 @@ async function finalizeCustomSetup(client, session, userId, db, suppliedRoles = 
     exclusive: existing?.exclusive ?? session.existing?.exclusive ?? null,
   };
 
-  freshDb.roles = existing
-    ? freshDb.roles.map((item) => (item.msgId === targetMessage.id ? entry : item))
-    : [...(freshDb.roles || []), entry];
-
-  await client.database.updateGuild(session.guildId, { roles: freshDb.roles });
+  if (existing) {
+    await client.database.updateGuildAtomic(
+      session.guildId,
+      { $set: { 'roles.$': entry } },
+      { 'roles.msgId': targetMessage.id }
+    );
+  } else {
+    await client.database.updateGuildAtomic(session.guildId, {
+      $push: { roles: entry },
+    });
+  }
 
   await trackResource(client, {
     userId,

@@ -13,7 +13,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
     if (!lastExplanation || now - lastExplanation > 5000) {
       explainCooldown.set(cooldownKey, now);
 
-      const db = await client.database.getGuild(guildId);
+      const db = await client.database.getGuild(guildId, true, true);
       const botMessage = await reactionChan.messages.fetch(editCollector.messageId).catch(() => null);
       let explanation;
       if (botMessage) {
@@ -38,7 +38,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
   if (emojiId === client.config.emojis.check && editCollector.botMessage === reactionMsg?.id) {
     if (editCollector.roles.length > 0 || editCollector.rolesDone.length === 0 || editCollector.regex.length > 0) return;
 
-    const db = await client.database.getGuild(guildId);
+    const db = await client.database.getGuild(guildId, true, true);
     const channelId = editCollector.channelId ?? message.channelId;
     const reactions = editCollector.rolesDone.map((e) => e.emoji);
     const oldMsg = await reactionChan?.messages?.fetch(editCollector.oldMessageId).catch(() => null);
@@ -78,12 +78,15 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
         roles: [...editCollector.rolesDone],
       };
 
-      db.roles = [
-        ...db.roles.filter((e) => e.msgId !== editCollector.oldMessageId),
-        entry,
-      ];
-
-      const result = await client.database.updateGuild(guildId, { roles: db.roles });
+      const result = oldEntry
+        ? await client.database.updateGuildAtomic(
+            guildId,
+            { $set: { 'roles.$': entry } },
+            { 'roles.msgId': oldMsg.id }
+          )
+        : await client.database.updateGuildAtomic(guildId, {
+            $push: { roles: entry },
+          });
       if (!result || result.matchedCount === 0) throw new Error("Failed to save reaction role panel");
 
       await trackResource(client, {
@@ -112,7 +115,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
       
       await msg.delete().catch(() => { });
       
-      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.app/channels/${guildId}/${channelId}/${editCollector.oldMessageId})` }))] }).catch(() => { });
+      return reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor(db.theme).setDescription(client.translate.get(db.language, "Commands.roles.successEdit", { message: `[msg](https://fluxer.com/channels/${guildId}/${channelId}/${editCollector.oldMessageId})` }))] }).catch(() => { });
     } catch (error) {
       reactionMsg.channel.send({ embeds: [new EmbedBuilder().setColor("#FF0000").setDescription(`An error occured: ${error.message}`)] }).catch(() => { });
       console.error(error);
@@ -124,7 +127,7 @@ module.exports = async (client, message, userId, editCollector, reactionChan, re
   }
 
   if (emojiId === client.config.emojis.cross && editCollector.botMessage === reactionMsg?.id) {
-    const db = await client.database.getGuild(guildId);
+    const db = await client.database.getGuild(guildId, true, true);
 
     client.messageEdit.delete(userId);
     await reactionMsg?.delete({ silent: true }).catch(() => { });

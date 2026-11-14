@@ -12,7 +12,7 @@ function reactionRolesRouter(client, apiKey) {
     const { guildId, messageId } = req.params;
 
     try {
-      const db = await client.database.getGuild(guildId, false);
+      const db = await client.database.getGuild(guildId, false, true);
       if (!db) return res.status(404).json({ error: 'Guild not found' });
 
       const entry = db.roles.find((e) => e.msgId === messageId);
@@ -81,9 +81,9 @@ function reactionRolesRouter(client, apiKey) {
       const liveGuild = client.guilds?.get(guildId);
       if (!liveGuild) return res.status(404).json({ error: 'Guild not found on bot' });
 
-      const db = await client.database.getGuild(guildId, false);
+      const db = await client.database.getGuild(guildId, false, true);
       if (!db) return res.status(404).json({ error: 'Guild not found' });
-      if (db.roles.length > 30) {
+      if (db.roles.length >= 30) {
         return res.status(400).json({ error: 'Maximum 30 reaction role messages reached' });
       }
 
@@ -149,10 +149,11 @@ function reactionRolesRouter(client, apiKey) {
           exclusive: exclusive ? true : null,
         };
 
-        db.roles = db.roles || [];
-        const existingIndex = db.roles.findIndex((item) => item.msgId === targetMessage.id);
+        const existingIndex = (db.roles || []).findIndex((item) => item.msgId === targetMessage.id);
         if (existingIndex === -1) {
-          db.roles.push(entry);
+          await client.database.updateGuildAtomic(guildId, {
+            $push: { roles: entry },
+          });
         } else {
           const previous = db.roles[existingIndex];
           const newKeys = new Set(processedRoles.map((role) => reactionKey(role.emoji)));
@@ -160,9 +161,12 @@ function reactionRolesRouter(client, apiKey) {
             if (!old?.emoji || newKeys.has(reactionKey(old.emoji))) continue;
             await targetMessage.removeReactionEmoji(old.emoji).catch(() => {});
           }
-          db.roles[existingIndex] = entry;
+          await client.database.updateGuildAtomic(
+            guildId,
+            { $set: { 'roles.$': entry } },
+            { 'roles.msgId': targetMessage.id }
+          );
         }
-        await client.database.updateGuild(guildId, { roles: db.roles });
 
         await trackResource(client, {
           userId: actorFromReq(req),
@@ -220,9 +224,9 @@ function reactionRolesRouter(client, apiKey) {
         exclusive: exclusive ? true : null,
       };
 
-      db.roles = db.roles || [];
-      db.roles.push(entry);
-      await client.database.updateGuild(guildId, { roles: db.roles });
+      await client.database.updateGuildAtomic(guildId, {
+        $push: { roles: entry },
+      });
 
       await trackResource(client, {
         userId: actorFromReq(req),
@@ -257,7 +261,7 @@ function reactionRolesRouter(client, apiKey) {
       const body = req.body || {};
       const { type, content, roles: roleMappings, exclusive, useMention } = body;
 
-      const db = await client.database.getGuild(guildId, false);
+      const db = await client.database.getGuild(guildId, false, true);
       if (!db) return res.status(404).json({ error: 'Guild not found' });
 
       const idx = (db.roles || []).findIndex((e) => e.msgId === messageId);
@@ -273,8 +277,11 @@ function reactionRolesRouter(client, apiKey) {
       if (onlyExclusive) {
         const nextExclusive = exclusive ? true : null;
         const entry = { ...existing, exclusive: nextExclusive };
-        db.roles[idx] = entry;
-        await client.database.updateGuild(guildId, { roles: db.roles });
+        await client.database.updateGuildAtomic(
+          guildId,
+          { $set: { 'roles.$': entry } },
+          { 'roles.msgId': messageId }
+        );
 
         await trackResource(client, {
           userId: actorFromReq(req),
@@ -347,8 +354,11 @@ function reactionRolesRouter(client, apiKey) {
             : existing.exclusive ?? null,
         };
 
-        db.roles[idx] = entry;
-        await client.database.updateGuild(guildId, { roles: db.roles });
+        await client.database.updateGuildAtomic(
+          guildId,
+          { $set: { 'roles.$': entry } },
+          { 'roles.msgId': messageId }
+        );
 
         await trackResource(client, {
           userId: actorFromReq(req),
@@ -407,8 +417,11 @@ function reactionRolesRouter(client, apiKey) {
           : existing.exclusive ?? null,
       };
 
-      db.roles[idx] = entry;
-      await client.database.updateGuild(guildId, { roles: db.roles });
+      await client.database.updateGuildAtomic(
+        guildId,
+        { $set: { 'roles.$': entry } },
+        { 'roles.msgId': messageId }
+      );
 
       await trackResource(client, {
         userId: actorFromReq(req),
@@ -446,7 +459,7 @@ function reactionRolesRouter(client, apiKey) {
     try {
       const { guildId, messageId } = req.params;
 
-      const db = await client.database.getGuild(guildId, false);
+      const db = await client.database.getGuild(guildId, false, true);
       if (!db) return res.status(404).json({ error: 'Guild not found' });
 
       const entry = (db.roles || []).find((e) => e.msgId === messageId);
@@ -455,13 +468,13 @@ function reactionRolesRouter(client, apiKey) {
       const isExclusive = entry.exclusive ?? false;
       const nextExclusive = isExclusive ? null : true;
 
-      const updated = db.roles.map((e) =>
-        e.msgId === messageId ? { ...e, exclusive: nextExclusive } : e
+      await client.database.updateGuildAtomic(
+        guildId,
+        { $set: { 'roles.$.exclusive': nextExclusive } },
+        { 'roles.msgId': messageId }
       );
 
-      await client.database.updateGuild(guildId, { roles: updated });
-
-      const newEntry = updated.find((e) => e.msgId === messageId);
+      const newEntry = { ...entry, exclusive: nextExclusive };
 
       await trackResource(client, {
         userId: actorFromReq(req),
@@ -488,7 +501,7 @@ function reactionRolesRouter(client, apiKey) {
   router.delete('/:messageId', requireApiKey, async (req, res) => {
     try {
       const { guildId, messageId } = req.params;
-      const db = await client.database.getGuild(guildId, false);
+      const db = await client.database.getGuild(guildId, false, true);
       if (!db) return res.status(404).json({ error: 'Guild not found' });
 
       const entry = db.roles.find((e) => e.msgId === messageId);
@@ -506,8 +519,9 @@ function reactionRolesRouter(client, apiKey) {
         }
       } catch {}
 
-      const next = db.roles.filter((e) => e.msgId !== messageId);
-      await client.database.updateGuild(guildId, { roles: next });
+      await client.database.updateGuildAtomic(guildId, {
+        $pull: { roles: { msgId: messageId } },
+      });
 
       await trackResource(client, {
         userId: actorFromReq(req),

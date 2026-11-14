@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const { PermissionFlags } = require('@fluxerjs/core');
 const { randomUUID } = require('node:crypto');
 const { makeRequireApiKey } = require('../middleware');
 const { trackGuildUpdates, trackResource, actorFromReq } = require('../trackSettings');
@@ -10,6 +11,7 @@ const {
 } = require('../../functions/birthdayHelpers');
 const { getGuildCreationDate } = require('../../functions/communityBirthday');
 const { refreshGuild: refreshTagIndex } = require('../../functions/tagIndex');
+const { parseTriggerContent } = require('../../functions/tagOptions');
 const {
   MAX_STICKIES,
   hasEmbedContent,
@@ -63,6 +65,54 @@ function cleanText(value, max) {
   if (typeof value !== 'string') return null;
   const text = value.trim();
   return text ? text.slice(0, max) : null;
+}
+
+function sanitizeTags(rawList) {
+  if (!Array.isArray(rawList)) {
+    return { error: 'tags must be an array' };
+  }
+
+  const tags = [];
+  for (let index = 0; index < rawList.length; index += 1) {
+    const raw = rawList[index];
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return { error: `tags[${index}] must be an object` };
+    }
+
+    const name =
+      typeof raw.name === 'string'
+        ? raw.name.trim().replace(/\s+/g, ' ')
+        : '';
+    if (!name || name.length > 32) {
+      return { error: `tags[${index}].name must be between 1 and 32 characters` };
+    }
+
+    const triggerBots = raw.triggerBots === undefined ? true : raw.triggerBots;
+    if (typeof triggerBots !== 'boolean') {
+      return { error: `tags[${index}].triggerBots must be a boolean` };
+    }
+
+    const triggerContent =
+      raw.triggerContent === undefined
+        ? 'both'
+        : parseTriggerContent(raw.triggerContent);
+    if (!triggerContent) {
+      return {
+        error: `tags[${index}].triggerContent must be messages, embeds, or both`,
+      };
+    }
+
+    tags.push({
+      ...raw,
+      name,
+      trigger: raw.trigger === true,
+      anyTrigger: raw.anyTrigger === true,
+      triggerBots,
+      triggerContent,
+    });
+  }
+
+  return { value: tags };
 }
 
 function sanitizeCommunityBirthday(raw, existing, guild) {
@@ -560,13 +610,38 @@ function guildsRouter(client, apiKey) {
         channelsList = [];
       }
 
+      const botMember =
+        liveGuild?.members?.me ??
+        (liveGuild?.members?.fetchMe
+          ? await liveGuild.members.fetchMe().catch(() => null)
+          : null);
+
+      const botRolePositions = [
+        ...(botMember?.roles?.cache?.values?.() ?? []),
+      ]
+        .map((role) => Number(role?.position))
+        .filter((position) => Number.isFinite(position));
+      const botHighestRolePosition = botRolePositions.length
+        ? Math.max(...botRolePositions)
+        : null;
+
       const guildChannels = channelsList
-        .map((c) => ({
-          id: String(c.id ?? ''),
-          name: String(c.name ?? 'unknown'),
-          type: Number(c.type ?? 0),
-          parentId: c.parentId ? String(c.parentId) : null,
-        }))
+        .map((c) => {
+          const type = Number(c.type ?? 0);
+          const permissions = botMember?.permissionsIn?.(c) ?? null;
+          return {
+            id: String(c.id ?? ''),
+            name: String(c.name ?? 'unknown'),
+            type,
+            parentId: c.parentId ? String(c.parentId) : null,
+            botCanView:
+              permissions?.has?.(PermissionFlags.ViewChannel) ?? null,
+            botCanSend:
+              type === 4
+                ? null
+                : permissions?.has?.(PermissionFlags.SendMessages) ?? null,
+          };
+        })
         .filter((r) => r && r.id)
         .filter((r) => r.type === 0 || r.type === 2 || r.type === 4);
 
@@ -574,12 +649,17 @@ function guildsRouter(client, apiKey) {
         .map((entry) => {
           const role = Array.isArray(entry) ? entry[1] : entry;
           if (!role) return null;
+          const position = Number(role.position ?? 0);
           return {
             id: String(role.id ?? ''),
             name: String(role.name ?? 'unknown'),
             color: Number(role.color ?? 0),
-            position: Number(role.position ?? 0),
+            position,
             permissions: String(role._permissions ?? role.permissions ?? ''),
+            botCanAssign:
+              botHighestRolePosition == null || !Number.isFinite(position)
+                ? null
+                : position < botHighestRolePosition,
           };
         })
         .filter((r) => r && r.id)
@@ -661,7 +741,6 @@ function guildsRouter(client, apiKey) {
         bypassRoles: guild.bypassRoles,
         timedRoles: guild.timedRoles,
         tags: guild.tags,
-        tagTriggerBots: guild.tagTriggerBots ?? false,
         scheduledMessages: guild.scheduledMessages,
         stickies: guild.stickies ?? [],
         commandSettings: (Array.isArray(guild.commandSettings)
@@ -714,7 +793,6 @@ function guildsRouter(client, apiKey) {
 
       const ALLOWED_FIELDS = [
         'prefix',
-        'tagTriggerBots',
         'language',
         'dm',
         'timezoneConvert',
@@ -732,7 +810,6 @@ function guildsRouter(client, apiKey) {
         'stickies',
         'commandSettings',
         'tags',
-        'roles',
         'mediaChannels',
         'birthdayChannel',
         'birthdayRole',
@@ -746,10 +823,6 @@ function guildsRouter(client, apiKey) {
       const updates = {};
       for (const field of ALLOWED_FIELDS) {
         if (field in req.body) updates[field] = req.body[field];
-      }
-
-      if ('tagTriggerBots' in updates && typeof updates.tagTriggerBots !== 'boolean') {
-        return res.status(400).json({ error: 'tagTriggerBots must be a boolean' });
       }
 
       if ('birthdayBlacklist' in updates) {
@@ -816,6 +889,14 @@ function guildsRouter(client, apiKey) {
         updates.commandSettings = sanitized.value;
       }
 
+      if ('tags' in updates) {
+        const sanitized = sanitizeTags(updates.tags);
+        if (sanitized.error) {
+          return res.status(400).json({ error: sanitized.error });
+        }
+        updates.tags = sanitized.value;
+      }
+
       await client.database.updateGuild(guildId, updates, false);
       await trackGuildUpdates(client, {
         guildId,
@@ -824,7 +905,7 @@ function guildsRouter(client, apiKey) {
         updates,
       });
 
-      if ('tags' in updates || 'tagTriggerBots' in updates) {
+      if ('tags' in updates) {
         await refreshTagIndex(client, guildId);
       }
 

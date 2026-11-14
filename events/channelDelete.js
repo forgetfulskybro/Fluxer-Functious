@@ -33,10 +33,10 @@ module.exports = async (client, channel) => {
   }
 
   const rolesInChannel = db.roles.filter(r => r.chanId === channel.id);
+  await client.database.updateGuildAtomic(guildId, {
+    $pull: { roles: { chanId: channel.id } },
+  });
   if (rolesInChannel.length > 0) {
-    const updatedRoles = db.roles.filter(r => r.chanId !== channel.id);
-    await client.database.updateGuild(guildId, { roles: updatedRoles });
-
     for (const panel of rolesInChannel) {
       await trackResource(client, {
         userId: UNKNOWN,

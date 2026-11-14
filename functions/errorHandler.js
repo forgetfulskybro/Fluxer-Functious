@@ -32,6 +32,7 @@ const PERMISSION_MAP = {
   "Message.send": "Send Messages",
   "TextChannel.send": "Send Messages",
   "_Message._send": "Send Messages",
+  "sendPrepared": "Send Messages",
   "VoiceChannel.edit": "Edit Channels",
   "Guild.createChannel": "Create Channels",
   "_GuildMember.move": "Move Members"

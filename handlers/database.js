@@ -230,23 +230,33 @@ module.exports = class DatabaseHandler {
   }
 
   async updateGuild(guildId, data = {}, createIfNotFound = false) {
-    let oldData = await this.getGuild(guildId, createIfNotFound);
+    const oldData = await this.getGuild(guildId, createIfNotFound);
+    if (!oldData) return null;
 
-    if (oldData) {
-      if (oldData?._doc) oldData = oldData?._doc;
+    const updates = { ...data };
+    delete updates._id;
+    delete updates.__v;
+    delete updates.id;
 
-      data = { ...oldData, ...data };
+    if (Object.keys(updates).length === 0) return null;
 
-      this.setBounded(this.cache, guildId, data, this.guildCacheMax);
+    const result = await this.guildModel.updateOne(
+      { id: guildId },
+      { $set: updates },
+    );
 
-      return this.guildModel.updateOne(
-        {
-          id: guildId,
-        },
-        data,
-      );
-    }
-    return null;
+    if (result.matchedCount) this.cache.delete(guildId);
+    return result;
+  }
+
+  async updateGuildAtomic(guildId, update, match = {}) {
+    const result = await this.guildModel.updateOne(
+      { id: guildId, ...match },
+      update,
+    );
+
+    if (result.matchedCount) this.cache.delete(guildId);
+    return result;
   }
 
   async getAll() {

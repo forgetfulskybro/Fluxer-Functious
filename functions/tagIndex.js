@@ -1,6 +1,7 @@
 const GuildModel = require("../models/guilds");
 const color = require("./colorCodes");
 const { executeTag } = require("./tagExecution");
+const { normalizeTriggerContent, allowsBotTrigger } = require("./tagOptions");
 
 const guildIndex = new Map();
 const triggerRateLimits = new Map();
@@ -23,6 +24,8 @@ function normalizeTag(raw) {
     uses: tag.uses || 0,
     trigger: tag.trigger === true,
     anyTrigger: tag.anyTrigger === true,
+    triggerBots: allowsBotTrigger(tag),
+    triggerContent: normalizeTriggerContent(tag.triggerContent),
   };
 }
 
@@ -39,7 +42,6 @@ function buildEntry(guild) {
   }
 
   return {
-    allowBots: guild.tagTriggerBots === true,
     tags,
     anyTags,
   };
@@ -231,9 +233,8 @@ async function checkTagMessage(client, message, db = null) {
   if (!entry) return false;
 
   const isBot = message.author?.bot === true;
-  if (isBot && !entry.allowBots) return false;
 
-  const embedParts = isBot ? embedTextParts(message) : [];
+  const embedParts = embedTextParts(message);
   if (!content && embedParts.length === 0) return false;
 
   const prefix = guildData.prefix || "f!";
@@ -261,6 +262,8 @@ async function checkTagMessage(client, message, db = null) {
       return false;
     }
 
+    if (isBot && !allowsBotTrigger(liveTag)) return false;
+
     if (ranTags.has(tagKey(tag))) return false;
     if (!consumeTriggerRateLimit(message.guildId, triggeredBy)) return false;
 
@@ -278,21 +281,26 @@ async function checkTagMessage(client, message, db = null) {
   };
 
   let ran = false;
-  const exactCandidates = [...new Set([content, ...embedParts])];
 
-  for (const candidate of exactCandidates) {
+  for (const candidate of new Set([content, ...embedParts])) {
     if (!candidate) continue;
 
     const tag = entry.tags.get(candidate.toLowerCase());
-    if (tag && !hasCommandConflict(client, candidate)) {
-      ran = (await runTag(tag, false)) || ran;
-    }
+    if (!tag || hasCommandConflict(client, candidate)) continue;
+
+    const triggerContent = normalizeTriggerContent(tag.triggerContent);
+    if (triggerContent === "embeds" && !embedParts.includes(candidate)) continue;
+    if (triggerContent === "messages" && candidate !== content) continue;
+
+    ran = (await runTag(tag, false)) || ran;
   }
 
   for (const tag of entry.anyTags.values()) {
+    const triggerContent = normalizeTriggerContent(tag.triggerContent);
     const matched =
-      containsTagName(content, tag.name) ||
-      embedParts.some((part) => containsTagName(part, tag.name));
+      (triggerContent !== "embeds" && containsTagName(content, tag.name)) ||
+      (triggerContent !== "messages" &&
+        embedParts.some((part) => containsTagName(part, tag.name)));
     if (!matched) continue;
 
     ran = (await runTag(tag, true)) || ran;

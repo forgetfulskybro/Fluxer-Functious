@@ -5,6 +5,47 @@ const { handleNew, handleDelete } = require(`../functions/checkGiveaways`);
 const regex = new RegExp(/^channel:\s*(?:<#(\d+)>|#?([\w-]+)|(\d+))$/i);
 const { trackResource } = require('../api/trackSettings');
 const { dashboardHelpText } = require('../functions/dashboardHelp');
+const MAX_BONUS_ROLES = 20;
+
+function roleList(guild) {
+  const roles = guild?.roles;
+  if (!roles) return [];
+  if (typeof roles.values === 'function') return [...roles.values()];
+  if (Array.isArray(roles)) return roles;
+  return Object.values(roles);
+}
+
+async function findBonusRole(guild, value) {
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+
+  let roles = roleList(guild);
+  if (!roles.length && typeof guild?.fetchRoles === 'function') {
+    const fetched = await guild.fetchRoles().catch(() => null);
+    roles = roleList({ roles: fetched });
+  }
+
+  const idMatch = text.match(/^<@&(\d+)>$/) || text.match(/^(\d{15,25})$/);
+  if (idMatch) {
+    const id = idMatch[1];
+    if (!roles.length) return { id };
+    return roles.find((role) => String(role.id) === id) ?? null;
+  }
+
+  const name = text.replace(/^@/, '').toLowerCase();
+  if (!name || !roles.length) return null;
+  return roles.find((role) => String(role.name ?? '').toLowerCase() === name) ?? null;
+}
+
+function parseBonusEntry(value) {
+  const match = String(value ?? '').trim().match(/^(.*)[:=](\d+)$/);
+  if (!match) return null;
+
+  const role = match[1].trim();
+  const entries = Number(match[2]);
+  if (!role || !Number.isInteger(entries) || entries < 1 || entries > 100) return null;
+  return { role, entries };
+}
 
 module.exports = {
     config: {
@@ -23,7 +64,8 @@ module.exports = {
           .setDescription(
             `**${client.translate.get(db.language, "Commands.roles.explain")}**\n${client.translate.get(db.language, "Commands.giveaway.explain")}\n\n` +
             `**Creating**\n\`${db.prefix}giveaway ${client.translate.get(db.language, "Commands.giveaway.creating")}\`\n\n` +
-            `**Creating with settings**\n\`${db.prefix}giveaway 20m | 3 | A t-shirt | channel:#giveaways | dm:yes | ping:no | multiwin:no | image:https://...\`\n\n` +
+            `**Creating with settings**\n\`${db.prefix}giveaway 20m | 3 | A t-shirt | channel:#giveaways | dm:yes | ping:no | multiwin:no | image:https://... | bonus:@Booster:3\`\n\n` +
+            `${client.translate.get(db.language, "Commands.giveaway.bonusHelp")}\n\`${db.prefix}giveaway 20m | 3 | A t-shirt | bonus:@Booster:3 | bonus:@Staff:1\`\n\n` +
             `**Deleting**\n\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\`\n\n` +
             `**Rerolling**\n\`${db.prefix}giveaway reroll ${client.translate.get(db.language, "Commands.reroll.input")}\`` +
             `\n\n${dashboardHelpText(client, db, message.guildId, "giveaways")}`
@@ -83,7 +125,7 @@ module.exports = {
         const newMsg = await (await client.channels.resolve(check.channelId))?.messages?.fetch(check.messageId);
         newMsg.edit({ embeds: [embed] });
       } catch { }
-      (await client.channels.resolve(check.channelId))?.send({ content: client.translate.get(check.language, "Commands.reroll.reroll", { users: picked.map(w => `<@${w.id}>`).join(", "), prize: `[${check.prize}](https://fluxer.app/channels/${check.serverId}/${check.channelId}/${check.messageId})` }) });
+      (await client.channels.resolve(check.channelId))?.send({ content: client.translate.get(check.language, "Commands.reroll.reroll", { users: picked.map(w => `<@${w.id}>`).join(", "), prize: `[${check.prize}](https://fluxer.com/channels/${check.serverId}/${check.channelId}/${check.messageId})` }) });
     } else if (args[0] === "delete") {
       const msgId = args[1];
       if (!msgId) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.notValid")}\n**${client.translate.get(db.language, 'Commands.help.embeds.first.cmdUsage')}**:\`${db.prefix}giveaway delete ${client.translate.get(db.language, "Commands.giveaway.deleting")}\``).setColor(`#FF0000`)] })
@@ -117,8 +159,9 @@ module.exports = {
       let pingWinners = true;
       let allowMultipleWins = false;
       let imageUrl = null;
+      const bonusByRole = new Map();
 
-      const namedFlags = ['dm:', 'ping:', 'multiwin:', 'image:'];
+      const namedFlags = ['dm:', 'ping:', 'multiwin:', 'image:', 'bonus:'];
 
       for (let i = 3; i < options.length; i++) {
         const opt = options[i];
@@ -145,6 +188,22 @@ module.exports = {
         } else if (/^image:/i.test(opt)) {
           const url = opt.replace(/^image:/i, '').trim();
           if (/^https?:\/\/.+/i.test(url)) imageUrl = url;
+        } else if (/^bonus:/i.test(opt)) {
+          const parsed = parseBonusEntry(opt.replace(/^bonus:/i, ''));
+          if (!parsed) {
+            return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.bonusFormat")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt | bonus:@Booster:3\``).setColor(`#FF0000`)] });
+          }
+
+          const role = await findBonusRole(message.guild, parsed.role);
+          if (!role) {
+            return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.giveaway.bonusRole")).setColor(`#FF0000`)] });
+          }
+
+          if (!bonusByRole.has(String(role.id)) && bonusByRole.size >= MAX_BONUS_ROLES) {
+            return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.giveaway.bonusLimit")).setColor(`#FF0000`)] });
+          }
+
+          bonusByRole.set(String(role.id), parsed.entries);
         } else {
           const existing = requirement ? requirement + ' ' : '';
           const stripped = namedFlags.some(f => opt.toLowerCase().startsWith(f)) ? '' : opt;
@@ -160,6 +219,11 @@ module.exports = {
       if (winners <= 0 || isNaN(winners)) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.formatWinners")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
       if (winners > 50) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.maxwins")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
       if (!options[2]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.giveaway.validPrize")}: \`${db.prefix}giveaway 20m | 3 | A t-shirt\``).setColor(`#FF0000`)] });
+
+      const bonusEntries = [...bonusByRole.entries()].map(([roleId, entries]) => ({
+        roleId,
+        entries,
+      }));
 
       const embed = new EmbedBuilder()
         .setColor(db.theme)
@@ -202,6 +266,7 @@ module.exports = {
           pingWinners,
           allowMultipleWins,
           imageUrl,
+          bonusEntries,
         });
 
         await trackResource(client, {
@@ -218,6 +283,7 @@ module.exports = {
             winners,
             durationMs: dhms(time),
             requirement,
+            bonusEntries,
           },
           previous: null,
         });

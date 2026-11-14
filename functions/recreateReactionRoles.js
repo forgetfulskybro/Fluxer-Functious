@@ -317,13 +317,17 @@ async function recreateReactionRoles(client, message, db, token) {
     authorId: targetMessage.author?.id ?? client.user.id,
   };
 
-  const nextRoles = existing
-    ? existingEntries.map((item) => (item.msgId === targetMessage.id ? entry : item))
-    : [...existingEntries, entry];
-
-  const saved = await client.database
-    .updateGuild(message.guildId, { roles: nextRoles })
-    .catch(() => null);
+  const saved = existing
+    ? await client.database
+        .updateGuildAtomic(
+          message.guildId,
+          { $set: { 'roles.$': entry } },
+          { 'roles.msgId': targetMessage.id }
+        )
+        .catch(() => null)
+    : await client.database
+        .updateGuildAtomic(message.guildId, { $push: { roles: entry } })
+        .catch(() => null);
 
   if (!saved || saved.matchedCount === 0) return { ok: false, error: 'save' };
 

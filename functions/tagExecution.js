@@ -3,6 +3,16 @@ const { runTagSafe } = require("../interpreter/index");
 const { trackGuildUpdates } = require("../api/trackSettings");
 const { resolveSource } = require("./messageSource");
 
+function isHttpUrl(value) {
+  return typeof value === "string" && /^https?:\/\/\S+$/i.test(value.trim());
+}
+
+function imageUrl(value) {
+  if (typeof value === "string") return isHttpUrl(value) ? value.trim() : null;
+  if (value && typeof value === "object" && isHttpUrl(value.url)) return value.url.trim();
+  return null;
+}
+
 function toFluxerEmbed(data) {
   if (!data || typeof data !== "object") return null;
 
@@ -10,8 +20,16 @@ function toFluxerEmbed(data) {
 
   if (data.title) embed.setTitle(String(data.title).slice(0, 256));
   if (data.description) embed.setDescription(String(data.description).slice(0, 4096));
-  if (data.url) embed.setURL(String(data.url));
-  if (data.timestamp) embed.setTimestamp(data.timestamp);
+  if (isHttpUrl(data.url)) {
+    try {
+      embed.setURL(String(data.url));
+    } catch {}
+  }
+  if (data.timestamp) {
+    try {
+      embed.setTimestamp(data.timestamp);
+    } catch {}
+  }
 
   if (data.color != null) {
     try {
@@ -19,39 +37,158 @@ function toFluxerEmbed(data) {
     } catch {}
   }
 
-  if (data.author) {
+  if (data.author?.name) {
     const a = data.author;
-    embed.setAuthor({
-      name: String(a.name || "").slice(0, 256),
-      url: a.url || undefined,
-      iconURL: a.icon_url || a.iconURL || undefined,
-    });
+    try {
+      embed.setAuthor({
+        name: String(a.name).slice(0, 256),
+        url: isHttpUrl(a.url) ? a.url : undefined,
+        iconURL: isHttpUrl(a.icon_url)
+          ? a.icon_url
+          : isHttpUrl(a.iconURL)
+            ? a.iconURL
+            : undefined,
+      });
+    } catch {}
   }
 
-  if (data.footer) {
+  if (data.footer?.text) {
     const f = data.footer;
-    embed.setFooter({
-      text: String(f.text || "").slice(0, 2048),
-      iconURL: f.icon_url || f.iconURL || undefined,
-    });
+    try {
+      embed.setFooter({
+        text: String(f.text).slice(0, 2048),
+        iconURL: isHttpUrl(f.icon_url)
+          ? f.icon_url
+          : isHttpUrl(f.iconURL)
+            ? f.iconURL
+            : undefined,
+      });
+    } catch {}
   }
 
-  if (data.thumbnail?.url) embed.setThumbnail(data.thumbnail.url);
-  if (data.image?.url) embed.setImage(data.image.url);
+  const thumbnail = imageUrl(data.thumbnail);
+  if (thumbnail) {
+    try {
+      embed.setThumbnail(thumbnail);
+    } catch {}
+  }
+
+  const image = imageUrl(data.image);
+  if (image) {
+    try {
+      embed.setImage(image);
+    } catch {}
+  }
 
   if (Array.isArray(data.fields)) {
     for (const field of data.fields.slice(0, 25)) {
-      if (field?.name && field?.value) {
+      if (!field?.name || !field?.value) continue;
+      try {
         embed.addFields({
           name: String(field.name).slice(0, 256),
           value: String(field.value).slice(0, 1024),
           inline: Boolean(field.inline),
         });
-      }
+      } catch {}
     }
   }
 
   return embed;
+}
+
+function parseTagEmbedData(raw, fallbackColor = null) {
+  const text = String(raw ?? "").trim();
+  if (!text) return { error: "empty" };
+
+  if (!text.startsWith("{")) {
+    return {
+      value: {
+        description: text.slice(0, 4096),
+        ...(fallbackColor ? { color: fallbackColor } : {}),
+      },
+    };
+  }
+
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return { error: "invalidJson" };
+  }
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return { error: "invalidJson" };
+  }
+
+  const embed = {};
+  if (typeof data.title === "string" && data.title.trim()) {
+    embed.title = data.title.trim().slice(0, 256);
+  }
+  if (typeof data.description === "string" && data.description.trim()) {
+    embed.description = data.description.trim().slice(0, 4096);
+  }
+  if (isHttpUrl(data.url)) embed.url = data.url.trim();
+  if (data.timestamp === true || typeof data.timestamp === "string") {
+    embed.timestamp = data.timestamp;
+  }
+  if (typeof data.color === "string" && data.color.trim()) {
+    embed.color = data.color.trim().slice(0, 32);
+  } else if (fallbackColor) {
+    embed.color = fallbackColor;
+  }
+
+  if (data.author && typeof data.author === "object") {
+    const name =
+      typeof data.author.name === "string" ? data.author.name.trim().slice(0, 256) : "";
+    if (name) {
+      embed.author = { name };
+      if (isHttpUrl(data.author.url)) embed.author.url = data.author.url.trim();
+      const icon = data.author.icon_url ?? data.author.iconURL;
+      if (isHttpUrl(icon)) embed.author.icon_url = icon.trim();
+    }
+  }
+
+  if (data.footer && typeof data.footer === "object") {
+    const footerText =
+      typeof data.footer.text === "string" ? data.footer.text.trim().slice(0, 2048) : "";
+    if (footerText) {
+      embed.footer = { text: footerText };
+      const icon = data.footer.icon_url ?? data.footer.iconURL;
+      if (isHttpUrl(icon)) embed.footer.icon_url = icon.trim();
+    }
+  }
+
+  const thumbnail = imageUrl(data.thumbnail);
+  if (thumbnail) embed.thumbnail = { url: thumbnail };
+
+  const image = imageUrl(data.image);
+  if (image) embed.image = { url: image };
+
+  const fields = Array.isArray(data.fields)
+    ? data.fields
+        .filter((field) => field && typeof field.name === "string" && typeof field.value === "string")
+        .slice(0, 25)
+        .map((field) => ({
+          name: field.name.trim().slice(0, 256),
+          value: field.value.trim().slice(0, 1024),
+          inline: field.inline === true,
+        }))
+        .filter((field) => field.name && field.value)
+    : [];
+  if (fields.length) embed.fields = fields;
+
+  if (
+    !embed.title &&
+    !embed.description &&
+    !embed.author &&
+    !embed.footer &&
+    !embed.thumbnail &&
+    !embed.image &&
+    !embed.fields
+  ) {
+    return { error: "empty" };
+  }
+
+  return { value: embed };
 }
 
 function codeSnippet(code, line, col) {
@@ -227,9 +364,10 @@ async function executeTag(client, message, db, tag, args = [], options = {}) {
   }
 
   if (tag.type === "embed") {
-    const embed = new EmbedBuilder()
-      .setColor(tag.embedData?.color || db.theme)
-      .setDescription(tag.embedData?.description || "");
+    const embed = toFluxerEmbed({
+      ...(tag.embedData || {}),
+      color: tag.embedData?.color || db.theme,
+    });
     return message.channel.send({ embeds: [embed] });
   }
 
@@ -296,6 +434,7 @@ async function executeTag(client, message, db, tag, args = [], options = {}) {
 
 module.exports = {
   toFluxerEmbed,
+  parseTagEmbedData,
   executeTag,
   buildTagContext,
   resolveTagSource,

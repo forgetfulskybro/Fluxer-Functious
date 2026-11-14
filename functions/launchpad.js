@@ -51,8 +51,38 @@ function highestRolePosition(member) {
   return positions.length ? Math.max(...positions) : null;
 }
 
+const PERMISSION_LABELS = {
+  ViewChannel: "View Channels",
+  SendMessages: "Send Messages",
+  EmbedLinks: "Embed Links",
+  AddReactions: "Add Reactions",
+  ManageMessages: "Manage Messages",
+  ManageChannels: "Manage Channels",
+  ManageRoles: "Manage Roles",
+  ManageGuild: "Manage Guild",
+};
+
+const PERMISSION_NAMES = new Map(
+  Object.entries(PermissionFlags)
+    .filter(([, value]) => typeof value === "bigint" || typeof value === "number")
+    .map(([key, value]) => [
+      String(value),
+      PERMISSION_LABELS[key] ?? key.replace(/([a-z])([A-Z])/g, "$1 $2"),
+    ])
+);
+
 function permissionName(flag) {
-  return CORE_PERMISSIONS.find(([key]) => PermissionFlags[key] === flag)?.[1] ?? String(flag);
+  return PERMISSION_NAMES.get(String(flag)) ?? "an unknown permission";
+}
+
+function formatList(items) {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
+function summarizeProblems(problems) {
+  return [...new Set(problems)].slice(0, 8).join("\n");
 }
 
 async function getBotMember(guild) {
@@ -62,10 +92,22 @@ async function getBotMember(guild) {
 async function checkChannel(client, guild, member, channelId, required = CORE_PERMISSIONS, label = "") {
   if (!channelId) return { ok: true, skipped: true };
   const channel = await client.channels.resolve(channelId).catch(() => null);
-  if (!channel) return { ok: false, detail: `${label || "Configured channel"} ${channelId} is missing.` };
+  if (!channel) {
+    return {
+      ok: false,
+      detail: `${label || "Configured channel"} no longer exists. Choose a new one in the dashboard.`,
+    };
+  }
 
+  const channelName = channel.name ? ` "${channel.name}"` : "";
+  const target = `${label || "Configured channel"}${channelName}`;
   const permissions = member?.permissionsIn?.(channel);
-  if (!permissions) return { ok: false, detail: `Could not verify access to ${label || `<#${channelId}>`}.` };
+  if (!permissions) {
+    return {
+      ok: false,
+      detail: `Could not check the bot's access to ${target}. Run the health check again.`,
+    };
+  }
 
   const missing = required
     .map(([key]) => PermissionFlags[key])
@@ -74,7 +116,7 @@ async function checkChannel(client, guild, member, channelId, required = CORE_PE
   if (missing.length) {
     return {
       ok: false,
-      detail: `${label || `<#${channelId}>`} is missing: ${missing.map(permissionName).join(", ")}.`,
+      detail: `${target}: the bot needs ${formatList(missing.map(permissionName))}. Give the bot ${missing.length === 1 ? "this permission" : "these permissions"} there.`,
     };
   }
   return { ok: true };
@@ -155,44 +197,41 @@ async function runChecks(client, guild, db, onProgress = async () => {}, options
     {
       id: "access",
       run: async () => {
-        if (!member) return { status: "fail", detail: "I could not fetch my guild member." };
+        if (!member) return { status: "fail", detail: "The bot's server member could not be loaded. Re-add the bot or run the check again." };
         const permissions = member.permissions;
-        if (!permissions) return { status: "warn", detail: "I could not read my cached guild permissions." };
+        if (!permissions) return { status: "warn", detail: "The bot could not read its server permissions. Run the health check again." };
         const missing = CORE_PERMISSIONS
           .map(([key]) => PermissionFlags[key])
           .filter((flag) => flag !== undefined && flag !== null && !permissions.has(flag));
         if (missing.length) {
-          return { status: "fail", detail: `Missing guild permissions: ${missing.map(permissionName).join(", ")}.` };
+          return { status: "fail", detail: `The bot is missing ${formatList(missing.map(permissionName))}. Add ${missing.length === 1 ? "this permission" : "these permissions"} to the bot's role.` };
         }
-        if (!permissions.has(PermissionFlags.ManageRoles)) {
-          return { status: "warn", detail: "Manage Roles is missing; assignable-role checks may fail." };
-        }
-        return { status: "ok", detail: "Core guild permissions are present." };
+        return { status: "ok", detail: "The bot can view channels, send messages, embed links, and add reactions." };
       },
     },
     {
       id: "roles",
       run: async () => {
         const refs = assignableRoleRefs(db);
-        if (!refs.length) return { status: "skip", detail: "No assignable roles are configured." };
+        if (!refs.length) return { status: "skip", detail: "No roles are configured for the bot to assign." };
         const permissions = member?.permissions;
         if (permissions && !permissions.has(PermissionFlags.ManageRoles)) {
-          return { status: "fail", detail: "I do not have Manage Roles." };
+          return { status: "fail", detail: "The bot cannot assign roles because Manage Roles is missing. Add Manage Roles to the bot's role." };
         }
-        if (highest == null) return { status: "warn", detail: "I could not determine my highest role position." };
+        if (highest == null) return { status: "warn", detail: "The bot's highest role could not be determined. Make sure the bot has a role, then run the check again." };
 
         const problems = [];
         for (const ref of refs) {
           const role = getRole(guild, ref.roleId);
           if (!role) {
-            problems.push(`${ref.label} ${ref.roleId} is missing`);
+            problems.push(`${ref.label} no longer exists. Choose a new role in the dashboard.`);
           } else if (Number.isFinite(role.position) && role.position >= highest) {
-            problems.push(`${ref.label} ${role.name ?? ref.roleId} is above my highest role`);
+            problems.push(`${ref.label} "${role.name ?? "Unknown role"}" is higher than the bot's highest role. Move the bot's role above it.`);
           }
         }
         return problems.length
-          ? { status: "fail", detail: problems.slice(0, 8).join("; ") }
-          : { status: "ok", detail: `${refs.length} assignable role(s) look reachable.` };
+          ? { status: "fail", detail: summarizeProblems(problems) }
+          : { status: "ok", detail: refs.length === 1 ? "The bot can assign the configured role." : `The bot can assign all ${refs.length} configured roles.` };
       },
     },
     {
@@ -201,45 +240,55 @@ async function runChecks(client, guild, db, onProgress = async () => {}, options
         const panels = db?.roles ?? [];
         if (!panels.length) return { status: "skip", detail: "No reaction-role panels are configured." };
         const problems = [];
-        for (const panel of panels) {
+        for (let index = 0; index < panels.length; index += 1) {
+          const panel = panels[index];
           const channelId = panel?.chanId ?? panel?.channelId;
-          const channelCheck = await checkChannel(client, guild, member, channelId, CORE_PERMISSIONS, "Reaction-role panel channel");
+          const panelLabel = `Reaction-role panel ${index + 1}`;
+          if (!channelId) {
+            problems.push(`${panelLabel}: no channel is selected. Choose a channel in the dashboard.`);
+            continue;
+          }
+          const channelCheck = await checkChannel(client, guild, member, channelId, CORE_PERMISSIONS, `${panelLabel} channel`);
           if (!channelCheck.ok) {
             problems.push(channelCheck.detail);
             continue;
           }
           const channel = await client.channels.resolve(channelId).catch(() => null);
+          const channelName = channel?.name ? ` "${channel.name}"` : "";
           const message = await channel?.messages?.fetch?.(panel?.msgId).catch(() => null);
-          if (!message) problems.push(`Panel ${panel?.msgId ?? "unknown"} is missing.`);
+          if (!message) problems.push(`${panelLabel}${channelName}: the panel message is missing. Republish the panel.`);
           for (const roleEntry of panel?.roles ?? []) {
-            if (!roleEntry?.emoji && !roleEntry?.emojiKey && !roleEntry?.reaction) {
-              problems.push(`Panel role ${roleEntry?.role ?? "unknown"} has no configured emoji.`);
-            }
             const role = getRole(guild, roleEntry?.role);
-            if (!role) problems.push(`Panel role ${roleEntry?.role ?? "unknown"} is missing.`);
-            else if (Number.isFinite(role.position) && highest != null && role.position >= highest) {
-              problems.push(`Panel role ${role.name ?? roleEntry.role} is above my highest role.`);
+            if (!role) {
+              problems.push(`${panelLabel}${channelName}: a reaction role no longer exists. Choose a new role or remove it.`);
+              continue;
+            }
+            if (!roleEntry?.emoji && !roleEntry?.emojiKey && !roleEntry?.reaction) {
+              problems.push(`${panelLabel}${channelName}: reaction role "${role.name}" has no emoji. Add an emoji or remove it.`);
+            }
+            if (Number.isFinite(role.position) && highest != null && role.position >= highest) {
+              problems.push(`${panelLabel}${channelName}: reaction role "${role.name}" is higher than the bot's highest role. Move the bot's role above it.`);
             }
           }
         }
         return problems.length
-          ? { status: "fail", detail: problems.slice(0, 8).join("; ") }
-          : { status: "ok", detail: `${panels.length} reaction-role panel(s) look reachable.` };
+          ? { status: "fail", detail: summarizeProblems(problems) }
+          : { status: "ok", detail: panels.length === 1 ? "The reaction-role panel is working." : `All ${panels.length} reaction-role panels are working.` };
       },
     },
     {
       id: "channels",
       run: async () => {
         const refs = configuredChannels(db);
-        if (!refs.length) return { status: "skip", detail: "No bot-managed channels are configured." };
+        if (!refs.length) return { status: "skip", detail: "No channels are configured for the bot to manage." };
         const problems = [];
         for (const ref of refs) {
           const result = await checkChannel(client, guild, member, ref.channelId, ref.required, ref.label);
           if (!result.ok) problems.push(result.detail);
         }
         return problems.length
-          ? { status: "fail", detail: problems.slice(0, 8).join("; ") }
-          : { status: "ok", detail: `${refs.length} configured channel(s) look reachable.` };
+          ? { status: "fail", detail: summarizeProblems(problems) }
+          : { status: "ok", detail: refs.length === 1 ? "The configured channel is accessible." : `All ${refs.length} configured channels are accessible.` };
       },
     },
     {
@@ -249,34 +298,37 @@ async function runChecks(client, guild, db, onProgress = async () => {}, options
         if (!forms.length) return { status: "skip", detail: "No forms are configured." };
         const problems = [];
         for (const form of forms) {
+          const formName = form.name ? ` "${form.name}"` : "Unnamed form";
           for (const [label, channelId] of [
             ["Panel channel", form.panelChannelId],
             ["Review channel", form.reviewChannelId],
           ]) {
             if (!channelId) {
-              if (label === "Review channel" || form.status === "open") problems.push(`${form.name}: ${label} is not set`);
+              if (label === "Review channel" || form.status === "open") {
+                problems.push(`${formName}: the ${label.toLowerCase()} is not set. Choose one in the dashboard.`);
+              }
               continue;
             }
-            const result = await checkChannel(client, guild, member, channelId, CORE_PERMISSIONS, `${form.name} ${label}`);
+            const result = await checkChannel(client, guild, member, channelId, CORE_PERMISSIONS, `${formName} ${label.toLowerCase()}`);
             if (!result.ok) problems.push(result.detail);
           }
           if (form.panelChannelId && form.panelMessageId) {
             const channel = await client.channels.resolve(form.panelChannelId).catch(() => null);
             const message = await channel?.messages?.fetch?.(form.panelMessageId).catch(() => null);
-            if (!message) problems.push(`${form.name}: panel message is missing`);
+            if (!message) problems.push(`${formName}: the panel message is missing. Republish the form.`);
           } else if (form.status === "open") {
-            problems.push(`${form.name}: panel message is not published`);
+            problems.push(`${formName}: the form is open but has not been published. Publish it or close the form.`);
           }
           if (form.status === "open" && !form.questions?.length) {
-            problems.push(`${form.name}: no questions`);
+            problems.push(`${formName}: the form is open but has no questions. Add at least one question or close it.`);
           }
           for (const roleId of form.reviewerRoleIds ?? []) {
-            if (!getRole(guild, roleId)) problems.push(`${form.name}: reviewer role ${roleId} is missing`);
+            if (!getRole(guild, roleId)) problems.push(`${formName}: a reviewer role no longer exists. Choose a new reviewer role.`);
           }
         }
         return problems.length
-          ? { status: "warn", detail: problems.slice(0, 8).join("; ") }
-          : { status: "ok", detail: `${forms.length} form(s) look reachable.` };
+          ? { status: "warn", detail: summarizeProblems(problems) }
+          : { status: "ok", detail: forms.length === 1 ? "The form is working." : `All ${forms.length} forms are working.` };
       },
     },
     {
@@ -292,7 +344,7 @@ async function runChecks(client, guild, db, onProgress = async () => {}, options
           ...giveaways.map((giveaway) => ({ id: giveaway.channelId, messageId: giveaway.messageId, label: "Giveaway" })),
           ...polls.map((poll) => ({ id: poll.channelId, messageId: poll.messageId, label: "Poll" })),
         ];
-        if (!refs.length) return { status: "skip", detail: "No active events, giveaways, or polls." };
+        if (!refs.length) return { status: "skip", detail: "There are no active events, giveaways, or polls to check." };
         const problems = [];
         for (const ref of refs) {
           const result = await checkChannel(client, guild, member, ref.id, CORE_PERMISSIONS, `${ref.label} channel`);
@@ -303,12 +355,15 @@ async function runChecks(client, guild, db, onProgress = async () => {}, options
           if (ref.messageId) {
             const channel = await client.channels.resolve(ref.id).catch(() => null);
             const message = await channel?.messages?.fetch?.(ref.messageId).catch(() => null);
-            if (!message) problems.push(`${ref.label} message ${ref.messageId} is missing`);
+            if (!message) {
+              const channelName = channel?.name ? ` "${channel.name}"` : "";
+              problems.push(`${ref.label} message${channelName} is missing. Recreate or remove it.`);
+            }
           }
         }
         return problems.length
-          ? { status: "fail", detail: problems.slice(0, 8).join("; ") }
-          : { status: "ok", detail: `${refs.length} active feature message(s) look reachable.` };
+          ? { status: "fail", detail: summarizeProblems(problems) }
+          : { status: "ok", detail: refs.length === 1 ? "The active feature message is accessible." : `All ${refs.length} active feature messages are accessible.` };
       },
     },
   ];

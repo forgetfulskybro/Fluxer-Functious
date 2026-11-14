@@ -119,7 +119,7 @@ module.exports = {
           chunk.forEach((poll, index) => {
             embed.addFields({
               name: `#${pageIndex * chunkSize + index + 1}: ${poll.desc.slice(0, 75)}`,
-              value: `${client.translate.get(db.language, "Commands.polls.message")}: [msg](https://fluxer.app/channels/${poll.serverId}/${poll.channelId}/${poll.messageId})`,
+              value: `${client.translate.get(db.language, "Commands.polls.message")}: [msg](https://fluxer.com/channels/${poll.serverId}/${poll.channelId}/${poll.messageId})`,
               inline: false
             });
           });
@@ -217,7 +217,7 @@ module.exports = {
           embeds: [
             new EmbedBuilder()
               .setColor("#FF0000")
-              .setDescription(`${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [Manage Guild]\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`)]
+              .setDescription(`${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2", { permission: String(commandfile.config.permissions.name) })}: [Manage Guild]\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`)]
         });
       }
 

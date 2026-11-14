@@ -93,7 +93,7 @@ async function endGiveaway(client, giveawayData) {
       );
 
       await channel?.send({
-        content: `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.noOne")} **${giveawayData.prize}**\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
+        content: `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.noOne")} **${giveawayData.prize}**\nhttps://fluxer.com/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
       });
 
       try {
@@ -130,7 +130,7 @@ async function endGiveaway(client, giveawayData) {
 
     if (pingWinners) {
       await foundChannel.send({
-        content: `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")} ${winnerMentions}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon", { prize: `**${giveawayData.prize}**` })}\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
+        content: `${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")} ${winnerMentions}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon", { prize: `**${giveawayData.prize}**` })}\nhttps://fluxer.com/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
       });
     }
 
@@ -141,7 +141,7 @@ async function endGiveaway(client, giveawayData) {
           if (user) {
             const dm = await user.createDM();
             await dm.send(
-              `🎉 ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon", { prize: `**${giveawayData.prize}**` })}\nhttps://fluxer.app/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
+              `🎉 ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.congrats")}! ${client.translate.get(giveawayData.lang, "Functions.giveawaysEnd.youWon", { prize: `**${giveawayData.prize}**` })}\nhttps://fluxer.com/channels/${giveawayData.serverId}/${giveawayData.channelId}/${giveawayData.messageId}`,
             );
           }
         } catch {
