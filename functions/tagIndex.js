@@ -7,7 +7,10 @@ const guildIndex = new Map();
 const triggerRateLimits = new Map();
 const TRIGGER_RATE_LIMIT_MAX = 4;
 const TRIGGER_RATE_LIMIT_WINDOW_MS = 5000;
+const BOT_TRIGGER_DEDUPE_MS = 3000;
+const botTriggerRuns = new Map();
 let lastTriggerRateLimitSweep = 0;
+let lastBotTriggerSweep = 0;
 
 function normalizeTag(raw) {
   if (!raw) return null;
@@ -84,6 +87,16 @@ function sweepTriggerRateLimits(now) {
     if (!timestamps.length || timestamps[timestamps.length - 1] <= cutoff) {
       triggerRateLimits.delete(key);
     }
+  }
+}
+
+function sweepBotTriggerRuns(now) {
+  if (now - lastBotTriggerSweep < BOT_TRIGGER_DEDUPE_MS) return;
+  lastBotTriggerSweep = now;
+
+  const cutoff = now - BOT_TRIGGER_DEDUPE_MS;
+  for (const [key, timestamp] of botTriggerRuns) {
+    if (timestamp <= cutoff) botTriggerRuns.delete(key);
   }
 }
 
@@ -265,11 +278,26 @@ async function checkTagMessage(client, message, db = null) {
     if (isBot && !allowsBotTrigger(liveTag)) return false;
 
     if (ranTags.has(tagKey(tag))) return false;
-    if (!consumeTriggerRateLimit(message.guildId, triggeredBy)) return false;
+
+    const botRunKey =
+      isBot && message.id ? `${message.id}:${tagKey(tag)}` : null;
+    if (botRunKey) {
+      const now = Date.now();
+      sweepBotTriggerRuns(now);
+      const lastRun = botTriggerRuns.get(botRunKey);
+      if (lastRun && now - lastRun < BOT_TRIGGER_DEDUPE_MS) return false;
+      botTriggerRuns.set(botRunKey, now);
+    }
+
+    if (!consumeTriggerRateLimit(message.guildId, triggeredBy)) {
+      if (botRunKey) botTriggerRuns.delete(botRunKey);
+      return false;
+    }
 
     try {
       await executeTag(client, message, guildData, liveTag, []);
     } catch (err) {
+      if (botRunKey) botTriggerRuns.delete(botRunKey);
       console.log(
         color("%", `%4[Tags]%7 :: Failed to run trigger word "${tag.name}" :: ${err}`),
       );

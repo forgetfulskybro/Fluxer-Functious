@@ -9,9 +9,10 @@ module.exports = async (client, _oldMessage, newMessage) => {
     if (!message) return;
   }
 
-  await checkTagMessage(client, message).catch(() => {});
+  if (!message.content || message.pinned || message.author?.bot) {
+    await checkTagMessage(client, message).catch(() => {});
+    return;
+  }
 
-  if (!message.content || message.pinned || message.author?.bot) return;
-
-  await client.emit("messageCreate", (client, message));
+  await client.emit("messageCreate", message);
 }
