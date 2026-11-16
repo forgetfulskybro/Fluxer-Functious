@@ -149,6 +149,16 @@ function handleDelete(guildId, userId, roleId) {
     removeFromQueue(guildId, userId, roleId);
 }
 
+function removeUserFromQueue(userId) {
+    const target = String(userId);
+
+    for (const [key, value] of roleQueue) {
+        if (String(value.userId) !== target) continue;
+        if (value.timeout) clearTimeout(value.timeout);
+        roleQueue.delete(key);
+    }
+}
+
 function getStatus() {
     return {
         queueSize: roleQueue.size,
@@ -191,5 +201,6 @@ module.exports = {
     stopCron,
     handleNew,
     handleDelete,
+    removeUserFromQueue,
     getStatus,
 };

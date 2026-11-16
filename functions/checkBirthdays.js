@@ -286,6 +286,22 @@ function whenDatabaseReady() {
   });
 }
 
+function removeUserFromSchedule(userId) {
+  const prefix = `${String(userId)}:`;
+
+  for (const [key, value] of birthdayQueue) {
+    if (!key.startsWith(prefix)) continue;
+    if (value.timeout) clearTimeout(value.timeout);
+    birthdayQueue.delete(key);
+  }
+
+  for (const [key, entry] of removalTimers) {
+    if (!key.startsWith(prefix)) continue;
+    if (entry.timer) clearTimeout(entry.timer);
+    removalTimers.delete(key);
+  }
+}
+
 function startBirthdayCheck(client) {
   clientRef = client;
 
@@ -314,4 +330,8 @@ function stopBirthdayCheck() {
   clientRef = null;
 }
 
-module.exports = { startBirthdayCheck, stopBirthdayCheck };
+module.exports = {
+  startBirthdayCheck,
+  stopBirthdayCheck,
+  removeUserFromSchedule,
+};

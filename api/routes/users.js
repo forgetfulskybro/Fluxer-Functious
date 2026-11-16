@@ -4,6 +4,12 @@ const { validDay } = require('../../functions/birthdayHelpers');
 const { getUserProfile, getUserProfiles } = require('../../functions/userProfiles');
 const { handleNewReminder, handleDeletedReminder } = require('../../functions/checkReminders');
 const { removeWatchers, updateWatcher } = require('../../functions/checkReactionReminders');
+const {
+  getUserData,
+  deleteUserData,
+  deleteSelectedUserData,
+  MAX_SELECTED_ITEMS,
+} = require('../../functions/userData');
 
 const MAX_BATCH_IDS = 100;
 const REACTION_MIN_SECONDS = 59;
@@ -219,6 +225,70 @@ function usersRouter(client, apiKey) {
       return res.json(getUserProfile(client, userId));
     } catch (err) {
       console.error('[API] GET /api/users/:userId/profile:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.get('/:userId/data', requireApiKey, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      if (!/^\d{17,20}$/.test(userId)) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+
+      const result = await getUserData(client, userId);
+      res.set('Cache-Control', 'private, max-age=1200');
+      return res.json({ userId, ...result });
+    } catch (err) {
+      console.error('[API] GET /api/users/:userId/data:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.delete('/:userId/data', requireApiKey, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      if (!/^\d{17,20}$/.test(userId)) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+
+      const body = req.body ?? {};
+      const confirmation = String(body.confirmation ?? '').trim().toUpperCase();
+      const confirmUserId = String(body.confirmUserId ?? '');
+      const isEverything = confirmation === 'DELETE EVERYTHING';
+      const isSelected = confirmation === 'DELETE SELECTED';
+
+      if (
+        body.confirm !== true ||
+        confirmUserId !== userId ||
+        (!isEverything && !isSelected)
+      ) {
+        return res.status(400).json({
+          error:
+            'Deletion requires confirm: true, confirmUserId matching the user ID, and either confirmation "DELETE EVERYTHING" or "DELETE SELECTED" with items',
+        });
+      }
+
+      if (isSelected) {
+        const items = Array.isArray(body.items) ? body.items : [];
+        if (items.length === 0 || items.length > MAX_SELECTED_ITEMS) {
+          return res.status(400).json({
+            error: `Select between 1 and ${MAX_SELECTED_ITEMS} items to delete`,
+          });
+        }
+
+        const selectedResult = await deleteSelectedUserData(client, userId, items);
+        if (selectedResult.selectedItems === 0) {
+          return res.status(400).json({ error: 'No valid items selected' });
+        }
+
+        return res.json({ ok: true, ...selectedResult });
+      }
+
+      const result = await deleteUserData(client, userId);
+      return res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error('[API] DELETE /api/users/:userId/data:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
   });
