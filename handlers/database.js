@@ -44,44 +44,6 @@ module.exports = class DatabaseHandler {
     if (interval.unref) interval.unref();
   }
 
-  guildSweeper(client) {
-    const delay = (ms) => new Promise((resolve) => {
-      const t = setTimeout(resolve, ms);
-      if (t.unref) t.unref();
-    });
-
-    const interval = setInterval(
-      async () => {
-        if (!client?.isReady?.() || typeof client.user?.fetchGuilds !== "function") {
-          return;
-        }
-
-        let activeGuildIds;
-        try {
-          const activeGuilds = await client.user.fetchGuilds();
-          activeGuildIds = new Set(
-            activeGuilds.map((guild) => String(guild.id)),
-          );
-        } catch {
-          return;
-        }
-
-        try {
-          const guilds = await this.guildModel.find({}, { id: 1 }).lean();
-          for (const g of guilds) {
-            if (!activeGuildIds.has(String(g?.id))) {
-              this.cache.delete(g?.id);
-              await this.deleteGuild(g?.id).catch(() => {});
-              await delay(3000);
-            }
-          }
-        } catch {}
-      },
-      180 * 180 * 1000,
-    );
-    if (interval.unref) interval.unref();
-  }
-
   async connectToDatabase() {
     await connect(this.connectionString)
       .catch((err) => {
@@ -223,6 +185,7 @@ module.exports = class DatabaseHandler {
     return null;
   }
 
+  // Only use this from an explicit guild-removal flow, never a periodic sweep.
   async deleteGuild(guildId, onlyCache = false) {
     if (this.cache.has(guildId)) this.cache.delete(guildId);
 

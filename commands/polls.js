@@ -1,5 +1,6 @@
 const { EmbedBuilder, PermissionFlags } = require("@fluxerjs/core");
 const Polls = require(`../functions/poll`)
+const { titleFitsImage, optionFitsImage } = Polls;
 const dhms = require(`../functions/dhms`);
 const PollDB = require("../models/polls");
 const { handleNew, handleDelete } = require("../functions/checkPolls");
@@ -20,12 +21,12 @@ async function endPollEarly(client, poll, db) {
     await client.polls.get(poll.messageId).poll.update();
 
     let tooMuch = [];
-    if (poll.desc?.length > 80)
+    if (!titleFitsImage(poll.desc, client.polls.get(poll.messageId)?.poll))
       tooMuch.push(`**Title**: ${poll.desc}`);
-    poll.options?.name?.filter((e) => e).forEach((e, i) => {
-        i++;
-        if (e.length > 70) {
-          tooMuch.push(`**${i}.** ${e}`);
+    poll.options?.name?.forEach((e, i) => {
+        if (!e) return;
+        if (!optionFitsImage(e, client.polls.get(poll.messageId)?.poll, i)) {
+          tooMuch.push(`**${i + 1}.** ${e}`);
         }
       });
 
@@ -256,11 +257,11 @@ module.exports = {
       await poll.update();
 
       let tooMuch = [];
-      if (options[1].length > 75) tooMuch.push(`**${client.translate.get(db.language, "Commands.polls.title")}**: ${options[1]}`)
-      names.filter(e => e).forEach((e, i) => {
-        i++
-        if (e.length > 70) {
-          tooMuch.push(`**${i}.** ${e}`)
+      if (!titleFitsImage(options[1], poll)) tooMuch.push(`**${client.translate.get(db.language, "Commands.polls.title")}**: ${options[1]}`)
+      names.forEach((e, i) => {
+        if (!e) return
+        if (!optionFitsImage(e, poll, i)) {
+          tooMuch.push(`**${i + 1}.** ${e}`)
         }
       });
       

@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require("@fluxerjs/core");
 const PollDB = require("../models/polls");
 const { handleDelete } = require("../functions/checkPolls");
+const { titleFitsImage, optionFitsImage } = require("../functions/poll");
 
 const emojis = [
     { name: "1️⃣", id: 0 }, { name: "2️⃣", id: 1 }, { name: "3️⃣", id: 2 },
@@ -29,10 +30,10 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
             setTimeout(() => client.reactions.delete(userId), 3000)
                         
             let tooMuch = [];
-            if (pollCheck.poll.options.description.length > 80) tooMuch.push(`**${client.translate.get(pollCheck.language, "Events.messageReactionRemove.title")}**: ${pollCheck.poll.options.description}`)
+            if (!titleFitsImage(pollCheck.poll.options.description, pollCheck.poll)) tooMuch.push(`**${client.translate.get(pollCheck.language, "Events.messageReactionRemove.title")}**: ${pollCheck.poll.options.description}`)
             pollCheck.poll.voteOptions.name.filter(e => e).forEach((e, i) => {
                 i++
-                if (e.length > 70) {
+                if (!optionFitsImage(e, pollCheck.poll, i - 1)) {
                     tooMuch.push(`**${i}.** ${e}`)
                 }
             });
@@ -77,9 +78,14 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
             })
         }).then(r => r.json());
 
+        const tooMuch = [];
+        if (!titleFitsImage(pollCheck.poll.options.description, pollCheck.poll)) {
+            tooMuch.push(`**${client.translate.get(pollCheck.lang, "Events.messageReactionAdd.title")}**: ${pollCheck.poll.options.description}`);
+        }
+
         await reactionMsg?.edit({
             embeds: [new EmbedBuilder()
-                .setDescription(`${client.translate.get(pollCheck.lang, "Events.messageReactionAdd.owner")} (<@${pollCheck.owner}>) ${client.translate.get(pollCheck.lang, "Events.messageReactionAdd.end")}:`)
+                .setDescription(`${client.translate.get(pollCheck.lang, "Events.messageReactionAdd.owner")} (<@${pollCheck.owner}>) ${client.translate.get(pollCheck.lang, "Events.messageReactionAdd.end")}:${tooMuch.length > 0 ? `\n\n${tooMuch.join("\n")}` : ""}`)
                 .setImage(`${process.env.CDN}${pollImage.url}`)
                 .setColor(db.theme)]
         }).catch(() => { });
@@ -110,12 +116,12 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
       await pollCheck.poll.addVote(convert, userId, avatarURL, message.messageId);
 
         let tooMuch = [];
-        if (pollCheck.poll.options.description.length > 80)
+        if (!titleFitsImage(pollCheck.poll.options.description, pollCheck.poll))
             tooMuch.push(`**${client.translate.get(pollCheck.lang, "Events.messageReactionAdd.title")}**: ${pollCheck.poll.options.description}`);
 
         pollCheck.poll.voteOptions.name.filter(e => e).forEach((e, i) => {
             i++;
-            if (e.length > 70) tooMuch.push(`**${i}.** ${e}`);
+            if (!optionFitsImage(e, pollCheck.poll, i - 1)) tooMuch.push(`**${i}.** ${e}`);
         });
 
         const pollImage = await fetch(`${process.env.CDN}/api/upload`, {

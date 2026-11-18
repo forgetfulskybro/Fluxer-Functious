@@ -55,7 +55,8 @@ client.database
     console.log(color("%", `%4[Translation_Handler]%7 :: Database translations not loaded: ${err.message}%c`));
   });
 client.database.cacheSweeper(client);
-client.database.guildSweeper(client);
+// Never auto-delete guild records from a periodic guild list. Fluxer's guild list
+// is paginated, so a missing entry does not mean the bot has left the guild.
 client.sentry = Sentry;
 
 setInterval(async () => {

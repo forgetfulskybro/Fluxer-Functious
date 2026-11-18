@@ -2,6 +2,7 @@ const { EmbedBuilder } = require("@fluxerjs/core");
 const db = require("../models/polls");
 const cron = require("node-cron");
 const Polls = require("./poll");
+const { titleFitsImage, optionFitsImage } = Polls;
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
 let refreshCronJob = null;
@@ -54,18 +55,16 @@ async function endPoll(client, poll) {
     await newPoll.update();
 
     let tooMuch = [];
-    if (poll.desc?.length > 80)
+    if (!titleFitsImage(poll.desc, newPoll))
       tooMuch.push(
         `**${client.translate.get(poll.lang, "Events.messageReactionRemove.title")}**: ${poll.desc}`,
       );
-    poll.options?.name
-      ?.filter((e) => e)
-      .forEach((e, i) => {
-        i++;
-        if (e.length > 70) {
-          tooMuch.push(`**${i}.** ${e}`);
-        }
-      });
+    poll.options?.name?.forEach((e, i) => {
+      if (!e) return;
+      if (!optionFitsImage(e, newPoll, i)) {
+        tooMuch.push(`**${i + 1}.** ${e}`);
+      }
+    });
 
     const pollImage = await fetch(`${process.env.CDN}/api/upload`, {
       method: "POST",
