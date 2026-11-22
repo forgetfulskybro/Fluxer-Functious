@@ -530,6 +530,7 @@
       "viewConfig": "**View Configuration**\nShows the current temporary channels settings.",
       "optional": "Option Explanation",
       "nameDefine": "Base name for new temporary channels.",
+      "nameVariables": "Channel-name variables: `{user}` = member display name, `{username}` = account username.",
       "limitDefine": "Max users per temporary voice channel (0 = no limit).",
       "countingDefine": "Enables numbering on the channel name [e.g., My Channel (1)]",
       "resetDefine": "Required if temporary channels are already set up; deletes everything.",

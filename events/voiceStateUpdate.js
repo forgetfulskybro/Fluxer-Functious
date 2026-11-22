@@ -2,6 +2,26 @@ const { PermissionFlags, resolvePermissionsToBitfield } = require('@fluxerjs/cor
 const errorHandler = require("../functions/errorHandler");
 const { sendManagePanel } = require("../functions/managePanel");
 
+function getMemberName(member) {
+  return member?.nick
+    || member?.displayName
+    || member?.user?.global_name
+    || member?.user?.globalName
+    || member?.user?.username
+    || "Member";
+}
+
+function renderTempChannelName(template, member) {
+  const name = getMemberName(member);
+  const username = member?.user?.username || name;
+
+  return String(template)
+    .replace(/\{(user|username)\}/gi, (_match, key) =>
+      key.toLowerCase() === "user" ? name : username,
+    )
+    .slice(0, 26);
+}
+
 module.exports = async (client, oldState, newState) => {
   const state = newState ?? oldState;
   const userId = state?.userId ?? state?.user_id ?? state?.member?.user?.id;
@@ -78,8 +98,13 @@ module.exports = async (client, oldState, newState) => {
       let voiceChannel = null;
       try {
         client.observedVoiceUsers.set(userId, { channelId: newChannelId, guildId });
-        const channelNameBase = db.config?.channelName ? db.config.channelName : state.member.nick ? `${state.member.nick}${state.member.nick[state.member.nick.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel` : state.member?.user?.global_name ? `${state.member.user.global_name}${state.member.user.global_name[state.member.user.global_name.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel` : `${state.member.user.username}${state.member.user.username[state.member.user.username.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel`
-        const channelName = db?.config?.counting ? `${channelNameBase} (${(db?.tempChannels?.length ?? 0) + 1})` : channelNameBase;
+        const memberName = getMemberName(member);
+        const channelNameBase = db.config?.channelName
+          ? renderTempChannelName(db.config.channelName, member)
+          : `${memberName}${memberName[memberName.length - 1].toLowerCase() === "s" ? "'" : "'s"} Channel`;
+        const channelName = db?.config?.counting
+          ? `${channelNameBase} (${(db?.tempChannels?.length ?? 0) + 1})`.slice(0, 26)
+          : channelNameBase;
         
         voiceChannel = await guild.createChannel({
           type: 2,
