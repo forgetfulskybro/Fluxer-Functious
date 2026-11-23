@@ -67,47 +67,17 @@ module.exports = async (client, oldState, newState) => {
     }
   };
 
-  const handleLeaveCreateChannel = async () => {
-    client.observedVoiceUsers.delete(userId);
-
-    const ownedTemps = tempChannels.filter((c) => c.ownerId === userId);
-    if (ownedTemps.length === 0) return;
-
-    const removedIds = [];
-    for (const temp of ownedTemps) {
-      const channelId = temp?.channelId;
-      if (!channelId) continue;
-
-      const hasUsers = [...client.observedVoiceUsers.values()]
-        .some((data) => data?.channelId === channelId);
-      const hasBots = [...client.observedVoiceBots.values()]
-        .some((data) => data?.channelId === channelId);
-
-      if (hasUsers || hasBots) continue;
-
-      const tempChan = await guild.channels.find((c) => c.id === channelId);
-      if (tempChan) await tempChan.delete();
-      removedIds.push(channelId);
-    }
-
-    if (removedIds.length > 0) {
-      await client.database.updateGuild(guildId, {
-        tempChannels: tempChannels.filter(
-          (c) => !removedIds.includes(c.channelId),
-        ),
-      });
-    }
-  };
-
   if (newChannelId && tempChannels.some((c) => c.channelId === newChannelId)) {
     target.set(userId, { channelId: newChannelId, guildId });
   } else if (client.observedVoiceUsers.get(userId)) {
     const observe = client.observedVoiceUsers.get(userId);
 
     if (observe.channelId === childChannel) {
-      // The community owner can't be moved out of the create channel, so
-      // clean up the empty channel that was created for them when they leave.
-      await handleLeaveCreateChannel();
+      // The community owner can't be moved into the channel created for them,
+      // so they stay in the create channel. Just clear the placeholder tracking
+      // when they leave; the created channel is only deleted once its owner
+      // leaves that channel.
+      client.observedVoiceUsers.delete(userId);
     } else {
       const wasTemp = tempChannels.find((c) => c.channelId === observe.channelId);
 
