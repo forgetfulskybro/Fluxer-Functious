@@ -67,14 +67,53 @@ module.exports = async (client, oldState, newState) => {
     }
   };
 
+  const handleLeaveCreateChannel = async () => {
+    client.observedVoiceUsers.delete(userId);
+
+    const ownedTemps = tempChannels.filter((c) => c.ownerId === userId);
+    if (ownedTemps.length === 0) return;
+
+    const removedIds = [];
+    for (const temp of ownedTemps) {
+      const channelId = temp?.channelId;
+      if (!channelId) continue;
+
+      const hasUsers = [...client.observedVoiceUsers.values()]
+        .some((data) => data?.channelId === channelId);
+      const hasBots = [...client.observedVoiceBots.values()]
+        .some((data) => data?.channelId === channelId);
+
+      if (hasUsers || hasBots) continue;
+
+      const tempChan = await guild.channels.find((c) => c.id === channelId);
+      if (tempChan) await tempChan.delete();
+      removedIds.push(channelId);
+    }
+
+    if (removedIds.length > 0) {
+      await client.database.updateGuild(guildId, {
+        tempChannels: tempChannels.filter(
+          (c) => !removedIds.includes(c.channelId),
+        ),
+      });
+    }
+  };
+
   if (newChannelId && tempChannels.some((c) => c.channelId === newChannelId)) {
     target.set(userId, { channelId: newChannelId, guildId });
   } else if (client.observedVoiceUsers.get(userId)) {
     const observe = client.observedVoiceUsers.get(userId);
-    const wasTemp = tempChannels.find((c) => c.channelId === observe.channelId);
 
-    if (wasTemp && observe.channelId !== newChannelId) {
-      await handleLeaveTempChannel(observe, client.observedVoiceUsers);
+    if (observe.channelId === childChannel) {
+      // The community owner can't be moved out of the create channel, so
+      // clean up the empty channel that was created for them when they leave.
+      await handleLeaveCreateChannel();
+    } else {
+      const wasTemp = tempChannels.find((c) => c.channelId === observe.channelId);
+
+      if (wasTemp && observe.channelId !== newChannelId) {
+        await handleLeaveTempChannel(observe, client.observedVoiceUsers);
+      }
     }
   } else if (client.observedVoiceBots.get(userId)) {
     const observe = client.observedVoiceBots.get(userId);
@@ -143,14 +182,19 @@ module.exports = async (client, oldState, newState) => {
             ],
           });
         } else {
+          // Bots can't move the community owner, so they stay in the create
+          // channel. Keep tracking them there so the next voice state update
+          // doesn't create another channel.
+          if (client.observedVoiceUsers.get(userId)?.channelId === voiceChannel.id) {
+            client.observedVoiceUsers.set(userId, { channelId: childChannel, guildId });
+          }
+
           await client.database.updateGuild(guildId, {
             tempChannels: [
               ...tempChannels,
               { ownerId: userId, channelId: voiceChannel.id, parentChannel },
             ],
           });
-          
-          client.observedVoiceUsers.delete(userId);
         }
 
         if (db.config?.managevc) {
