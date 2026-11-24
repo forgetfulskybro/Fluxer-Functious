@@ -50,12 +50,14 @@ function pollsRouter(client, apiKey) {
       if (optionList.length > 10) {
         return res.status(400).json({ error: 'Maximum 10 options allowed' });
       }
-
       const liveGuild = client.guilds?.get(guildId);
       if (!liveGuild) return res.status(404).json({ error: 'Guild not found on bot' });
 
       const db = await client.database.getGuild(guildId, false, true);
       if (!db) return res.status(404).json({ error: 'Guild not found' });
+
+      const theme = PollInstance.resolveTheme(db.pollTheme);
+      const layout = PollInstance.resolveLayout(db.pollLayout);
 
       const activePollCount = (await client.database.getAllPolls()).filter(
         (p) => p.serverId === guildId && !p.ended
@@ -93,7 +95,7 @@ function pollsRouter(client, apiKey) {
         embeds: [
           new EmbedBuilder()
             .setDescription(`${client.translate.get(db.language, 'Commands.polls.loading')}...`)
-            .setColor('#A52F05'),
+            .setColor(theme.accent),
         ],
       });
 
@@ -132,6 +134,8 @@ function pollsRouter(client, apiKey) {
         avatars: [],
         owner: hostId,
         lang: db.language,
+        theme: theme.key,
+        layout: layout.key,
       });
 
       await pollInstance.update();
@@ -164,7 +168,7 @@ function pollsRouter(client, apiKey) {
                   `${client.translate.get(db.language, 'Commands.giveaway.time')}: <t:${Math.floor((durationMs + Date.now()) / 1000)}:R>`
                 )
                 .setImage(`${process.env.CDN}${pollImage.url}`)
-                .setColor('#A52F05'),
+                .setColor(theme.accent),
             ],
           })
           .catch(() => {});

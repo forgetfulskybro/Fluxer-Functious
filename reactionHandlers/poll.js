@@ -11,8 +11,6 @@ const emojis = [
 ];
 
 module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId, event = "add") => {
-    const db = await client.database.getGuild(message.guildId);
-  
     if (event === "remove") {
         if (client.reactions.get(userId)) {
           if (client.timeout.get(userId)) return;
@@ -55,7 +53,7 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
             }).then((i) => i.json())
 
             const newMsg = await (await client.channels.resolve(pollCheck.channelId))?.messages?.fetch(pollCheck.messageId)
-            return newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(pollCheck.language, "Commands.giveaway.time")}: <t:${Math.floor((pollCheck.poll.time + Date.now()) / 1000)}:R>${tooMuch.length > 0 ? `\n\n${tooMuch.map(e => e).join("\n")}` : ""}`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(db.theme)] }).catch(() => { });
+            return newMsg.edit({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(pollCheck.language, "Commands.giveaway.time")}: <t:${Math.floor((pollCheck.poll.time + Date.now()) / 1000)}:R>${tooMuch.length > 0 ? `\n\n${tooMuch.map(e => e).join("\n")}` : ""}`).setImage(`${process.env.CDN}${pollImage.url}`).setColor(pollCheck.poll.palette.accent)] }).catch(() => { });
         } else return;
     }
 
@@ -87,7 +85,7 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
             embeds: [new EmbedBuilder()
                 .setDescription(`${client.translate.get(pollCheck.lang, "Events.messageReactionAdd.owner")} (<@${pollCheck.owner}>) ${client.translate.get(pollCheck.lang, "Events.messageReactionAdd.end")}:${tooMuch.length > 0 ? `\n\n${tooMuch.join("\n")}` : ""}`)
                 .setImage(`${process.env.CDN}${pollImage.url}`)
-                .setColor(db.theme)]
+                .setColor(pollCheck.poll.palette.accent)]
         }).catch(() => { });
         await reactionMsg.removeAllReactions().catch(() => { });
 
@@ -139,7 +137,7 @@ module.exports = async (client, message, userId, pollCheck, reactionMsg, emojiId
             embeds: [new EmbedBuilder()
                 .setDescription(`${client.translate.get(pollCheck.lang, "Commands.giveaway.time")}: <t:${Math.floor((pollCheck.poll.time + Date.now()) / 1000)}:R>${tooMuch.length ? `\n\n${tooMuch.join("\n")}` : ""}`)
                 .setImage(`${process.env.CDN}${pollImage.url}`)
-                .setColor(db.theme)]
+                .setColor(pollCheck.poll.palette.accent)]
         }).catch(() => {});
     }
 };

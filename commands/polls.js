@@ -51,13 +51,43 @@ async function endPollEarly(client, poll, db) {
             `${client.translate.get(poll.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map((e) => e).join("\n")}` : ""}`,
           )
           .setImage(`${process.env.CDN}${pollImage.url}`)
-          .setColor(db.theme),
+          .setColor(client.polls.get(poll.messageId)?.poll?.palette?.accent ?? db.theme),
       ],
     });
 
     await msg.removeAllReactions().catch(() => { });
     client.polls.delete(poll.messageId);
   } catch(e) { }
+}
+
+async function hasPollSettingsPermission(client, message, db) {
+  let member = message.guild?.members?.get?.(message.author.id);
+  if (!member && message.guild?.fetchMember) {
+    member = await message.guild.fetchMember(message.author.id).catch(() => null);
+  }
+
+  const bypasses = [];
+  for (const entry of db.bypassRoles ?? []) {
+    if (!entry?.role || !member?.roles?.has?.(entry.role)) continue;
+    bypasses.push(...(entry.commands ?? []));
+  }
+
+  return Boolean(
+    member?.permissions?.has?.(PermissionFlags.ManageGuild) ||
+    client.config.owners?.includes?.(message.author.id) ||
+    bypasses.includes("all") ||
+    bypasses.includes("polls")
+  );
+}
+
+function pollSettingsPermissionError(client, db) {
+  return new EmbedBuilder()
+    .setColor("#FF0000")
+    .setDescription(
+      `${client.translate.get(db.language, "Events.messageCreate.perms")}.\n` +
+      `${client.translate.get(db.language, "Events.messageCreate.perms2")}: [Manage Guild]\n\n` +
+      `${client.translate.get(db.language, "Events.messageCreate.perms3")}`
+    );
 }
 
 module.exports = {
@@ -72,6 +102,8 @@ module.exports = {
     run: async (client, message, args, db) => {
       const subcommand = args[0]?.toLowerCase();
       const tr = (key, vars) => client.translate.get(db.language, `Commands.polls.${key}`, vars);
+      const themeChoices = Object.values(Polls.THEMES).map((theme) => theme.name).join(", ");
+      const layoutChoices = Object.values(Polls.LAYOUTS).map((layout) => layout.name).join(", ");
 
       if (subcommand === "help") {
         const helpText = [
@@ -82,10 +114,16 @@ module.exports = {
           `\`${db.prefix}poll thread <time> | <question> | <option> | <option>\``,
           tr("threadUsageDesc"),
           ``,
-          `**${tr("otherTitle")}**`,
-          `\`${db.prefix}poll view\``,
-          `\`${db.prefix}poll delete <number>\``,
-          `\`${db.prefix}poll toggle\``,
+          `**${tr("manageTitle")}**`,
+          tr("viewUsage", { prefix: db.prefix }),
+          tr("deleteUsage", { prefix: db.prefix }),
+          tr("toggleUsage", { prefix: db.prefix }),
+          tr("toggleUsageDesc"),
+          tr("themeUsage", { prefix: db.prefix }),
+          tr("themeChoices", { themes: themeChoices }),
+          tr("layoutUsage", { prefix: db.prefix }),
+          tr("layoutChoices", { layouts: layoutChoices }),
+          tr("appearanceDashboard"),
           "",
           dashboardHelpText(client, db, message.guildId, "polls"),
         ].join("\n");
@@ -143,31 +181,61 @@ module.exports = {
       }
 
       if (subcommand === "toggle") {
-        let member = message.guild.members.get(message.author.id);
-        if (!member)
-          member = await message.guild
-            .fetchMember(message.author.id)
-            .catch(() => null);
-          
-        let bypass = false;
-        const bypasses = [];
-        for (let i = 0; db.bypassRoles.length > i; i++) {
-          if (member.roles.has(db.bypassRoles[i].role)) bypasses.push(...db.bypassRoles[i].commands);
+        if (!(await hasPollSettingsPermission(client, message, db))) {
+          return message.reply({ embeds: [pollSettingsPermissionError(client, db)] });
         }
-    
-        if (bypasses.includes("all")) bypass = true;
-        else if (bypasses.includes("polls")) bypass = true;
-        
-        if (!member?.permissions.has(PermissionFlags.ManageGuild) && !client.config.owners.includes(message.author.id) && !bypass) return message.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setColor("#FF0000")
-              .setDescription(`${client.translate.get(db.language, "Events.messageCreate.perms")}.\n${client.translate.get(db.language, "Events.messageCreate.perms2")}: [Manage Guild]\n\n${client.translate.get(db.language, "Events.messageCreate.perms3")}`)]
-        });
-          
+
         const toggle = db.pollPerm;
         await client.database.updateGuild(message.guildId, { pollPerm: !toggle });
         return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.pollPerm")} **${toggle ? client.translate.get(db.language, "Commands.roles.off") : client.translate.get(db.language, "Commands.roles.on")}**`).setColor(db.theme)] });
+      }
+
+      if (subcommand === "theme" || subcommand === "layout") {
+        if (!(await hasPollSettingsPermission(client, message, db))) {
+          return message.reply({ embeds: [pollSettingsPermissionError(client, db)] });
+        }
+
+        const isTheme = subcommand === "theme";
+        const choices = isTheme ? themeChoices : layoutChoices;
+        const value = args[1];
+
+        if (!value) {
+          const current = isTheme ? Polls.resolveTheme(db.pollTheme) : Polls.resolveLayout(db.pollLayout);
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(tr(isTheme ? "themeCurrent" : "layoutCurrent", {
+                  name: current.name,
+                  choices,
+                }))
+                .setColor(db.theme),
+            ],
+          });
+        }
+
+        const resolved = isTheme ? Polls.findTheme(value) : Polls.findLayout(value);
+        if (!resolved) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(tr(isTheme ? "invalidTheme" : "invalidLayout", { value, choices }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        await client.database.updateGuild(
+          message.guildId,
+          isTheme ? { pollTheme: resolved.key } : { pollLayout: resolved.key }
+        );
+
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(tr(isTheme ? "themeSet" : "layoutSet", { name: resolved.name }))
+              .setColor(db.theme),
+          ],
+        });
       }
 
       if (subcommand === "delete") {
@@ -224,7 +292,13 @@ module.exports = {
 
       const check = await PollDB.find({ owner: message.author.id, ended: false })
       if (check.length === 5) return message.reply({ embeds: [new EmbedBuilder().setDescription(client.translate.get(db.language, "Commands.polls.tooMany")).setColor(`#FF0000`)] });
-      const options = pollArgs.join(` `).split(`|`).map(x => x.trim()).filter(x => x);
+      const pollText = pollArgs.join(` `);
+      if (/(?:^|\s)--(?:theme|layout)(?=\s|$|=)/i.test(pollText)) {
+        return message.reply({ embeds: [new EmbedBuilder().setDescription(tr("appearanceDashboard")).setColor(`#FF0000`)] });
+      }
+      const options = pollText.split(`|`).map(x => x.trim()).filter(x => x);
+      const pollTheme = Polls.resolveTheme(db.pollTheme);
+      const pollLayout = Polls.resolveLayout(db.pollLayout);
       if (!options[0]) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.validTime")}: \`${db.prefix}polls 5m | ${client.translate.get(db.language, "Commands.polls.example")}\``).setColor(`#FF0000`)] });
       const time = dhms(options[0]);
       if (!time) return message.reply({ embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.validTime")}: \`${db.prefix}polls 5m | ${client.translate.get(db.language, "Commands.polls.example")}\``).setColor(`#FF0000`)] });
@@ -252,7 +326,10 @@ module.exports = {
         options: {
           name: names.filter(a => a)
         },
-        owner: message.author.id, lang: db.language
+        owner: message.author.id,
+        lang: db.language,
+        theme: pollTheme.key,
+        layout: pollLayout.key,
       })
       await poll.update();
 
@@ -266,7 +343,7 @@ module.exports = {
       });
       
       await message.channel.send({
-        embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.loading")}...`).setColor(db.theme)],
+        embeds: [new EmbedBuilder().setDescription(`${client.translate.get(db.language, "Commands.polls.loading")}...`).setColor(pollTheme.accent)],
       }).then(async (msg) => {
         for (const reaction of reactions) {
           await msg.react(reaction).catch(() => {});

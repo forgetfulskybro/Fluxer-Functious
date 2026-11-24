@@ -5,6 +5,8 @@ const FIELD_META = {
   theme: { category: 'configuration', label: 'Theme' },
   timezoneConvert: { category: 'configuration', label: 'Timezone Convert' },
   pollPerm: { category: 'polls', label: 'Poll Permission' },
+  pollTheme: { category: 'polls', label: 'Poll Theme' },
+  pollLayout: { category: 'polls', label: 'Poll Layout' },
   stickyRolesEnabled: { category: 'roles', label: 'Sticky Roles' },
   joinRoles: { category: 'roles', label: 'Join Roles' },
   timedRoles: { category: 'roles', label: 'Timed Roles' },
@@ -45,6 +47,8 @@ const COLLECTION_META = {
             trigger: t.trigger === true,
             anyTrigger: t.anyTrigger === true,
             triggerBots: t.triggerBots !== false,
+            triggerRegex: t.triggerRegex ?? null,
+            triggerRegexFlags: t.triggerRegexFlags ?? 'i',
             triggerContent: t.triggerContent ?? 'both',
           }
         : null,

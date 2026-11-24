@@ -1,7 +1,14 @@
 const GuildModel = require("../models/guilds");
 const color = require("./colorCodes");
 const { executeTag } = require("./tagExecution");
-const { normalizeTriggerContent, allowsBotTrigger } = require("./tagOptions");
+const {
+  normalizeTriggerContent,
+  allowsBotTrigger,
+  normalizeTriggerRegex,
+  normalizeTriggerRegexFlags,
+  compileTriggerRegex,
+  testTriggerRegex,
+} = require("./tagOptions");
 
 const guildIndex = new Map();
 const triggerRateLimits = new Map();
@@ -28,6 +35,9 @@ function normalizeTag(raw) {
     trigger: tag.trigger === true,
     anyTrigger: tag.anyTrigger === true,
     triggerBots: allowsBotTrigger(tag),
+    triggerRegex: normalizeTriggerRegex(tag.triggerRegex),
+    triggerRegexFlags: normalizeTriggerRegexFlags(tag.triggerRegexFlags),
+    triggerMatcher: compileTriggerRegex(tag),
     triggerContent: normalizeTriggerContent(tag.triggerContent),
   };
 }
@@ -37,23 +47,45 @@ function buildEntry(guild) {
 
   const tags = new Map();
   const anyTags = new Map();
+  const regexTags = [];
+  const anyRegexTags = [];
   for (const raw of guild.tags || []) {
     const tag = normalizeTag(raw);
     if (!tag) continue;
-    if (tag.anyTrigger) anyTags.set(tag.name.toLowerCase(), tag);
-    else if (tag.trigger) tags.set(tag.name.toLowerCase(), tag);
+
+    if (tag.anyTrigger) {
+      if (tag.triggerRegex) {
+        if (tag.triggerMatcher) anyRegexTags.push(tag);
+      } else {
+        anyTags.set(tag.name.toLowerCase(), tag);
+      }
+    } else if (tag.trigger) {
+      if (tag.triggerRegex) {
+        if (tag.triggerMatcher) regexTags.push(tag);
+      } else {
+        tags.set(tag.name.toLowerCase(), tag);
+      }
+    }
   }
 
   return {
     tags,
     anyTags,
+    regexTags,
+    anyRegexTags,
   };
 }
 
 function setGuild(guildId, guild) {
   if (!guildId) return null;
   const entry = buildEntry(guild);
-  if (!entry || (entry.tags.size === 0 && entry.anyTags.size === 0)) {
+  if (
+    !entry ||
+    (entry.tags.size === 0 &&
+      entry.anyTags.size === 0 &&
+      entry.regexTags.length === 0 &&
+      entry.anyRegexTags.length === 0)
+  ) {
     guildIndex.delete(guildId);
     return null;
   }
@@ -75,7 +107,14 @@ function findTag(guildId, name) {
   const entry = getEntry(guildId);
   if (!entry) return null;
   const key = String(name).toLowerCase();
-  return entry.tags.get(key) || entry.anyTags.get(key) || null;
+  return (
+    entry.tags.get(key) ||
+    entry.anyTags.get(key) ||
+    [...entry.regexTags, ...entry.anyRegexTags].find(
+      (tag) => tag.name.toLowerCase() === key,
+    ) ||
+    null
+  );
 }
 
 function sweepTriggerRateLimits(now) {
@@ -145,7 +184,13 @@ async function loadIndex(client) {
 
     for (const guild of guilds) {
       const entry = setGuild(guild.id, guild);
-      if (entry) count += entry.tags.size + entry.anyTags.size;
+      if (entry) {
+        count +=
+          entry.tags.size +
+          entry.anyTags.size +
+          entry.regexTags.length +
+          entry.anyRegexTags.length;
+      }
     }
 
     console.log(
@@ -263,6 +308,20 @@ async function checkTagMessage(client, message, db = null) {
   const ranTags = new Set();
   const tagKey = (tag) => String(tag.id || tag.name).toLowerCase();
 
+  const matchesRegexTrigger = (tag, anywhere) => {
+    if (!tag.triggerMatcher) return false;
+    const triggerContent = normalizeTriggerContent(tag.triggerContent);
+
+    return (
+      (triggerContent !== "embeds" &&
+        testTriggerRegex(tag.triggerMatcher, content, anywhere)) ||
+      (triggerContent !== "messages" &&
+        embedParts.some((part) =>
+          testTriggerRegex(tag.triggerMatcher, part, anywhere),
+        ))
+    );
+  };
+
   const runTag = async (tag, anywhere) => {
     const liveTag =
       liveTags.find(
@@ -323,6 +382,11 @@ async function checkTagMessage(client, message, db = null) {
     ran = (await runTag(tag, false)) || ran;
   }
 
+  for (const tag of entry.regexTags) {
+    if (!matchesRegexTrigger(tag, false)) continue;
+    ran = (await runTag(tag, false)) || ran;
+  }
+
   for (const tag of entry.anyTags.values()) {
     const triggerContent = normalizeTriggerContent(tag.triggerContent);
     const matched =
@@ -334,12 +398,23 @@ async function checkTagMessage(client, message, db = null) {
     ran = (await runTag(tag, true)) || ran;
   }
 
+  for (const tag of entry.anyRegexTags) {
+    if (!matchesRegexTrigger(tag, true)) continue;
+    ran = (await runTag(tag, true)) || ran;
+  }
+
   return ran;
 }
 
 function size() {
   let total = 0;
-  for (const entry of guildIndex.values()) total += entry.tags.size + entry.anyTags.size;
+  for (const entry of guildIndex.values()) {
+    total +=
+      entry.tags.size +
+      entry.anyTags.size +
+      entry.regexTags.length +
+      entry.anyRegexTags.length;
+  }
   return total;
 }
 

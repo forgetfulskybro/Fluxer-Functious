@@ -6,7 +6,14 @@ const { executeTag, buildTagContext, resolveTagSource, parseTagEmbedData } = req
 const { refreshGuild } = require("../functions/tagIndex");
 const { parseMessageLink } = require("../functions/messageSource");
 const { dashboardHelpText } = require("../functions/dashboardHelp");
-const { parseTriggerContent, normalizeTriggerContent } = require("../functions/tagOptions");
+const {
+  parseTriggerContent,
+  normalizeTriggerContent,
+  normalizeTriggerRegexFlags,
+  validateTriggerRegex,
+  parseTriggerRegexLiteral,
+  formatTriggerRegex,
+} = require("../functions/tagOptions");
 
 const TAG_TYPES = ["text", "embed", "script"];
 const TAG_NAME_MAX = 32;
@@ -235,6 +242,13 @@ const tagsModule = {
       "triggerbots",
     ];
     const contentAliases = ["content", "contents", "triggercontent", "source"];
+    const regexAliases = [
+      "regex",
+      "regexp",
+      "pattern",
+      "triggerregex",
+      "triggerpattern",
+    ];
     const rawSubcommand = args[0]?.toLowerCase();
     const subcommand =
       rawSubcommand === "create"
@@ -245,9 +259,11 @@ const tagsModule = {
             ? "anytrigger"
             : botTriggerAliases.includes(rawSubcommand)
               ? "bottrigger"
-              : contentAliases.includes(rawSubcommand)
-                ? "content"
-                : rawSubcommand;
+              : regexAliases.includes(rawSubcommand)
+                ? "regex"
+                : contentAliases.includes(rawSubcommand)
+                  ? "content"
+                  : rawSubcommand;
     const prefix = db.prefix;
     const t = (key, vars) => client.translate.get(db.language, `Commands.tags.${key}`, vars);
 
@@ -303,6 +319,7 @@ const tagsModule = {
               t("helpTrigger", { "prefix": db.prefix }),
               t("helpReplySource", { prefix }),
               t("helpCustomize", { prefix }),
+              t("helpRegex", { prefix }),
               ``,
               `**${t("helpManaging")}**`,
               `\`${prefix}tags list\``,
@@ -322,6 +339,159 @@ const tagsModule = {
             ].join("\n")
           );
         return message.reply({ embeds: [embed] });
+      }
+
+      case "regex": {
+        const regexTokens = tokenizeArgs(args.slice(1).join(" "));
+
+        if (!regexTokens.length) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("regexUsage", { prefix }))
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const { tag: regexTag, rest: regexRest } = resolveTagArgs(
+          db.tags,
+          regexTokens
+        );
+
+        if (!regexTag) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  t("notFound", { name: regexTokens.join(" ") })
+                )
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const rawPattern = regexRest.join(" ").trim();
+
+        if (!rawPattern) {
+          const current = regexTag.triggerRegex
+            ? formatTriggerRegex(
+                regexTag.triggerRegex,
+                regexTag.triggerRegexFlags
+              )
+            : t("regexNotSet");
+
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setColor(db.theme)
+                .setTitle(t("regexTitle", { name: regexTag.name }))
+                .setDescription(
+                  `${current}\n\n\`${prefix}tags regex ${regexTag.name} /pattern/flags\``
+                ),
+            ],
+          });
+        }
+
+        if (["clear", "reset", "off", "none"].includes(rawPattern.toLowerCase())) {
+          const updatedTags = db.tags.map((tg) =>
+            sameTag(tg, regexTag)
+              ? { ...tg, triggerRegex: null, triggerRegexFlags: "i" }
+              : tg
+          );
+
+          await client.database.updateGuild(message.guild.id, {
+            tags: updatedTags,
+          });
+
+          await trackGuildUpdates(client, {
+            guildId: message.guildId,
+            userId: message.author.id,
+            existing: db,
+            updates: { tags: updatedTags },
+          });
+
+          regexTag.triggerRegex = null;
+          regexTag.triggerRegexFlags = "i";
+          await refreshGuild(client, message.guildId);
+
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(t("regexCleared", { name: regexTag.name }))
+                .setColor(db.theme),
+            ],
+          });
+        }
+
+        const literal = parseTriggerRegexLiteral(rawPattern);
+        const pattern = literal ? literal.pattern : rawPattern;
+        const flags = literal
+          ? literal.flags
+          : normalizeTriggerRegexFlags(regexTag.triggerRegexFlags);
+        const checked = validateTriggerRegex(pattern, flags, db, client);
+
+        if (checked.error) {
+          return message.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  t("regexInvalid", { error: checked.error, prefix })
+                )
+                .setColor("#FF0000"),
+            ],
+          });
+        }
+
+        const updatedTags = db.tags.map((tg) =>
+          sameTag(tg, regexTag)
+            ? {
+                ...tg,
+                triggerRegex: checked.value.pattern,
+                triggerRegexFlags: checked.value.flags,
+              }
+            : tg
+        );
+
+        await client.database.updateGuild(message.guild.id, {
+          tags: updatedTags,
+        });
+
+        await trackGuildUpdates(client, {
+          guildId: message.guildId,
+          userId: message.author.id,
+          existing: db,
+          updates: { tags: updatedTags },
+        });
+
+        regexTag.triggerRegex = checked.value.pattern;
+        regexTag.triggerRegexFlags = checked.value.flags;
+        await refreshGuild(client, message.guildId);
+
+        const regexLabel = formatTriggerRegex(
+          checked.value.pattern,
+          checked.value.flags
+        );
+        const triggerHint =
+          regexTag.trigger === true || regexTag.anyTrigger === true
+            ? ""
+            : `\n\n${t("regexTriggerHint", {
+                prefix,
+                name: regexTag.name,
+              })}`;
+
+        return message.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(
+                `${t("regexSet", {
+                  name: regexTag.name,
+                  regex: regexLabel,
+                })}${triggerHint}`
+              )
+              .setColor(db.theme),
+          ],
+        });
       }
 
       case "trigger": {
@@ -362,6 +532,15 @@ const tagsModule = {
           });
         }
 
+        const triggerRegexNote = triggerTag.triggerRegex
+          ? `\n${t("regexActive", {
+              regex: formatTriggerRegex(
+                triggerTag.triggerRegex,
+                triggerTag.triggerRegexFlags
+              ),
+            })}`
+          : "";
+
         if (!value) {
           return message.reply({
             embeds: [
@@ -372,7 +551,7 @@ const tagsModule = {
                   `${t("triggerTagStatus", {
                     name: triggerTag.name,
                     state: state(triggerTag.trigger === true),
-                  })}\n\n\`${prefix}tags trigger ${triggerTag.name} on|off\``
+                  })}${triggerRegexNote}\n\n\`${prefix}tags trigger ${triggerTag.name} on|off\``
                 ),
             ],
           });
@@ -434,12 +613,12 @@ const tagsModule = {
           embeds: [
             new EmbedBuilder()
               .setDescription(
-                t(
+                `${t(
                   enabled
                     ? "triggerTagEnabled"
                     : "triggerTagDisabled",
                   { name: triggerTag.name }
-                )
+                )}${enabled ? triggerRegexNote : ""}`
               )
               .setColor(db.theme),
           ],
@@ -478,6 +657,15 @@ const tagsModule = {
             ],
           });
         }
+
+        const anyRegexNote = anyTag.triggerRegex
+          ? `\n${t("regexActive", {
+              regex: formatTriggerRegex(
+                anyTag.triggerRegex,
+                anyTag.triggerRegexFlags
+              ),
+            })}`
+          : "";
 
         if (value && !truthy.includes(value) && !falsy.includes(value)) {
           return message.reply({
@@ -535,12 +723,12 @@ const tagsModule = {
           embeds: [
             new EmbedBuilder()
               .setDescription(
-                t(
+                `${t(
                   enabled
                     ? "anyTriggerTagEnabled"
                     : "anyTriggerTagDisabled",
                   { name: anyTag.name }
-                )
+                )}${enabled ? anyRegexNote : ""}`
               )
               .setColor(db.theme),
           ],
@@ -916,6 +1104,8 @@ const tagsModule = {
           trigger: false,
           anyTrigger: false,
           triggerBots: true,
+          triggerRegex: null,
+          triggerRegexFlags: "i",
           triggerContent: "both",
         };
 
@@ -1503,6 +1693,16 @@ const tagsModule = {
               inline: true,
             },
             {
+              name: t("regexLabel"),
+              value: viewTag.triggerRegex
+                ? `\`${formatTriggerRegex(
+                    viewTag.triggerRegex,
+                    viewTag.triggerRegexFlags
+                  )}\``
+                : t("regexNotSet"),
+              inline: false,
+            },
+            {
               name: t("uses"),
               value: String(viewTag.uses || 0),
               inline: true,
@@ -1581,26 +1781,39 @@ const tagsModule = {
 
         for (let i = 0; i < db.tags.length; i += tagsPerPage) {
           const pageTags = db.tags.slice(i, i + tagsPerPage);
+          const listItems = pageTags
+            .map((tag, idx) =>
+              t("listItem", {
+                n: i + idx + 1,
+                name: [
+                  tag.name,
+                  tag.trigger === true ? "🔔" : null,
+                  tag.anyTrigger === true ? "🌐" : null,
+                  tag.triggerRegex ? "🧩" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" "),
+                uses: tag.uses || 0,
+                emoji: typeEmoji(tag.type),
+              })
+            )
+            .join("\n");
+          const legend = new Set();
+
+          for (const tag of pageTags) {
+            legend.add(`${typeEmoji(tag.type)} ${t(tag.type)}`);
+            if (tag.trigger === true) legend.add(`🔔 ${t("triggerWord")}`);
+            if (tag.anyTrigger === true) legend.add(`🌐 ${t("anyTriggerWord")}`);
+            if (tag.triggerRegex) legend.add(`🧩 ${t("regexLabel")}`);
+          }
+
           const pageEmbed = new EmbedBuilder()
             .setColor(db.theme)
             .setTitle(t("tagsList"))
             .setDescription(
-              pageTags
-                .map((tag, idx) =>
-                  t("listItem", {
-                    n: i + idx + 1,
-                    name: [
-                      tag.name,
-                      tag.trigger === true ? "🔔" : null,
-                      tag.anyTrigger === true ? "🌐" : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" "),
-                    uses: tag.uses || 0,
-                    emoji: typeEmoji(tag.type),
-                  })
-                )
-                .join("\n")
+              `${listItems}\n\n${t("listLegend", {
+                items: [...legend].join(" · "),
+              })}`
             );
           pages.push(pageEmbed);
         }

@@ -42,6 +42,10 @@ async function endPoll(client, poll) {
     // }
 
     await db.findOneAndUpdate({ messageId: poll.messageId }, { ended: true });
+    const guild = client.database?.getGuild
+      ? await client.database.getGuild(poll.serverId, false).catch(() => null)
+      : null;
+    const activePoll = client.polls?.get(poll.messageId)?.poll;
     const newPoll = new Polls({
       time: 0,
       client,
@@ -51,6 +55,8 @@ async function endPoll(client, poll) {
       users: poll.users,
       owner: poll.owner,
       lang: poll.lang,
+      theme: activePoll?.themeKey ?? guild?.pollTheme ?? Polls.DEFAULT_THEME,
+      layout: activePoll?.layoutKey ?? guild?.pollLayout ?? Polls.DEFAULT_LAYOUT,
     });
     await newPoll.update();
 
@@ -88,7 +94,7 @@ async function endPoll(client, poll) {
             `${client.translate.get(poll.lang, "Functions.poll.end")}${tooMuch.length > 0 ? `\n\n${tooMuch.map((e) => e).join("\n")}` : ""}`,
           )
           .setImage(`${process.env.CDN}${pollImage.url}`)
-          .setColor(`#A52F05`),
+          .setColor(newPoll.palette.accent),
       ],
     });
 
@@ -203,6 +209,7 @@ function getStatus() {
 async function initializePolls(client) {
   const polls = await db.find({ ended: false }).lean();
   const activeIds = new Set(polls.map((p) => p.messageId));
+  const guildSettings = new Map();
 
   for (const messageId of [...client.polls.keys()]) {
     if (!activeIds.has(messageId)) {
@@ -213,6 +220,18 @@ async function initializePolls(client) {
   for (const poll of polls) {
     if (client.polls.has(poll.messageId)) continue;
 
+    let settings = guildSettings.get(poll.serverId);
+    if (!settings) {
+      const guild = client.database?.getGuild
+        ? await client.database.getGuild(poll.serverId, false).catch(() => null)
+        : null;
+      settings = {
+        theme: guild?.pollTheme ?? Polls.DEFAULT_THEME,
+        layout: guild?.pollLayout ?? Polls.DEFAULT_LAYOUT,
+      };
+      guildSettings.set(poll.serverId, settings);
+    }
+
     const pollInstance = new Polls({
       time: poll.time,
       client,
@@ -222,6 +241,8 @@ async function initializePolls(client) {
       users: poll.users,
       owner: poll.owner,
       lang: poll.lang,
+      theme: settings.theme,
+      layout: settings.layout,
     });
 
     client.polls.set(poll.messageId, {

@@ -13,6 +13,8 @@ const tagSchema = new Schema(
     trigger: { type: Boolean, default: false },
     anyTrigger: { type: Boolean, default: false },
     triggerBots: { type: Boolean, default: true },
+    triggerRegex: { type: String, default: null },
+    triggerRegexFlags: { type: String, default: "i" },
     triggerContent: {
       type: String,
       enum: ["messages", "embeds", "both"],
@@ -30,6 +32,8 @@ const guilds = new Schema({
   joined: { type: String, default: (Date.now() / 1000) | 0 },
   dm: { type: Boolean, default: true },
   pollPerm: { type: Boolean, default: true },
+  pollTheme: { type: String, default: "ember" },
+  pollLayout: { type: String, default: "bars" },
   roles: { type: Array, default: [] },
   joinRoles: { type: Array, default: [] },
   stickyRolesEnabled: { type: Boolean, default: false },

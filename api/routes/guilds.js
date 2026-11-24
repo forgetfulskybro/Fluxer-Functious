@@ -2,6 +2,7 @@ const { Router } = require('express');
 const { PermissionFlags } = require('@fluxerjs/core');
 const { randomUUID } = require('node:crypto');
 const { makeRequireApiKey } = require('../middleware');
+const PollInstance = require('../../functions/poll');
 const { trackGuildUpdates, trackResource, actorFromReq } = require('../trackSettings');
 const { runChecks } = require('../../functions/launchpad');
 const UserDB = require('../../models/users');
@@ -11,7 +12,12 @@ const {
 } = require('../../functions/birthdayHelpers');
 const { getGuildCreationDate } = require('../../functions/communityBirthday');
 const { refreshGuild: refreshTagIndex } = require('../../functions/tagIndex');
-const { parseTriggerContent } = require('../../functions/tagOptions');
+const {
+  parseTriggerContent,
+  normalizeTriggerRegex,
+  validateTriggerRegexFlags,
+  validateTriggerRegex,
+} = require('../../functions/tagOptions');
 const {
   MAX_STICKIES,
   hasEmbedContent,
@@ -67,7 +73,7 @@ function cleanText(value, max) {
   return text ? text.slice(0, max) : null;
 }
 
-function sanitizeTags(rawList) {
+function sanitizeTags(rawList, db, client) {
   if (!Array.isArray(rawList)) {
     return { error: 'tags must be an array' };
   }
@@ -102,12 +108,43 @@ function sanitizeTags(rawList) {
       };
     }
 
+    if (
+      raw.triggerRegex !== undefined &&
+      raw.triggerRegex !== null &&
+      typeof raw.triggerRegex !== 'string'
+    ) {
+      return { error: `tags[${index}].triggerRegex must be a string or null` };
+    }
+
+    const triggerRegex = normalizeTriggerRegex(raw.triggerRegex);
+    const flagResult = validateTriggerRegexFlags(raw.triggerRegexFlags, db, client);
+    if (flagResult.error) {
+      return {
+        error: `tags[${index}].triggerRegexFlags ${flagResult.error}`,
+      };
+    }
+    let triggerRegexFlags = flagResult.value;
+    if (triggerRegex) {
+      const validated = validateTriggerRegex(
+        triggerRegex,
+        triggerRegexFlags,
+        db,
+        client
+      );
+      if (validated.error) {
+        return { error: `tags[${index}].triggerRegex ${validated.error}` };
+      }
+      triggerRegexFlags = validated.value.flags;
+    }
+
     tags.push({
       ...raw,
       name,
       trigger: raw.trigger === true,
       anyTrigger: raw.anyTrigger === true,
       triggerBots,
+      triggerRegex,
+      triggerRegexFlags,
       triggerContent,
     });
   }
@@ -732,6 +769,8 @@ function guildsRouter(client, apiKey) {
         language: guild.language,
         dm: guild.dm,
         pollPerm: guild.pollPerm,
+        pollTheme: PollInstance.resolveTheme(guild.pollTheme).key,
+        pollLayout: PollInstance.resolveLayout(guild.pollLayout).key,
         emojis,
         timezoneConvert: guild.timezoneConvert,
         stickyRolesEnabled: guild.stickyRolesEnabled,
@@ -797,6 +836,8 @@ function guildsRouter(client, apiKey) {
         'dm',
         'timezoneConvert',
         'pollPerm',
+        'pollTheme',
+        'pollLayout',
         'stickyRolesEnabled',
         'joinRoles',
         'timedRoles',
@@ -823,6 +864,26 @@ function guildsRouter(client, apiKey) {
       const updates = {};
       for (const field of ALLOWED_FIELDS) {
         if (field in req.body) updates[field] = req.body[field];
+      }
+
+      if ('pollTheme' in updates) {
+        const resolved = PollInstance.findTheme(updates.pollTheme);
+        if (!resolved) {
+          return res.status(400).json({
+            error: `pollTheme must be one of: ${Object.keys(PollInstance.THEMES).join(', ')}`,
+          });
+        }
+        updates.pollTheme = resolved.key;
+      }
+
+      if ('pollLayout' in updates) {
+        const resolved = PollInstance.findLayout(updates.pollLayout);
+        if (!resolved) {
+          return res.status(400).json({
+            error: `pollLayout must be one of: ${Object.keys(PollInstance.LAYOUTS).join(', ')}`,
+          });
+        }
+        updates.pollLayout = resolved.key;
       }
 
       if ('birthdayBlacklist' in updates) {
@@ -890,7 +951,7 @@ function guildsRouter(client, apiKey) {
       }
 
       if ('tags' in updates) {
-        const sanitized = sanitizeTags(updates.tags);
+        const sanitized = sanitizeTags(updates.tags, existing, client);
         if (sanitized.error) {
           return res.status(400).json({ error: sanitized.error });
         }
