@@ -42,6 +42,7 @@ module.exports = {
   config: {
     name: "policy",
     usage: "<command>",
+    descriptionKey: "policies",
     cooldown: 3000,
     available: true,
     permissions: {
