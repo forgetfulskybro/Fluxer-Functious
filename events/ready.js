@@ -2,6 +2,7 @@ const { startCron: startScheduledCron } = require("../functions/checkScheduledMe
 const { startCron: startTimedRolesCron } = require("../functions/checkTimedRoles");
 const { startCron: startGiveawayCron } = require("../functions/checkGiveaways");
 const { startCron: startFluxerList } = require("../functions/updateFluxerList");
+const { startCron: startFBL } = require("../functions/updateFBL");
 const { startCron: startPollsCron } = require("../functions/checkPolls");
 const { startBirthdayCheck } = require("../functions/checkBirthdays");
 const { startCommunityBirthdayCheck } = require("../functions/checkCommunityBirthdays");
@@ -38,4 +39,5 @@ module.exports = async (client) => {
   await checkManage(client);
   startPollsCron(client);
   startFluxerList(client);
+  startFBL(client);
 }

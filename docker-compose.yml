@@ -19,6 +19,7 @@ services:
       - FLUXER_CLIENT_SECRET=${FLUXER_CLIENT_SECRET}
       - FLUXER_CLIENT_ID=${FLUXER_CLIENT_ID}
       - FLUXERLIST=${FLUXERLIST}
+      - FBL=${FBL}
     ports:
       - "8889:8889"
     restart: unless-stopped
